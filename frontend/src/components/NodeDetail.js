@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Container, Typography, Grid, Paper, Box, Tab, Tabs } from '@mui/material';
+import { Container, Typography, Paper, Box, Tab, Tabs, Stack } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 
@@ -133,72 +133,72 @@ const NodeDetail = () => {
         </Tabs>
       </Box>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
+      <Stack spacing={3}>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Forward Power"
             dataKey="forwardPower"
             unit="W"
           />
-        </Grid>
-        <Grid item xs={12}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Reflected Power"
             dataKey="reflectedPower"
             unit="W"
           />
-        </Grid>
-        <Grid item xs={12}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="VSWR"
             dataKey="vswr"
             unit=""
           />
-        </Grid>
-        <Grid item xs={12}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Return Loss"
             dataKey="returnLoss"
             unit="dB"
           />
-        </Grid>
-        <Grid item xs={12}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Temperature"
             dataKey="temperature"
             unit="°C"
           />
-        </Grid>
-        <Grid item xs={12}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Voltage"
             dataKey="voltage"
             unit="V"
           />
-        </Grid>
-        <Grid item xs={12}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Current"
             dataKey="current"
             unit="A"
           />
-        </Grid>
-        <Grid item xs={12}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Power"
             dataKey="power"
             unit="W"
           />
-        </Grid>
-      </Grid>
+        </Box>
+      </Stack>
     </Container>
   );
 };
