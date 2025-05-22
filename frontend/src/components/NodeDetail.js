@@ -1,17 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
+import debounce from 'lodash/debounce';
 import { useParams } from 'react-router-dom';
-import { Container, Typography, Paper, Box, Tab, Tabs, Stack, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import { Container, Typography, Paper, Box, Tab, Tabs, Stack, Select, MenuItem, FormControl, InputLabel, Grid } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 
-const TelemetryGraph = ({ data, title, dataKey, unit }) => {
+const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading }) => {
+  // Downsample data points for smoother rendering
+  const downsampledData = useMemo(() => {
+    const targetPoints = 100;
+    if (!data || data.length <= targetPoints) return data;
+    
+    const step = Math.floor(data.length / targetPoints);
+    return data.filter((_, index) => index % step === 0);
+  }, [data]);
   return (
-    <Paper sx={{ p: 2, mb: 2 }}>
+    <Paper sx={{ p: 2, mb: 2, opacity: isLoading ? 0.7 : 1, transition: 'opacity 0.3s' }}>
       <Typography variant="h6" gutterBottom>
         {title}
       </Typography>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data}>
+        <LineChart data={downsampledData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="time" />
           <YAxis unit={unit} />
@@ -30,7 +39,7 @@ const TelemetryGraph = ({ data, title, dataKey, unit }) => {
       </Box>
     </Paper>
   );
-};
+});
 
 const generateAnalysis = (data, dataKey, title) => {
   if (!data || data.length === 0) return "No data available for analysis.";
@@ -87,6 +96,19 @@ const NodeDetail = () => {
   const [selectedStation, setSelectedStation] = useState('');
   const [selectedTimeFilter, setSelectedTimeFilter] = useState('1h');
   const [telemetryData, setTelemetryData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isFetching, setIsFetching] = useState(false);
+  
+  const debouncedTimeFilter = useMemo(
+    () =>
+      debounce((filter) => {
+        setSelectedTimeFilter(filter);
+        setCurrentPage(1); // Reset to first page when filter changes
+      }, 300),
+    []
+  );
 
   useEffect(() => {
     const fetchBaseStations = async () => {
@@ -105,26 +127,68 @@ const NodeDetail = () => {
   }, [nodeName]);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchTelemetryData = async () => {
-      if (!selectedStation) return;
+      if (!selectedStation || isFetching) return;
       
       try {
+        setIsFetching(true);
         const response = await axios.get(
-          `http://localhost:5000/api/telemetry/${nodeName}/${selectedStation}?timeFilter=${selectedTimeFilter}`
+          `http://localhost:5000/api/telemetry/${nodeName}/${selectedStation}?timeFilter=${selectedTimeFilter}&page=${currentPage}`
         );
+        
+        if (!isMounted) return;
+        
+        const { data, total, totalPages: pages } = response.data;
+        setTotalPages(pages);
+        
         // Reverse the data array so time flows from right to left
-        setTelemetryData([...response.data].reverse());
+        if (currentPage === 1) {
+          setTelemetryData([...data].reverse());
+        } else {
+          setTelemetryData(prev => [...prev, ...[...data].reverse()]);
+        }
       } catch (error) {
         console.error('Error fetching telemetry data:', error);
+      } finally {
+        if (isMounted) {
+          setIsFetching(false);
+        }
       }
     };
 
     fetchTelemetryData();
-  }, [nodeName, selectedStation, selectedTimeFilter]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [nodeName, selectedStation, selectedTimeFilter, currentPage]);
 
   const handleStationChange = (event, newValue) => {
     setSelectedStation(newValue);
   };
+
+  const handleTimeFilterChange = (event) => {
+    debouncedTimeFilter(event.target.value);
+  };
+
+  // Handle scroll for infinite loading
+  useEffect(() => {
+    const handleScroll = debounce(() => {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
+        if (!isFetching && currentPage < totalPages) {
+          setCurrentPage(prev => prev + 1);
+        }
+      }
+    }, 100);
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      handleScroll.cancel();
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [currentPage, totalPages, isFetching]);
 
   return (
     <Container sx={{ py: 4 }}>
@@ -153,7 +217,7 @@ const NodeDetail = () => {
             labelId="time-filter-label"
             value={selectedTimeFilter}
             label="Time Range"
-            onChange={(e) => setSelectedTimeFilter(e.target.value)}
+            onChange={handleTimeFilterChange}
           >
             {TIME_FILTERS.map((filter) => (
               <MenuItem key={filter.value} value={filter.value}>
@@ -164,72 +228,80 @@ const NodeDetail = () => {
         </FormControl>
       </Box>
 
-      <Stack spacing={3}>
-        <Box>
+      <Grid container spacing={2} sx={{ mt: 2 }}>
+        <Grid xs={12} sm={6} md={4}>
           <TelemetryGraph
             data={telemetryData}
             title="Forward Power"
             dataKey="forwardPower"
             unit="W"
+            isLoading={isLoading}
           />
-        </Box>
-        <Box>
+        </Grid>
+        <Grid xs={12} sm={6} md={4}>
           <TelemetryGraph
             data={telemetryData}
             title="Reflected Power"
             dataKey="reflectedPower"
             unit="W"
+            isLoading={isLoading}
           />
-        </Box>
-        <Box>
+        </Grid>
+        <Grid xs={12} sm={6} md={4}>
           <TelemetryGraph
             data={telemetryData}
             title="VSWR"
             dataKey="vswr"
             unit=""
+            isLoading={isLoading}
           />
-        </Box>
-        <Box>
+        </Grid>
+        <Grid xs={12} sm={6} md={4}>
           <TelemetryGraph
             data={telemetryData}
             title="Return Loss"
             dataKey="returnLoss"
             unit="dB"
+            isLoading={isLoading}
           />
-        </Box>
-        <Box>
+        </Grid>
+        <Grid xs={12} sm={6} md={4}>
           <TelemetryGraph
             data={telemetryData}
             title="Temperature"
             dataKey="temperature"
             unit="°C"
+            isLoading={isLoading}
           />
-        </Box>
-        <Box>
+        </Grid>
+        <Grid xs={12} sm={6} md={4}>
           <TelemetryGraph
             data={telemetryData}
             title="Voltage"
             dataKey="voltage"
             unit="V"
+            isLoading={isLoading}
           />
-        </Box>
-        <Box>
+        </Grid>
+        <Grid xs={12} sm={6} md={4}>
           <TelemetryGraph
             data={telemetryData}
             title="Current"
             dataKey="current"
             unit="A"
+            isLoading={isLoading}
           />
-        </Box>
-        <Box>
+        </Grid>
+        <Grid xs={12} sm={6} md={4}>
           <TelemetryGraph
             data={telemetryData}
             title="Power"
             dataKey="power"
             unit="W"
+            isLoading={isLoading}
           />
-        </Box>
-      </Stack>
+        </Grid>
+      </Grid>
     </Container>
   );
 };
