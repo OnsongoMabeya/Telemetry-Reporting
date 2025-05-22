@@ -96,7 +96,8 @@ const NodeDetail = () => {
         const response = await axios.get(
           `http://localhost:5000/api/telemetry/${nodeName}/${selectedStation}`
         );
-        setTelemetryData(response.data);
+        // Reverse the data array so time flows from right to left
+        setTelemetryData([...response.data].reverse());
       } catch (error) {
         console.error('Error fetching telemetry data:', error);
       }
