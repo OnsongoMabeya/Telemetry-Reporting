@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Container, Typography, Paper, Box, Tab, Tabs, Stack } from '@mui/material';
+import { Container, Typography, Paper, Box, Tab, Tabs, Stack, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 
@@ -66,10 +66,26 @@ const generateRecommendation = (metric, current, avg, max, min) => {
   return "System is operating within normal parameters.";
 };
 
+const TIME_FILTERS = [
+  { value: '5m', label: 'Last 5 minutes' },
+  { value: '10m', label: 'Last 10 minutes' },
+  { value: '30m', label: 'Last 30 minutes' },
+  { value: '1h', label: 'Last 1 hour' },
+  { value: '2h', label: 'Last 2 hours' },
+  { value: '6h', label: 'Last 6 hours' },
+  { value: '1d', label: 'Last 24 hours' },
+  { value: '2d', label: 'Last 2 days' },
+  { value: '5d', label: 'Last 5 days' },
+  { value: '1w', label: 'Last 1 week' },
+  { value: '2w', label: 'Last 2 weeks' },
+  { value: '30d', label: 'Last 30 days' }
+];
+
 const NodeDetail = () => {
   const { nodeName } = useParams();
   const [baseStations, setBaseStations] = useState([]);
   const [selectedStation, setSelectedStation] = useState('');
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState('1h');
   const [telemetryData, setTelemetryData] = useState([]);
 
   useEffect(() => {
@@ -94,7 +110,7 @@ const NodeDetail = () => {
       
       try {
         const response = await axios.get(
-          `http://localhost:5000/api/telemetry/${nodeName}/${selectedStation}`
+          `http://localhost:5000/api/telemetry/${nodeName}/${selectedStation}?timeFilter=${selectedTimeFilter}`
         );
         // Reverse the data array so time flows from right to left
         setTelemetryData([...response.data].reverse());
@@ -104,7 +120,7 @@ const NodeDetail = () => {
     };
 
     fetchTelemetryData();
-  }, [nodeName, selectedStation]);
+  }, [nodeName, selectedStation, selectedTimeFilter]);
 
   const handleStationChange = (event, newValue) => {
     setSelectedStation(newValue);
@@ -116,7 +132,7 @@ const NodeDetail = () => {
         {nodeName}
       </Typography>
       
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Tabs
           value={selectedStation}
           onChange={handleStationChange}
@@ -131,6 +147,21 @@ const NodeDetail = () => {
             />
           ))}
         </Tabs>
+        <FormControl sx={{ minWidth: 200, mb: 1 }}>
+          <InputLabel id="time-filter-label">Time Range</InputLabel>
+          <Select
+            labelId="time-filter-label"
+            value={selectedTimeFilter}
+            label="Time Range"
+            onChange={(e) => setSelectedTimeFilter(e.target.value)}
+          >
+            {TIME_FILTERS.map((filter) => (
+              <MenuItem key={filter.value} value={filter.value}>
+                {filter.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </Box>
 
       <Stack spacing={3}>

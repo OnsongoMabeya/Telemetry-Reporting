@@ -59,6 +59,41 @@ app.get('/api/basestations/:nodeName', async (req, res) => {
 app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
   try {
     const { nodeName, baseStation } = req.params;
+    const { timeFilter } = req.query;
+
+    // First, get the most recent time from the database for this node and base station
+    const getLatestTimeQuery = `
+      SELECT MAX(time) as latestTime
+      FROM node_status_table
+      WHERE NodeName = ? AND NodeBaseStationName = ?
+    `;
+    const [latestTimeResult] = await pool.promise().query(getLatestTimeQuery, [nodeName, baseStation]);
+    const latestTime = latestTimeResult[0].latestTime;
+
+    if (!latestTime) {
+      return res.json([]);
+    }
+
+    // Calculate the time range based on the filter
+    let timeRange;
+    const latestDate = new Date(latestTime);
+
+    switch (timeFilter) {
+      case '5m': timeRange = new Date(latestDate - 5 * 60 * 1000); break;
+      case '10m': timeRange = new Date(latestDate - 10 * 60 * 1000); break;
+      case '30m': timeRange = new Date(latestDate - 30 * 60 * 1000); break;
+      case '1h': timeRange = new Date(latestDate - 60 * 60 * 1000); break;
+      case '2h': timeRange = new Date(latestDate - 2 * 60 * 60 * 1000); break;
+      case '6h': timeRange = new Date(latestDate - 6 * 60 * 60 * 1000); break;
+      case '1d': timeRange = new Date(latestDate - 24 * 60 * 60 * 1000); break;
+      case '2d': timeRange = new Date(latestDate - 2 * 24 * 60 * 60 * 1000); break;
+      case '5d': timeRange = new Date(latestDate - 5 * 24 * 60 * 60 * 1000); break;
+      case '1w': timeRange = new Date(latestDate - 7 * 24 * 60 * 60 * 1000); break;
+      case '2w': timeRange = new Date(latestDate - 14 * 24 * 60 * 60 * 1000); break;
+      case '30d': timeRange = new Date(latestDate - 30 * 24 * 60 * 60 * 1000); break;
+      default: timeRange = new Date(latestDate - 60 * 60 * 1000); // Default to 1 hour
+    }
+
     const query = `
       SELECT 
         time,
@@ -71,12 +106,13 @@ app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
         Analog7Value as current,
         Analog8Value as power
       FROM node_status_table 
-      WHERE NodeName = ? AND NodeBaseStationName = ?
+      WHERE NodeName = ? 
+        AND NodeBaseStationName = ? 
+        AND time >= ?
       ORDER BY time DESC
-      LIMIT 100
     `;
     
-    const [rows] = await pool.promise().query(query, [nodeName, baseStation]);
+    const [rows] = await pool.promise().query(query, [nodeName, baseStation, timeRange]);
     res.json(rows);
   } catch (error) {
     console.error('Error fetching telemetry data:', error);
