@@ -7,6 +7,38 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import axios from 'axios';
 
 const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading }) => {
+  const getYAxisDomain = () => {
+    if (!data || data.length === 0) return ['auto', 'auto'];
+    
+    // Calculate actual min and max from data
+    const values = data.map(item => Number(item[dataKey]));
+    const dataMin = Math.min(...values);
+    const dataMax = Math.max(...values);
+    
+    // Add 10% padding to the range
+    const range = dataMax - dataMin;
+    const padding = range * 0.1;
+    
+    switch (dataKey) {
+      case 'returnLoss':
+        return [Math.max(0, dataMin - padding), dataMax + padding];
+      case 'vswr':
+        return [Math.max(1, dataMin - padding), dataMax + padding];
+      case 'temperature':
+        return [Math.max(0, dataMin - padding), dataMax + padding];
+      case 'voltage':
+        return [Math.max(0, dataMin - padding), dataMax + padding];
+      case 'current':
+        return [Math.max(0, dataMin - padding), dataMax + padding];
+      case 'power':
+      case 'forwardPower':
+        return [Math.max(0, dataMin - padding), dataMax + padding];
+      case 'reflectedPower':
+        return [0, Math.max(1, dataMax + padding)];
+      default:
+        return [dataMin - padding, dataMax + padding];
+    }
+  };
   // Downsample data points for smoother rendering
   const downsampledData = useMemo(() => {
     const targetPoints = 100;
@@ -32,7 +64,11 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading }) => {
               return `${hours}:${minutes}`;
             }}
           />
-          <YAxis unit={unit} />
+          <YAxis 
+            unit={unit} 
+            domain={getYAxisDomain()}
+            allowDataOverflow={false}
+          />
           <Tooltip />
           <Legend />
           <Line type="monotone" dataKey={dataKey} stroke="#8884d8" />
