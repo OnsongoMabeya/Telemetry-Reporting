@@ -366,7 +366,8 @@ const NodeDetail = () => {
         const response = await axios.get(`${API_BASE_URL}/api/basestations/${selectedNode}`);
         const formattedStations = response.data.map(station => ({
           id: station.NodeBaseStationName,
-          name: station.NodeBaseStationName
+          name: station.NodeBaseStationName,
+          node: selectedNode // Include the node information
         }));
         setBaseStations(formattedStations);
         if (formattedStations.length > 0) {
