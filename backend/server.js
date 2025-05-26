@@ -4,14 +4,42 @@ const mysql = require('mysql2');
 const NodeCache = require('node-cache');
 require('dotenv').config();
 
-// Initialize cache with 5 minutes TTL
+// Helper function to get cache TTL based on time filter
+const getCacheTTL = (timeFilter) => {
+  switch (timeFilter) {
+    case '5m': return 30;  // 30 seconds for 5m data
+    case '10m': return 60;  // 1 minute for 10m data
+    case '30m': return 120; // 2 minutes for 30m data
+    case '1h': return 300;  // 5 minutes for 1h data
+    default: return 600;    // 10 minutes for longer ranges
+  }
+};
+
+// Initialize cache with default 5 minutes TTL
 const cache = new NodeCache({ stdTTL: 300 });
+
+// Validate time filter
+const isValidTimeFilter = (timeFilter) => {
+  const validFilters = ['5m', '10m', '30m', '1h', '2h', '6h', '1d', '2d', '5d', '1w', '2w', '30d'];
+  return validFilters.includes(timeFilter);
+};
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Rate limiting middleware
+const rateLimit = require('express-rate-limit');
+
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 60 // limit each IP to 60 requests per windowMs
+});
+
+// Apply rate limiting to all routes
+app.use(limiter);
 
 // Database connection
 const pool = mysql.createPool({
@@ -180,6 +208,11 @@ app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
     const { timeFilter, page = 1 } = req.query;
     const pageSize = 100;
 
+    // Input validation
+    if (!timeFilter || !isValidTimeFilter(timeFilter)) {
+      return res.status(400).json({ error: 'Invalid time filter' });
+    }
+
     // Create cache key
     const cacheKey = `telemetry:${nodeName}:${baseStation}:${timeFilter}:${page}`;
     const cachedData = cache.get(cacheKey);
@@ -190,8 +223,9 @@ app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
 
     const result = await getTelemetryData(pool, nodeName, baseStation, timeFilter, parseInt(page), pageSize);
     
-    // Cache the result
-    cache.set(cacheKey, result);
+    // Cache the result with dynamic TTL
+    const ttl = getCacheTTL(timeFilter);
+    cache.set(cacheKey, result, ttl);
     res.json(result);
   } catch (error) {
     console.error('Error fetching telemetry data:', error);
