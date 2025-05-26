@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Box, Card, CardContent, Typography, CardActionArea, CircularProgress, Alert } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const NodeList = () => {

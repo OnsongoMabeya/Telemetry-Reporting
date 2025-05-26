@@ -1,9 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Navbar from './components/Navbar';
-import NodeList from './components/NodeList';
 import NodeDetail from './components/NodeDetail';
 
 const theme = createTheme({
@@ -22,15 +20,10 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
-        <div className="App">
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<NodeList />} />
-            <Route path="/node/:nodeName" element={<NodeDetail />} />
-          </Routes>
-        </div>
-      </Router>
+      <div className="App">
+        <Navbar />
+        <NodeDetail />
+      </div>
     </ThemeProvider>
   );
 }

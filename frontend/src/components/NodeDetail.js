@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
 import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Paper, CircularProgress, Alert } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
@@ -231,13 +230,31 @@ const generateRecommendation = (metric, current, avg, max, min) => {
 
 // Main Component
 const NodeDetail = () => {
-  const { nodeName } = useParams();
+  const [nodes, setNodes] = useState([]);
+  const [selectedNode, setSelectedNode] = useState(null);
   const [telemetryData, setTelemetryData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [timeFilter, setTimeFilter] = useState('1h');
   const [baseStations, setBaseStations] = useState([]);
   const [selectedBaseStation, setSelectedBaseStation] = useState(null);
   const [error, setError] = useState(null);
+
+  // Fetch available nodes
+  useEffect(() => {
+    const fetchNodes = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/nodes`);
+        setNodes(response.data);
+        if (response.data.length > 0) {
+          setSelectedNode(response.data[0].NodeName);
+        }
+      } catch (err) {
+        console.error('Error fetching nodes:', err);
+        setError('Failed to fetch nodes. Please try again later.');
+      }
+    };
+    fetchNodes();
+  }, []);
 
   const TIME_FILTERS = [
     { value: '5m', label: 'Last 5 minutes' },
@@ -256,8 +273,9 @@ const NodeDetail = () => {
 
   useEffect(() => {
     const fetchBaseStations = async () => {
+      if (!selectedNode) return;
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/basestations/${nodeName}`);
+        const response = await axios.get(`${API_BASE_URL}/api/basestations/${selectedNode}`);
         const formattedStations = response.data.map(station => ({
           id: station.NodeBaseStationName,
           name: station.NodeBaseStationName
@@ -273,14 +291,14 @@ const NodeDetail = () => {
     };
 
     fetchBaseStations();
-  }, [nodeName]);
+  }, [selectedNode]);
 
   const fetchTelemetryData = useCallback(async () => {
-    if (!selectedBaseStation || !timeFilter || !nodeName) return;
+    if (!selectedBaseStation || !timeFilter || !selectedNode) return;
 
     setIsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/telemetry/${nodeName}/${selectedBaseStation}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/telemetry/${selectedNode}/${selectedBaseStation}`, {
         params: {
           timeFilter
         },
@@ -312,7 +330,7 @@ const NodeDetail = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedBaseStation, timeFilter, nodeName]);
+  }, [selectedBaseStation, timeFilter, selectedNode]);
 
   useEffect(() => {
     fetchTelemetryData();
@@ -323,9 +341,23 @@ const NodeDetail = () => {
     <Container sx={{ py: 4 }}>
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" gutterBottom>
-          Node Details: {nodeName}
+          Telemetry Dashboard
         </Typography>
         <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Node</InputLabel>
+            <Select
+              value={selectedNode || ''}
+              label="Node"
+              onChange={(e) => setSelectedNode(e.target.value)}
+            >
+              {nodes.map((node) => (
+                <MenuItem key={node.NodeName} value={node.NodeName}>
+                  {node.NodeName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <FormControl sx={{ minWidth: 200 }}>
             <InputLabel>Base Station</InputLabel>
             <Select
