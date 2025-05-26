@@ -58,6 +58,7 @@ const ReportConfigModal = ({ open, onClose, nodes, onGenerate }) => {
       node: selectedNode,
       timeRange,
       format,
+      // No longer need baseStation as we'll generate for all stations
     });
   };
 

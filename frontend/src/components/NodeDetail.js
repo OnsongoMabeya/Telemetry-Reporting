@@ -431,7 +431,7 @@ const NodeDetail = () => {
           <Typography variant="h4" gutterBottom>
             Telemetry Dashboard
           </Typography>
-          <ReportGenerator nodes={nodes} />
+          <ReportGenerator nodes={nodes} baseStations={baseStations} />
         </Box>
         <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
           <FormControl sx={{ minWidth: 200 }}>

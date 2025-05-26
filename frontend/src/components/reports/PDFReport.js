@@ -10,11 +10,30 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 
 const generateAnalysis = (metric, data) => {
-  // Reuse the analysis logic from HTMLReport.js
-  const currentValue = data[data.length - 1]?.[metric] || 0;
-  const values = data.map(item => item[metric]).filter(val => val !== null && val !== undefined);
+  if (!data || data.length === 0) {
+    return {
+      currentValue: 0,
+      average: 0,
+      percentageChange: 0,
+      status: 'normal',
+      recommendation: 'No data available'
+    };
+  }
+
+  const values = data.map(item => parseFloat(item[metric])).filter(val => !isNaN(val));
+  if (values.length === 0) {
+    return {
+      currentValue: 0,
+      average: 0,
+      percentageChange: 0,
+      status: 'normal',
+      recommendation: 'No valid data points'
+    };
+  }
+
+  const currentValue = values[values.length - 1];
   const average = values.reduce((a, b) => a + b, 0) / values.length;
-  const percentageChange = ((currentValue - average) / average) * 100;
+  const percentageChange = average !== 0 ? ((currentValue - average) / average) * 100 : 0;
 
   let status = 'normal';
   let recommendation = '';
@@ -45,10 +64,13 @@ const generateAnalysis = (metric, data) => {
 };
 
 const renderGraph = async (data, metric) => {
+  if (!data || data.length === 0) return null;
+
   const chartContainer = document.createElement('div');
   chartContainer.style.width = '600px';
   chartContainer.style.height = '300px';
-  chartContainer.style.position = 'absolute';
+  chartContainer.style.position = 'fixed';
+  chartContainer.style.left = '-9999px';
   chartContainer.style.left = '-9999px';
   document.body.appendChild(chartContainer);
 
@@ -108,15 +130,11 @@ const getGraphColor = (dataKey) => {
   }
 };
 
-export const generatePDFReport = async (config) => {
+export const generatePDFReport = async (config, baseStations = []) => {
   try {
-    // 1. Fetch telemetry data
-    const response = await axios.get(`${API_BASE_URL}/api/telemetry/${config.node}/${config.baseStation}`, {
-      params: {
-        timeFilter: config.timeRange
-      }
-    });
-    const telemetryData = response.data.data;
+    if (!baseStations || baseStations.length === 0) {
+      throw new Error('No base stations available for this node');
+    }
 
     // 2. Process metrics
     const metrics = [
@@ -130,8 +148,13 @@ export const generatePDFReport = async (config) => {
       { name: 'power', title: 'Power', unit: 'W' }
     ];
 
-    // 3. Create PDF document
-    const pdf = new jsPDF('p', 'mm', 'a4');
+    // 3. Create PDF document (A4: 210 x 297 mm)
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
     let yPosition = 20;
     let currentPage = 1;
 
@@ -152,63 +175,85 @@ export const generatePDFReport = async (config) => {
     addHeader();
 
     // Add header with modern styling
-    pdf.setFillColor(248, 249, 250);
-    pdf.rect(20, 20, 170, 20, 'F');
-    pdf.setFontSize(20);
-    pdf.setTextColor(25, 118, 210);
-    pdf.text('Telemetry Report', 25, 33);
 
     // Add report info
-    yPosition = 50;
     pdf.setFontSize(10);
     pdf.setTextColor(102, 102, 102);
-    pdf.text(`Node: ${config.node}`, 25, yPosition);
-    pdf.text(`Base Station: ${config.baseStation}`, 25, yPosition + 7);
-    pdf.text(`Time Range: ${config.timeRange}`, 25, yPosition + 14);
-    pdf.text(`Generated: ${new Date().toLocaleString()}`, 25, yPosition + 21);
-    yPosition += 35;
+    pdf.text(`Time Range: ${config.timeRange}`, 20, yPosition);
+    yPosition += 15;
 
-    // Process each metric
-    for (const metric of metrics) {
-      // Check if we need a new page
+    // Process each base station
+    for (const baseStation of baseStations) {
+      // Add base station header
+      pdf.setFontSize(14);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(`Base Station: ${baseStation.name}`, 20, yPosition);
+      yPosition += 10;
+
+      // Fetch telemetry data for this base station
+      const telemetryResponse = await axios.get(`${API_BASE_URL}/api/telemetry/${config.node}/${baseStation.id}`, {
+        params: {
+          timeFilter: config.timeRange
+        }
+      });
+      const telemetryData = telemetryResponse.data.data;
+
+      // Process metrics for this base station
+      for (const metric of metrics) {
+        // Check if we need a new page
+        if (yPosition > 250) {
+          pdf.addPage();
+          addHeader();
+          yPosition = 20;
+        }
+
+        // Add metric title
+        pdf.setFontSize(12);
+        pdf.text(metric.title, 25, yPosition + 5);
+
+        // Add graph
+        try {
+          const graphDataUrl = await renderGraph(telemetryData, metric);
+          if (graphDataUrl) {
+            pdf.addImage(graphDataUrl, 'PNG', 25, yPosition + 10, 160, 40);
+          }
+        } catch (error) {
+          console.error('Error adding graph to PDF:', error);
+        }
+
+        // Add analysis
+        const analysis = generateAnalysis(metric.name, telemetryData);
+        pdf.setFontSize(10);
+        pdf.setTextColor(102, 102, 102);
+        const currentValue = isNaN(analysis.currentValue) ? 0 : analysis.currentValue;
+        const average = isNaN(analysis.average) ? 0 : analysis.average;
+        const change = isNaN(analysis.percentageChange) ? 0 : analysis.percentageChange;
+
+        pdf.text(`Current Value: ${currentValue.toFixed(2)} ${metric.unit}`, 25, yPosition + 55);
+        pdf.text(`Average: ${average.toFixed(2)} ${metric.unit}`, 25, yPosition + 60);
+        pdf.text(`Change: ${change.toFixed(2)}%`, 25, yPosition + 65);
+
+        if (analysis.recommendation) {
+          pdf.setTextColor(analysis.status === 'warning' ? 255 : 0, analysis.status === 'warning' ? 0 : 255, 0);
+          pdf.text(analysis.recommendation, 25, yPosition + 70);
+        }
+
+        yPosition += 80; // Move down for next metric
+      }
+
+      // Add some space between base stations
+      yPosition += 20;
+
+      // Check if we need a new page for the next base station
       if (yPosition > 250) {
         pdf.addPage();
         addHeader();
         yPosition = 20;
       }
-
-      // Add metric header
-      pdf.setFillColor(255, 255, 255);
-      pdf.setDrawColor(224, 224, 224);
-      pdf.roundedRect(20, yPosition, 170, 65, 3, 3, 'FD');
-
-      pdf.setFontSize(14);
-      pdf.setTextColor(44, 62, 80);
-      pdf.text(metric.title, 25, yPosition + 10);
-
-      // Add graph
-      try {
-        const graphDataUrl = await renderGraph(telemetryData, metric);
-        if (graphDataUrl) {
-          pdf.addImage(graphDataUrl, 'PNG', 25, yPosition + 15, 160, 40);
-        }
-      } catch (error) {
-        console.error('Error adding graph to PDF:', error);
-      }
-
-      // Add analysis
-      const analysis = generateAnalysis(metric.name, telemetryData);
-      pdf.setFontSize(10);
-      pdf.setTextColor(102, 102, 102);
-      pdf.text(`Current: ${analysis.currentValue.toFixed(2)} ${metric.unit}`, 25, yPosition + 60);
-      pdf.text(`Avg: ${analysis.average.toFixed(2)} ${metric.unit}`, 85, yPosition + 60);
-      pdf.text(`Change: ${analysis.percentageChange.toFixed(2)}%`, 145, yPosition + 60);
-
-      yPosition += 75;
     }
 
     // Save the PDF
-    pdf.save(`telemetry-report-${config.node}-${config.baseStation}.pdf`);
+    pdf.save(`${config.node}_telemetry_report.pdf`);
 
   } catch (error) {
     console.error('Error generating PDF report:', error);
