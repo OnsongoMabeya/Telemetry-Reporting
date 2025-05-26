@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import debounce from 'lodash/debounce';
 import { useParams } from 'react-router-dom';
-import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Paper, Tab, Tabs } from '@mui/material';
+import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Paper, Tab, Tabs, CircularProgress, Alert } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 
@@ -233,7 +233,7 @@ const NodeDetail = () => {
   const [baseStations, setBaseStations] = useState([]);
   const [selectedBaseStation, setSelectedBaseStation] = useState('');
   const [error, setError] = useState(null);
-  const [selectedTab, setSelectedTab] = useState(0);
+  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
   
   const debouncedTimeFilter = useMemo(
     () =>
@@ -259,7 +259,7 @@ const NodeDetail = () => {
 
   useEffect(() => {
     fetchBaseStations();
-  }, [fetchBaseStations, nodeName]);
+  }, [nodeName]);
 
   const fetchTelemetryData = useCallback(async () => {
     if (!selectedBaseStation || isLoading) return;
@@ -292,6 +292,7 @@ const NodeDetail = () => {
 
   const handleTabChange = (event, newValue) => {
     if (baseStations.length > 0) {
+      setSelectedTabIndex(newValue);
       setSelectedBaseStation(baseStations[newValue]);
     }
   };
@@ -321,11 +322,8 @@ const NodeDetail = () => {
         }}
       >
         <Tabs 
-          value={selectedTab}
-          onChange={(e, newValue) => {
-            setSelectedTab(newValue);
-            setSelectedBaseStation(baseStations[newValue]);
-          }}
+          value={selectedTabIndex}
+          onChange={handleTabChange}
           variant="scrollable"
           scrollButtons="auto"
           sx={{

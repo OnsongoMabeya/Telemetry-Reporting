@@ -1,23 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Grid, Card, CardContent, Typography, CardActionArea } from '@mui/material';
+import { Container, Box, Card, CardContent, Typography, CardActionArea, CircularProgress, Alert } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const NodeList = () => {
   const [nodes, setNodes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    let mounted = true;
+
     const fetchNodes = async () => {
       try {
+        setLoading(true);
         const response = await axios.get('http://localhost:5000/api/nodes');
-        setNodes(response.data);
+        if (mounted) {
+          setNodes(response.data);
+          setError(null);
+        }
       } catch (error) {
-        console.error('Error fetching nodes:', error);
+        if (mounted) {
+          setError('Error fetching nodes. Please try again later.');
+          console.error('Error fetching nodes:', error);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     fetchNodes();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return (
@@ -25,10 +44,33 @@ const NodeList = () => {
       <Typography variant="h4" gutterBottom>
         Telemetry Nodes
       </Typography>
-      <Grid container spacing={3}>
-        {nodes.map((node) => (
-          <Grid item xs={12} sm={6} md={4} key={node.NodeName}>
-            <Card>
+      
+      {loading && (
+        <Box display="flex" justifyContent="center" my={4}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {!loading && !error && (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: {
+              xs: '1fr',
+              sm: 'repeat(2, 1fr)',
+              md: 'repeat(3, 1fr)'
+            },
+            gap: 3
+          }}
+        >
+          {nodes.map((node) => (
+            <Card key={node.NodeName}>
               <CardActionArea onClick={() => navigate(`/node/${node.NodeName}`)}>
                 <CardContent>
                   <Typography variant="h6" component="div">
@@ -37,9 +79,9 @@ const NodeList = () => {
                 </CardContent>
               </CardActionArea>
             </Card>
-          </Grid>
-        ))}
-      </Grid>
+          ))}
+        </Box>
+      )}
     </Container>
   );
 };
