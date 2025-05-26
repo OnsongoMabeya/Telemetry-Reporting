@@ -4,12 +4,14 @@ React frontend application for the BSI Telemetry Reports project. Built with Mat
 
 ## Features
 
-- Modern, responsive Material UI design
-- Interactive data visualization with Recharts
-- Real-time data updates
-- Dynamic routing with React Router
-- Automatic data analysis and recommendations
-- Mobile-friendly interface
+- Modern, responsive Material UI design with 2x4 grid layout
+- Smart data analysis with percentage changes and trends
+- Time-range aware data visualization
+- Interactive graphs with detailed tooltips
+- Automatic threshold-based recommendations
+- Dynamic data sampling based on time range
+- Real-time updates with auto-refresh
+- Mobile-first responsive design
 
 ## Component Structure
 
@@ -61,20 +63,28 @@ Builds the app for production to the `build` folder.
 ### NodeDetail
 
 - Tab-based navigation between base stations
-- 8 different metric graphs per base station:
+- Responsive 2x4 grid layout for metrics:
 
-  - Forward Power
-  - Reflected Power
-  - VSWR
-  - Return Loss
-  - Temperature
-  - Voltage
-  - Current
-  - Power
+  - Forward Power (with threshold analysis)
+  - Reflected Power (with safety checks)
+  - VSWR (with trend analysis)
+  - Return Loss (with performance insights)
+  - Temperature (with thermal monitoring)
+  - Voltage (with stability tracking)
+  - Current (with load analysis)
+  - Power (with efficiency metrics)
 
-- Real-time data updates
-- Automatic analysis generation
-- Recommendations based on data patterns
+- Smart time range selection:
+  - 5m-30m: Per-second granularity
+  - 1h-6h: Minute-level data
+  - 1d-2d: Hourly aggregation
+  - 5d-1w: Daily summaries
+
+- Intelligent analysis features:
+  - Percentage change from average
+  - Trend detection
+  - Threshold violations
+  - Performance recommendations
 
 ## Development
 

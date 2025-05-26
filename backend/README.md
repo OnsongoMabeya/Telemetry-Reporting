@@ -4,11 +4,13 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
 
 ## Features
 
-- RESTful API endpoints
-- MySQL database integration
-- Connection pooling for better performance
+- RESTful API endpoints with rate limiting
+- Smart data sampling based on time range
+- Optimized MySQL queries with connection pooling
+- Efficient data aggregation for different time ranges
+- Robust error handling and logging
 - Environment-based configuration
-- Error handling and logging
+- Cross-origin resource sharing (CORS) support
 
 ## API Endpoints
 
@@ -30,6 +32,11 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
 
 ```http
    GET /api/telemetry/:nodeName/:baseStation
+   Query parameters:
+   - timeFilter: Time range (5m, 10m, 30m, 1h, 2h, 6h, 1d, 2d, 5d, 1w)
+   - startTime: Optional custom start time
+   - endTime: Optional custom end time
+
    Response: Array of telemetry data including:
    - Forward Power
    - Reflected Power
@@ -39,6 +46,17 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
    - Voltage
    - Current
    - Power
+
+   Data sampling intervals:
+   - 5m-10m: 10-second samples
+   - 30m: 30-second samples
+   - 1h: 1-minute samples
+   - 2h: 2-minute samples
+   - 6h: 5-minute samples
+   - 1d: 15-minute samples
+   - 2d: 30-minute samples
+   - 5d: 1-hour samples
+   - 1w: 2-hour samples
 ```
 
 ## Database Schema

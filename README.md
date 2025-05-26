@@ -1,6 +1,6 @@
 # BSI Telemetry Reports
 
-A full-stack web application for visualizing and analyzing telemetry data from various nodes and base stations.
+A full-stack web application for visualizing and analyzing telemetry data from various nodes and base stations. Features intelligent data analysis, responsive grid layouts, and real-time monitoring capabilities.
 
 ## Project Structure
 
@@ -12,11 +12,14 @@ The project is organized into three main directories:
 
 ## Features
 
-- Real-time telemetry data visualization
+- Real-time telemetry data visualization with auto-refresh
+- Intelligent data analysis and recommendations
+- Responsive 2x4 grid layout for optimal viewing
+- Time-range aware data sampling
 - Multiple node and base station support
-- Interactive graphs with analysis
-- Automatic data refresh
-- Responsive design
+- Interactive graphs with tooltips
+- Automatic threshold detection
+- Mobile-friendly design
 
 ## Prerequisites
 
