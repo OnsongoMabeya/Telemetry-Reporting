@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import debounce from 'lodash/debounce';
 import { useParams } from 'react-router-dom';
-import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Alert, Paper, Tab, Tabs, Stack } from '@mui/material';
-import { Grid } from '@mui/material';
+import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Paper, Tab, Tabs } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 
@@ -234,7 +233,7 @@ const NodeDetail = () => {
   const [baseStations, setBaseStations] = useState([]);
   const [selectedBaseStation, setSelectedBaseStation] = useState('');
   const [error, setError] = useState(null);
-  const [tabValue, setTabValue] = useState(0);
+  const [selectedTab, setSelectedTab] = useState(0);
   
   const debouncedTimeFilter = useMemo(
     () =>
@@ -260,7 +259,7 @@ const NodeDetail = () => {
 
   useEffect(() => {
     fetchBaseStations();
-  }, [nodeName]);
+  }, [fetchBaseStations, nodeName]);
 
   const fetchTelemetryData = useCallback(async () => {
     if (!selectedBaseStation || isLoading) return;
@@ -292,7 +291,9 @@ const NodeDetail = () => {
   };
 
   const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
+    if (baseStations.length > 0) {
+      setSelectedBaseStation(baseStations[newValue]);
+    }
   };
 
   return (
@@ -320,8 +321,11 @@ const NodeDetail = () => {
         }}
       >
         <Tabs 
-          value={tabValue} 
-          onChange={handleTabChange}
+          value={selectedTab}
+          onChange={(e, newValue) => {
+            setSelectedTab(newValue);
+            setSelectedBaseStation(baseStations[newValue]);
+          }}
           variant="scrollable"
           scrollButtons="auto"
           sx={{
@@ -378,17 +382,22 @@ const NodeDetail = () => {
         </FormControl>
       </Box>
 
-      <Grid 
-        container 
-        spacing={2} 
+      <Box 
         sx={{ 
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: '1fr 1fr',
+            md: '1fr 1fr 1fr'
+          },
+          gap: 2,
           mt: 2,
           mx: 'auto',
           maxWidth: 1920,
           px: { xs: 1, sm: 2, md: 3 }
         }}
       >
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Forward Power"
@@ -396,8 +405,8 @@ const NodeDetail = () => {
             unit="W"
             isLoading={isLoading}
           />
-        </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Reflected Power"
@@ -405,8 +414,8 @@ const NodeDetail = () => {
             unit="W"
             isLoading={isLoading}
           />
-        </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="VSWR"
@@ -414,8 +423,8 @@ const NodeDetail = () => {
             unit=""
             isLoading={isLoading}
           />
-        </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Return Loss"
@@ -423,8 +432,8 @@ const NodeDetail = () => {
             unit="dB"
             isLoading={isLoading}
           />
-        </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Temperature"
@@ -432,8 +441,8 @@ const NodeDetail = () => {
             unit="°C"
             isLoading={isLoading}
           />
-        </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Voltage"
@@ -441,8 +450,8 @@ const NodeDetail = () => {
             unit="V"
             isLoading={isLoading}
           />
-        </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Current"
@@ -450,8 +459,8 @@ const NodeDetail = () => {
             unit="A"
             isLoading={isLoading}
           />
-        </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
+        </Box>
+        <Box>
           <TelemetryGraph
             data={telemetryData}
             title="Power"
@@ -459,8 +468,8 @@ const NodeDetail = () => {
             unit="W"
             isLoading={isLoading}
           />
-        </Grid>
-      </Grid>
+        </Box>
+      </Box>
     </Container>
   );
 };
