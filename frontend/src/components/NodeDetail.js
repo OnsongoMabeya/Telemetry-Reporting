@@ -6,6 +6,29 @@ import { Grid } from '@mui/material';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 
+const getGraphColor = (dataKey) => {
+  switch (dataKey) {
+    case 'forwardPower':
+      return '#4CAF50'; // Green
+    case 'reflectedPower':
+      return '#F44336'; // Red
+    case 'vswr':
+      return '#2196F3'; // Blue
+    case 'returnLoss':
+      return '#FF9800'; // Orange
+    case 'temperature':
+      return '#E91E63'; // Pink
+    case 'voltage':
+      return '#9C27B0'; // Purple
+    case 'current':
+      return '#00BCD4'; // Cyan
+    case 'power':
+      return '#009688'; // Teal
+    default:
+      return '#8884d8';
+  }
+};
+
 const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading }) => {
   const getYAxisDomain = () => {
     if (!data || data.length === 0) return ['auto', 'auto'];
@@ -48,8 +71,38 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading }) => {
     return data.filter((_, index) => index % step === 0);
   }, [data]);
   return (
-    <Paper sx={{ p: 1, mb: 2, opacity: isLoading ? 0.7 : 1, transition: 'opacity 0.3s' }}>
-      <Typography variant="h6" gutterBottom>
+    <Paper 
+      sx={{ 
+        p: 1, 
+        mb: 2, 
+        opacity: isLoading ? 0.7 : 1, 
+        transition: 'all 0.3s ease',
+        borderRadius: 2,
+        boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+        '&:hover': {
+          transform: 'translateY(-2px)',
+          boxShadow: '0 6px 12px rgba(0,0,0,0.15)'
+        }
+      }}
+    >
+      <Typography 
+        variant="h6" 
+        gutterBottom 
+        sx={{ 
+          fontWeight: 600,
+          color: (theme) => theme.palette.grey[800],
+          display: 'flex',
+          alignItems: 'center',
+          '&::before': {
+            content: '""',
+            width: 4,
+            height: 24,
+            backgroundColor: getGraphColor(dataKey),
+            marginRight: 1.5,
+            borderRadius: 2
+          }
+        }}
+      >
         {title}
       </Typography>
       <ResponsiveContainer width="100%" height={300}>
@@ -57,7 +110,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading }) => {
           data={downsampledData}
           margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
         >
-          <CartesianGrid strokeDasharray="3 3" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.1)" />
           <XAxis 
             dataKey="sample_time" 
             tickFormatter={(time) => {
@@ -75,22 +128,48 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading }) => {
             tick={{ fontSize: 12 }}
             width={50}
           />
-          <Tooltip />
+          <Tooltip 
+            contentStyle={{ 
+              backgroundColor: 'rgba(255,255,255,0.95)', 
+              border: 'none',
+              borderRadius: 8,
+              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+            }}
+            itemStyle={{ color: getGraphColor(dataKey) }}
+            cursor={{ stroke: 'rgba(0,0,0,0.2)' }}
+          />
           <Legend />
           <Line 
             type="monotone" 
             dataKey={dataKey} 
-            stroke="#8884d8" 
+            stroke={getGraphColor(dataKey)}
             strokeWidth={2}
             dot={false}
+            activeDot={{ r: 6, stroke: getGraphColor(dataKey), strokeWidth: 2, fill: '#fff' }}
+            animationDuration={1000}
           />
         </LineChart>
       </ResponsiveContainer>
-      <Box sx={{ mt: 2 }}>
-        <Typography variant="subtitle1" gutterBottom>
+      <Box sx={{ mt: 2, p: 1, backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: 1 }}>
+        <Typography 
+          variant="subtitle1" 
+          gutterBottom 
+          sx={{ 
+            fontWeight: 600,
+            color: (theme) => theme.palette.grey[700],
+            fontSize: '0.9rem'
+          }}
+        >
           Analysis:
         </Typography>
-        <Typography variant="body2" color="text.secondary">
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: (theme) => theme.palette.grey[600],
+            lineHeight: 1.6,
+            fontSize: '0.85rem'
+          }}
+        >
           {generateAnalysis(data, dataKey, title)}
         </Typography>
       </Box>
@@ -149,20 +228,19 @@ const TIME_FILTERS = [
 
 const NodeDetail = () => {
   const { nodeName } = useParams();
-  const [baseStations, setBaseStations] = useState([]);
-  const [selectedStation, setSelectedStation] = useState('');
-  const [selectedTimeFilter, setSelectedTimeFilter] = useState('1h');
   const [telemetryData, setTelemetryData] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [timeFilter, setTimeFilter] = useState('1h');
+  const [baseStations, setBaseStations] = useState([]);
+  const [selectedBaseStation, setSelectedBaseStation] = useState('');
   const [error, setError] = useState(null);
+  const [tabValue, setTabValue] = useState(0);
   
   const debouncedTimeFilter = useMemo(
     () =>
       debounce((filter) => {
-        setSelectedTimeFilter(filter);
-        setCurrentPage(1); // Reset to first page when filter changes
+        setTimeFilter(filter);
+        setTelemetryData([]);
       }, 300),
     []
   );
@@ -172,7 +250,7 @@ const NodeDetail = () => {
       const response = await axios.get(`http://localhost:5000/api/basestations/${nodeName}`);
       setBaseStations(response.data);
       if (response.data.length > 0) {
-        setSelectedStation(response.data[0].NodeBaseStationName);
+        setSelectedBaseStation(response.data[0].NodeBaseStationName);
       }
     } catch (error) {
       console.error('Error fetching base stations:', error);
@@ -185,78 +263,40 @@ const NodeDetail = () => {
   }, [nodeName]);
 
   const fetchTelemetryData = useCallback(async () => {
-    if (!selectedStation || isLoading) return;
+    if (!selectedBaseStation || isLoading) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await axios.get(`http://localhost:5000/api/telemetry/${nodeName}/${selectedStation}?timeFilter=${selectedTimeFilter}&page=${currentPage}`);
+      const response = await axios.get(`http://localhost:5000/api/telemetry/${nodeName}/${selectedBaseStation}?timeFilter=${timeFilter}`);
 
-      const { data, total, totalPages: pages } = response.data;
-      setTotalPages(pages);
-
-      // Reverse the data array so time flows from right to left
-      if (currentPage === 1) {
-        setTelemetryData([...data].reverse());
-      } else {
-        setTelemetryData(prev => [...prev, ...[...data].reverse()]);
-      }
+      const { data } = response.data;
+      setTelemetryData(data);
     } catch (error) {
       console.error('Error fetching telemetry data:', error);
       setError(error.message || 'Failed to fetch telemetry data');
     } finally {
       setIsLoading(false);
     }
-  }, [nodeName, selectedStation, selectedTimeFilter, currentPage, isLoading]);
+  }, [nodeName, selectedBaseStation, timeFilter, isLoading]);
 
   useEffect(() => {
-    let timeoutId;
-    
-    const debouncedFetch = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        fetchTelemetryData();
-      }, 300); // Debounce time filter changes
-    };
-
-    debouncedFetch();
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
+    fetchTelemetryData();
   }, [fetchTelemetryData]);
-
-  const handleStationChange = (event, newValue) => {
-    setSelectedStation(newValue);
-  };
 
   const handleTimeFilterChange = (event) => {
     if (!isLoading) {
-      setSelectedTimeFilter(event.target.value);
-      setCurrentPage(1);
-      setTelemetryData([]);
+      debouncedTimeFilter(event.target.value);
     }
   };
 
-  // Handle scroll for infinite loading
-  useEffect(() => {
-    const handleScroll = debounce(() => {
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 1000) {
-        if (!isLoading && currentPage < totalPages) {
-          setCurrentPage(prev => prev + 1);
-        }
-      }
-    }, 200);
-
-    window.addEventListener('scroll', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, [currentPage, totalPages, isLoading]);
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
+    <Container maxWidth={false} sx={{ py: 3 }}>
       {error && (
         <Paper sx={{ p: 2, mb: 2, bgcolor: '#ffebee' }}>
           <Typography color="error">{error}</Typography>
@@ -266,28 +306,68 @@ const NodeDetail = () => {
         {nodeName}
       </Typography>
       
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Tabs
-          value={selectedStation}
-          onChange={handleStationChange}
+      <Box 
+        sx={{ 
+          mb: 4,
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2,
+          p: 2,
+          backgroundColor: '#f8f9fa',
+          borderRadius: 2,
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+        }}
+      >
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange}
           variant="scrollable"
           scrollButtons="auto"
+          sx={{
+            minHeight: 48,
+            '& .MuiTab-root': {
+              minHeight: 48,
+              textTransform: 'none',
+              fontWeight: 500,
+              fontSize: '0.9rem',
+              color: 'text.secondary',
+              '&.Mui-selected': {
+                color: 'primary.main',
+              }
+            },
+            '& .MuiTabs-indicator': {
+              height: 3,
+              borderRadius: '3px 3px 0 0'
+            }
+          }}
         >
           {baseStations.map((station) => (
-            <Tab
-              key={station.NodeBaseStationName}
+            <Tab 
+              key={station.NodeBaseStationName} 
               label={station.NodeBaseStationName}
               value={station.NodeBaseStationName}
             />
           ))}
         </Tabs>
-        <FormControl sx={{ minWidth: 200, mb: 1 }}>
-          <InputLabel id="time-filter-label">Time Range</InputLabel>
+        <FormControl
+          sx={{ 
+            minWidth: 200,
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: '#fff',
+              '&:hover': {
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: (theme) => theme.palette.primary.main,
+                }
+              }
+            }
+          }}
+        >
+          <InputLabel>Time Range</InputLabel>
           <Select
-            labelId="time-filter-label"
-            value={selectedTimeFilter}
-            label="Time Range"
+            value={timeFilter}
             onChange={handleTimeFilterChange}
+            label="Time Range"
           >
             {TIME_FILTERS.map((filter) => (
               <MenuItem key={filter.value} value={filter.value}>
@@ -298,7 +378,16 @@ const NodeDetail = () => {
         </FormControl>
       </Box>
 
-      <Grid container spacing={1} sx={{ mt: 1 }}>
+      <Grid 
+        container 
+        spacing={2} 
+        sx={{ 
+          mt: 2,
+          mx: 'auto',
+          maxWidth: 1920,
+          px: { xs: 1, sm: 2, md: 3 }
+        }}
+      >
         <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
           <TelemetryGraph
             data={telemetryData}
