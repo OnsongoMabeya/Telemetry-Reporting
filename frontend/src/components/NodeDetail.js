@@ -58,7 +58,7 @@ const getGraphColor = (dataKey) => {
 };
 
 // Telemetry Graph Component
-const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading }) => {
+const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter }) => {
   // Downsample data points for smoother rendering
   const downsampledData = useMemo(() => {
     const targetPoints = 100;
@@ -139,9 +139,22 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading }) => {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="timestamp"
+              type="number"
+              scale="time"
+              domain={['auto', 'auto']}
               tickFormatter={(timestamp) => {
                 const date = new Date(timestamp);
-                return date.toLocaleTimeString();
+                if (timeFilter === '5m' || timeFilter === '10m' || timeFilter === '30m') {
+                  return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
+                } else if (timeFilter === '1h' || timeFilter === '2h' || timeFilter === '6h') {
+                  return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+                } else if (timeFilter === '1d' || timeFilter === '2d') {
+                  return `${date.getHours()}:00`;
+                } else if (timeFilter === '5d' || timeFilter === '1w') {
+                  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`;
+                } else {
+                  return `${date.getMonth() + 1}/${date.getDate()}`;
+                }
               }}
             />
             <YAxis
@@ -215,17 +228,87 @@ const generateAnalysis = (data, dataKey, title) => {
 };
 
 const generateRecommendation = (metric, current, avg, max, min) => {
+  // Handle null/undefined values
+  current = Number(current) || 0;
+  avg = Number(avg) || 0;
+  max = Number(max) || 0;
+  min = Number(min) || 0;
+
+  const getStatus = (value, thresholds) => {
+    value = Number(value) || 0;
+    if (value >= thresholds.critical) return 'Critical';
+    if (value >= thresholds.warning) return 'Warning';
+    return 'Normal';
+  };
+
+  const formatValue = (value) => {
+    value = Number(value);
+    return isNaN(value) ? '0.00' : value.toFixed(2);
+  };
+
+  const calculateChange = (current, avg) => {
+    current = Number(current) || 0;
+    avg = Number(avg) || 1; // Prevent division by zero
+    const change = ((current - avg) / avg) * 100;
+    return isNaN(change) ? '0.0' : change.toFixed(1);
+  };
+
+  const change = calculateChange(current, avg);
+  const trend = Number(change) > 0 ? 'increased' : 'decreased';
+
   switch (metric) {
+    case 'forwardPower':
+      const powerStatus = getStatus(current, { warning: 45, critical: 50 });
+      return `Forward Power is ${powerStatus} at ${formatValue(current)}W (${Math.abs(change)}% ${trend} from average). ` +
+        `Range: ${formatValue(min)}W to ${formatValue(max)}W. ` +
+        (powerStatus !== 'Normal' ? 'Consider checking transmitter output settings.' : 'Operating within expected range.');
+
+    case 'reflectedPower':
+      const reflectedStatus = getStatus(current, { warning: 5, critical: 10 });
+      return `Reflected Power is ${reflectedStatus} at ${formatValue(current)}W (${Math.abs(change)}% ${trend} from average). ` +
+        `Range: ${formatValue(min)}W to ${formatValue(max)}W. ` +
+        (reflectedStatus !== 'Normal' ? 'High reflection indicates possible antenna system issues.' : 'Good antenna match.');
+
     case 'vswr':
-      if (current > 2) return "Warning: High VSWR detected. Check antenna and transmission line.";
-      break;
+      const vswrStatus = getStatus(current, { warning: 1.5, critical: 2.0 });
+      return `VSWR is ${vswrStatus} at ${formatValue(current)}:1 (${Math.abs(change)}% ${trend} from average). ` +
+        `Range: ${formatValue(min)}:1 to ${formatValue(max)}:1. ` +
+        (vswrStatus !== 'Normal' ? 'Check antenna system and connections for impedance mismatch.' : 'Good impedance match.');
+
+    case 'returnLoss':
+      const returnLossStatus = getStatus(-current, { warning: -15, critical: -10 });
+      return `Return Loss is ${returnLossStatus} at ${formatValue(current)}dB (${Math.abs(change)}% ${trend} from average). ` +
+        `Range: ${formatValue(min)}dB to ${formatValue(max)}dB. ` +
+        (returnLossStatus !== 'Normal' ? 'Poor return loss indicates possible antenna system issues.' : 'Good signal reflection characteristics.');
+
     case 'temperature':
-      if (current > 50) return "Warning: High temperature detected. Check cooling system.";
-      break;
+      const tempStatus = getStatus(current, { warning: 40, critical: 50 });
+      return `Temperature is ${tempStatus} at ${formatValue(current)}°C (${Math.abs(change)}% ${trend} from average). ` +
+        `Range: ${formatValue(min)}°C to ${formatValue(max)}°C. ` +
+        (tempStatus !== 'Normal' ? 'Check cooling system and airflow.' : 'Temperature is within safe operating range.');
+
+    case 'voltage':
+      const voltageStatus = getStatus(Math.abs(current - 12), { warning: 1, critical: 2 });
+      return `Voltage is ${voltageStatus} at ${formatValue(current)}V (${Math.abs(change)}% ${trend} from average). ` +
+        `Range: ${formatValue(min)}V to ${formatValue(max)}V. ` +
+        (voltageStatus !== 'Normal' ? 'Check power supply and connections.' : 'Power supply is stable.');
+
+    case 'current':
+      const currentStatus = getStatus(current, { warning: 8, critical: 10 });
+      return `Current draw is ${currentStatus} at ${formatValue(current)}A (${Math.abs(change)}% ${trend} from average). ` +
+        `Range: ${formatValue(min)}A to ${formatValue(max)}A. ` +
+        (currentStatus !== 'Normal' ? 'Investigate possible overload conditions.' : 'Current consumption is normal.');
+
+    case 'power':
+      const totalPowerStatus = getStatus(current, { warning: 100, critical: 120 });
+      return `Total Power is ${totalPowerStatus} at ${formatValue(current)}W (${Math.abs(change)}% ${trend} from average). ` +
+        `Range: ${formatValue(min)}W to ${formatValue(max)}W. ` +
+        (totalPowerStatus !== 'Normal' ? 'Check for power efficiency issues.' : 'Power consumption is within expected range.');
+
     default:
-      return "System is operating within normal parameters.";
+      return `Current value: ${formatValue(current)} (${Math.abs(change)}% ${trend} from average). ` +
+        `Range: ${formatValue(min)} to ${formatValue(max)}. System is operating within normal parameters.`;
   }
-  return "System is operating within normal parameters.";
 };
 
 // Main Component
@@ -401,6 +484,7 @@ const NodeDetail = () => {
             dataKey="forwardPower"
             unit="W"
             isLoading={isLoading}
+            timeFilter={timeFilter}
           />
         </Box>
         <Box>
@@ -410,6 +494,7 @@ const NodeDetail = () => {
             dataKey="reflectedPower"
             unit="W"
             isLoading={isLoading}
+            timeFilter={timeFilter}
           />
         </Box>
         <Box>
@@ -419,6 +504,7 @@ const NodeDetail = () => {
             dataKey="vswr"
             unit=""
             isLoading={isLoading}
+            timeFilter={timeFilter}
           />
         </Box>
         <Box>
@@ -428,6 +514,7 @@ const NodeDetail = () => {
             dataKey="returnLoss"
             unit="dB"
             isLoading={isLoading}
+            timeFilter={timeFilter}
           />
         </Box>
         <Box>
@@ -437,6 +524,7 @@ const NodeDetail = () => {
             dataKey="temperature"
             unit="°C"
             isLoading={isLoading}
+            timeFilter={timeFilter}
           />
         </Box>
         <Box>
@@ -446,6 +534,7 @@ const NodeDetail = () => {
             dataKey="voltage"
             unit="V"
             isLoading={isLoading}
+            timeFilter={timeFilter}
           />
         </Box>
         <Box>
@@ -455,6 +544,7 @@ const NodeDetail = () => {
             dataKey="current"
             unit="A"
             isLoading={isLoading}
+            timeFilter={timeFilter}
           />
         </Box>
         <Box>
@@ -464,6 +554,7 @@ const NodeDetail = () => {
             dataKey="power"
             unit="W"
             isLoading={isLoading}
+            timeFilter={timeFilter}
           />
         </Box>
       </Box>

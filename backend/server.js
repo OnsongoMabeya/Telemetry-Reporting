@@ -91,11 +91,19 @@ app.get('/api/basestations/:nodeName', async (req, res) => {
 // Helper function to get data with pagination
 const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 1, pageSize = 100) => {
   // Adjust sampling rate based on time range
-  let samplingInterval = '1 MINUTE';
-  if (timeFilter === '6h') samplingInterval = '5 MINUTE';
+  let samplingInterval;
+  if (timeFilter === '5m' || timeFilter === '10m') samplingInterval = '10 SECOND';
+  else if (timeFilter === '30m') samplingInterval = '30 SECOND';
+  else if (timeFilter === '1h') samplingInterval = '1 MINUTE';
+  else if (timeFilter === '2h') samplingInterval = '2 MINUTE';
+  else if (timeFilter === '6h') samplingInterval = '5 MINUTE';
   else if (timeFilter === '1d') samplingInterval = '15 MINUTE';
   else if (timeFilter === '2d') samplingInterval = '30 MINUTE';
-  else if (['5d', '1w', '2w', '30d'].includes(timeFilter)) samplingInterval = '1 HOUR';
+  else if (timeFilter === '5d') samplingInterval = '1 HOUR';
+  else if (timeFilter === '1w') samplingInterval = '2 HOUR';
+  else if (timeFilter === '2w') samplingInterval = '4 HOUR';
+  else if (timeFilter === '30d') samplingInterval = '6 HOUR';
+  else samplingInterval = '1 MINUTE';
   const offset = (page - 1) * pageSize;
   let minutesToSubtract;
   switch (timeFilter) {
