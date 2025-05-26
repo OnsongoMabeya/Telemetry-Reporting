@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Paper, CircularProgress, Alert } from '@mui/material';
+import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Grid, Paper, CircularProgress, Alert } from '@mui/material';
+import ReportGenerator from './reports/ReportGenerator';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 
@@ -24,9 +25,13 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <Alert severity="error" sx={{ m: 2 }}>
-          Something went wrong. Please try refreshing the page.
-        </Alert>
+        <Container maxWidth="xl">
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Alert severity="error" sx={{ m: 2 }}>
+              Something went wrong. Please try refreshing the page.
+            </Alert>
+          </Box>
+        </Container>
       );
     }
     return this.props.children;
@@ -421,11 +426,13 @@ const NodeDetail = () => {
 
   return (
     <ErrorBoundary>
-    <Container sx={{ py: 4 }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom>
-          Telemetry Dashboard
-        </Typography>
+      <Container sx={{ py: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h4" gutterBottom>
+            Telemetry Dashboard
+          </Typography>
+          <ReportGenerator nodes={nodes} />
+        </Box>
         <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
           <FormControl sx={{ minWidth: 200 }}>
             <InputLabel>Node</InputLabel>
@@ -475,8 +482,7 @@ const NodeDetail = () => {
             {error}
           </Alert>
         )}
-      </Box>
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
         {/* First Row */}
         <Box>
           <TelemetryGraph
