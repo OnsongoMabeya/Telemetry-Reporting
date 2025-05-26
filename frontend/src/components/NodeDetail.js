@@ -48,12 +48,15 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading }) => {
     return data.filter((_, index) => index % step === 0);
   }, [data]);
   return (
-    <Paper sx={{ p: 2, mb: 2, opacity: isLoading ? 0.7 : 1, transition: 'opacity 0.3s' }}>
+    <Paper sx={{ p: 1, mb: 2, opacity: isLoading ? 0.7 : 1, transition: 'opacity 0.3s' }}>
       <Typography variant="h6" gutterBottom>
         {title}
       </Typography>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={downsampledData}>
+        <LineChart 
+          data={downsampledData}
+          margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
+        >
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
             dataKey="sample_time" 
@@ -63,15 +66,24 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading }) => {
               const [hours, minutes] = timeStr.split(':');
               return `${hours}:${minutes}`;
             }}
+            tick={{ fontSize: 12 }}
           />
           <YAxis 
             unit={unit} 
             domain={getYAxisDomain()}
             allowDataOverflow={false}
+            tick={{ fontSize: 12 }}
+            width={50}
           />
           <Tooltip />
           <Legend />
-          <Line type="monotone" dataKey={dataKey} stroke="#8884d8" />
+          <Line 
+            type="monotone" 
+            dataKey={dataKey} 
+            stroke="#8884d8" 
+            strokeWidth={2}
+            dot={false}
+          />
         </LineChart>
       </ResponsiveContainer>
       <Box sx={{ mt: 2 }}>
@@ -286,8 +298,8 @@ const NodeDetail = () => {
         </FormControl>
       </Box>
 
-      <Grid container spacing={2} sx={{ mt: 2 }}>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 1 }}>
+      <Grid container spacing={1} sx={{ mt: 1 }}>
+        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
           <TelemetryGraph
             data={telemetryData}
             title="Forward Power"
@@ -296,7 +308,7 @@ const NodeDetail = () => {
             isLoading={isLoading}
           />
         </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 1 }}>
+        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
           <TelemetryGraph
             data={telemetryData}
             title="Reflected Power"
@@ -305,7 +317,7 @@ const NodeDetail = () => {
             isLoading={isLoading}
           />
         </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 1 }}>
+        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
           <TelemetryGraph
             data={telemetryData}
             title="VSWR"
@@ -314,7 +326,7 @@ const NodeDetail = () => {
             isLoading={isLoading}
           />
         </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 1 }}>
+        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
           <TelemetryGraph
             data={telemetryData}
             title="Return Loss"
@@ -323,7 +335,7 @@ const NodeDetail = () => {
             isLoading={isLoading}
           />
         </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 1 }}>
+        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
           <TelemetryGraph
             data={telemetryData}
             title="Temperature"
@@ -332,7 +344,7 @@ const NodeDetail = () => {
             isLoading={isLoading}
           />
         </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 1 }}>
+        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
           <TelemetryGraph
             data={telemetryData}
             title="Voltage"
@@ -341,7 +353,7 @@ const NodeDetail = () => {
             isLoading={isLoading}
           />
         </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 1 }}>
+        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
           <TelemetryGraph
             data={telemetryData}
             title="Current"
@@ -350,7 +362,7 @@ const NodeDetail = () => {
             isLoading={isLoading}
           />
         </Grid>
-        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 1 }}>
+        <Grid item sx={{ width: { xs: '100%', sm: '50%', md: '33.333%' }, p: 0.5 }}>
           <TelemetryGraph
             data={telemetryData}
             title="Power"
