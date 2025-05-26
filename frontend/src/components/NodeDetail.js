@@ -476,7 +476,8 @@ const NodeDetail = () => {
           </Alert>
         )}
       </Box>
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+        {/* First Row */}
         <Box>
           <TelemetryGraph
             data={telemetryData}
@@ -497,6 +498,8 @@ const NodeDetail = () => {
             timeFilter={timeFilter}
           />
         </Box>
+
+        {/* Second Row */}
         <Box>
           <TelemetryGraph
             data={telemetryData}
@@ -517,6 +520,8 @@ const NodeDetail = () => {
             timeFilter={timeFilter}
           />
         </Box>
+
+        {/* Third Row */}
         <Box>
           <TelemetryGraph
             data={telemetryData}
@@ -537,6 +542,8 @@ const NodeDetail = () => {
             timeFilter={timeFilter}
           />
         </Box>
+
+        {/* Fourth Row */}
         <Box>
           <TelemetryGraph
             data={telemetryData}
