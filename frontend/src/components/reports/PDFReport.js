@@ -59,6 +59,131 @@ const formatDataPoints = (data, metricKey) => {
   })).filter(point => !isNaN(point.y));
 };
 
+const analyzeMetricData = (data, metric) => {
+  if (!data || data.length === 0) {
+    return {
+      status: 'No Data',
+      analysis: 'No data available for analysis.',
+      recommendation: 'Please check data collection system.',
+      stats: {
+        current: 0,
+        min: 0,
+        max: 0,
+        avg: 0,
+        trend: 'stable'
+      }
+    };
+  }
+
+  const values = data.map(point => point.y);
+  const current = values[values.length - 1];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const avg = values.reduce((a, b) => a + b, 0) / values.length;
+
+  // Calculate trend
+  const recentValues = values.slice(-5); // Last 5 points
+  const trend = recentValues.every((val, i) => i === 0 || val >= recentValues[i - 1]) ? 'increasing' :
+                recentValues.every((val, i) => i === 0 || val <= recentValues[i - 1]) ? 'decreasing' : 'stable';
+
+  let status = 'Normal';
+  let analysis = '';
+  let recommendation = '';
+
+  switch(metric.name) {
+    case 'forwardPower':
+      if (current < 0.8 * avg) {
+        status = 'Warning';
+        analysis = `Forward power (${current.toFixed(2)}W) is ${((1 - current/avg) * 100).toFixed(1)}% below average (${avg.toFixed(2)}W).`;
+        recommendation = 'Check transmitter output and connections. Consider maintenance if power continues to decrease.';
+      } else {
+        analysis = `Forward power is stable at ${current.toFixed(2)}W, within normal operating range.`;
+        recommendation = 'Continue regular monitoring.';
+      }
+      break;
+
+    case 'reflectedPower':
+      const forwardRatio = current / (values.find(v => v > 0) || 1);
+      if (forwardRatio > 0.2) {
+        status = 'Warning';
+        analysis = `High reflected power detected (${current.toFixed(2)}W). This indicates potential impedance mismatch.`;
+        recommendation = 'Inspect antenna system, connections, and VSWR readings. Consider immediate maintenance.';
+      } else {
+        analysis = `Reflected power is at acceptable levels (${current.toFixed(2)}W).`;
+        recommendation = 'Maintain current system configuration.';
+      }
+      break;
+
+    case 'vswr':
+      if (current > 1.5) {
+        status = 'Warning';
+        analysis = `VSWR is elevated at ${current.toFixed(2)}:1. This indicates potential antenna system issues.`;
+        recommendation = 'Check antenna system, feedline, and connections. Consider professional inspection if VSWR remains high.';
+      } else {
+        analysis = `VSWR is good at ${current.toFixed(2)}:1, indicating proper impedance matching.`;
+        recommendation = 'Continue regular monitoring of VSWR trends.';
+      }
+      break;
+
+    case 'temperature':
+      if (current > 40) {
+        status = 'Warning';
+        analysis = `Temperature is high at ${current.toFixed(2)}°C, above recommended operating range.`;
+        recommendation = 'Check cooling system, airflow, and ventilation. Consider reducing power if temperature continues to rise.';
+      } else {
+        analysis = `Temperature is normal at ${current.toFixed(2)}°C.`;
+        recommendation = 'Maintain current cooling configuration.';
+      }
+      break;
+
+    case 'voltage':
+      const voltageVariation = Math.abs((current - avg) / avg * 100);
+      if (voltageVariation > 10) {
+        status = 'Warning';
+        analysis = `Voltage shows ${voltageVariation.toFixed(1)}% variation from average. Current: ${current.toFixed(2)}V, Avg: ${avg.toFixed(2)}V.`;
+        recommendation = 'Monitor power supply stability. Consider UPS or voltage regulation if fluctuations persist.';
+      } else {
+        analysis = `Voltage is stable at ${current.toFixed(2)}V with normal variation.`;
+        recommendation = 'Continue monitoring power supply performance.';
+      }
+      break;
+
+    case 'current':
+      if (current > 1.2 * avg) {
+        status = 'Warning';
+        analysis = `Current draw is ${((current/avg - 1) * 100).toFixed(1)}% above average. Current: ${current.toFixed(2)}A, Avg: ${avg.toFixed(2)}A.`;
+        recommendation = 'Check for potential short circuits or equipment malfunction. Monitor power consumption closely.';
+      } else {
+        analysis = `Current draw is normal at ${current.toFixed(2)}A.`;
+        recommendation = 'Maintain regular monitoring of current consumption.';
+      }
+      break;
+
+    default:
+      if (Math.abs((current - avg) / avg * 100) > 20) {
+        status = 'Warning';
+        analysis = `Significant variation detected in ${metric.title}. Current: ${current.toFixed(2)}${metric.unit}, Avg: ${avg.toFixed(2)}${metric.unit}.`;
+        recommendation = 'Investigate cause of variation and monitor system performance.';
+      } else {
+        analysis = `${metric.title} is within normal operating parameters.`;
+        recommendation = 'Continue regular monitoring.';
+      }
+  }
+
+  return {
+    status,
+    analysis,
+    recommendation,
+    stats: {
+      current,
+      min,
+      max,
+      avg,
+      trend
+    }
+  };
+};
+
 const drawGraphOnCanvas = (ctx, data, metric, width, height) => {
   if (!data || data.length === 0) {
     console.warn(`No data points for ${metric}`);
@@ -182,18 +307,42 @@ const PDFReport = {
         pdf.addImage(imgData, 'PNG', 10, currentY, 190, 95);
         currentY += 100;
 
+        // Add analysis
+        const analysis = analyzeMetricData(formattedData, metricInfo);
+        
         // Add statistics
-        const values = formattedData.map(point => point.y);
-        const stats = {
-          current: values[values.length - 1].toFixed(2),
-          min: Math.min(...values).toFixed(2),
-          max: Math.max(...values).toFixed(2),
-          avg: (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)
-        };
-
         pdf.setFontSize(10);
-        pdf.text(`Current: ${stats.current}${metricInfo.unit} | Min: ${stats.min}${metricInfo.unit} | Max: ${stats.max}${metricInfo.unit} | Avg: ${stats.avg}${metricInfo.unit}`, 105, currentY, { align: 'center' });
-        currentY += 20;
+        const statsText = `Current: ${analysis.stats.current.toFixed(2)}${metricInfo.unit} | ` +
+                         `Min: ${analysis.stats.min.toFixed(2)}${metricInfo.unit} | ` +
+                         `Max: ${analysis.stats.max.toFixed(2)}${metricInfo.unit} | ` +
+                         `Avg: ${analysis.stats.avg.toFixed(2)}${metricInfo.unit}`;
+        pdf.text(statsText, 105, currentY, { align: 'center' });
+        currentY += 10;
+
+        // Add status and trend
+        pdf.setFontSize(11);
+        pdf.setTextColor(analysis.status === 'Warning' ? '#f44336' : '#4caf50');
+        pdf.text(`Status: ${analysis.status} | Trend: ${analysis.stats.trend.charAt(0).toUpperCase() + analysis.stats.trend.slice(1)}`, 105, currentY, { align: 'center' });
+        pdf.setTextColor(0, 0, 0);
+        currentY += 15;
+
+        // Add detailed analysis
+        pdf.setFontSize(10);
+        const analysisLines = pdf.splitTextToSize(analysis.analysis, 170);
+        analysisLines.forEach((line, index) => {
+          pdf.text(line, 20, currentY + (index * 5));
+        });
+        currentY += (analysisLines.length * 5) + 10;
+
+        // Add recommendation
+        pdf.setFontSize(10);
+        pdf.setTextColor(0, 0, 150);
+        const recommendationLines = pdf.splitTextToSize(`Recommendation: ${analysis.recommendation}`, 170);
+        recommendationLines.forEach((line, index) => {
+          pdf.text(line, 20, currentY + (index * 5));
+        });
+        pdf.setTextColor(0, 0, 0);
+        currentY += (recommendationLines.length * 5) + 20;
       }
     }
 
