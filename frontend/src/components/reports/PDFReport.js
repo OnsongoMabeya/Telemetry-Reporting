@@ -29,10 +29,22 @@ const METRIC_UNITS = {
   'Power': 'W'
 };
 
+const METRIC_COLORS = {
+  'Forward Power': '#2196f3',
+  'Reflected Power': '#f44336',
+  'VSWR': '#4caf50',
+  'Return Loss': '#ff9800',
+  'Temperature': '#9c27b0',
+  'Voltage': '#795548',
+  'Current': '#607d8b',
+  'Power': '#009688'
+};
+
 const getMetricInfo = (metric) => {
   const metricName = METRIC_KEYS[metric];
   const metricUnit = METRIC_UNITS[metric];
-  return { name: metricName, title: metric, unit: metricUnit };
+  const metricColor = METRIC_COLORS[metric];
+  return { name: metricName, title: metric, unit: metricUnit, color: metricColor };
 };
 
 const formatDataPoints = (data, metricKey) => {
@@ -92,7 +104,7 @@ const drawGraphOnCanvas = (ctx, data, metric, width, height) => {
 
   // Draw data points and lines
   ctx.beginPath();
-  ctx.strokeStyle = '#2196f3';
+  ctx.strokeStyle = metric.color || '#2196f3';
   ctx.lineWidth = 2;
 
   data.forEach((point, i) => {
@@ -128,8 +140,7 @@ const drawGraphOnCanvas = (ctx, data, metric, width, height) => {
 };
 
 const PDFReport = {
-  async generateReport(telemetryData, nodeName, baseStation) {
-    const pdf = new jsPDF();
+  async generateReport(telemetryData, nodeName, baseStation, pdf = new jsPDF()) {
     let currentY = 20;
     
     // Add header
@@ -223,7 +234,21 @@ export const generatePDFReport = async (config, baseStations = []) => {
     }
 
     // Generate PDF for each base station
-    const pdf = await PDFReport.generateReport(allTelemetryData[baseStations[0].BaseStationName], config.node, baseStations[0].BaseStationName);
+    const pdf = new jsPDF();
+    let isFirstPage = true;
+
+    for (const baseStation of baseStations) {
+      const telemetryData = allTelemetryData[baseStation.BaseStationName];
+      if (!telemetryData || telemetryData.length === 0) continue;
+
+      if (!isFirstPage) {
+        pdf.addPage();
+      }
+      isFirstPage = false;
+
+      await PDFReport.generateReport(telemetryData, config.node, baseStation.BaseStationName, pdf);
+    }
+
     pdf.save(`${config.node}_telemetry_report.pdf`);
 
     return {
