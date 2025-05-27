@@ -361,24 +361,40 @@ const NodeDetail = () => {
 
   useEffect(() => {
     const fetchBaseStations = async () => {
-      if (!selectedNode) return;
+      if (!selectedNode) {
+        console.log('No node selected, skipping base station fetch');
+        return;
+      }
+
+      console.log('Fetching base stations for node:', selectedNode);
       try {
         const response = await axios.get(`${API_BASE_URL}/api/basestations/${selectedNode}`);
-        const formattedStations = response.data.map(station => {
-          // Ensure we have all required fields
-          if (!station.NodeBaseStationName) {
-            console.error('Invalid base station data:', station);
-            return null;
-          }
-          return {
+        console.log('Base stations API response:', response.data);
+
+        if (!Array.isArray(response.data)) {
+          console.error('Expected array of base stations, got:', typeof response.data);
+          throw new Error('Invalid base stations data format');
+        }
+
+        const formattedStations = response.data
+          .filter(station => {
+            if (!station || !station.NodeBaseStationName) {
+              console.warn('Invalid base station data:', station);
+              return false;
+            }
+            return true;
+          })
+          .map(station => ({
             id: station.NodeBaseStationName,
             name: station.NodeBaseStationName,
             node: selectedNode
-          };
-        }).filter(Boolean); // Remove any null entries
+          }));
+
+        console.log('Formatted base stations:', formattedStations);
 
         if (formattedStations.length === 0) {
           console.warn(`No valid base stations found for node ${selectedNode}`);
+          setError(`No base stations available for node: ${selectedNode}`);
         }
 
         setBaseStations(formattedStations);
@@ -389,7 +405,7 @@ const NodeDetail = () => {
         }
       } catch (err) {
         console.error('Error fetching base stations:', err);
-        setError('Failed to fetch base stations. Please try again later.');
+        setError(`Failed to fetch base stations for node: ${selectedNode}. ${err.message}`);
         setBaseStations([]);
         setSelectedBaseStation(null);
       }
@@ -450,7 +466,6 @@ const NodeDetail = () => {
           </Typography>
           <ReportGenerator 
             nodes={nodes} 
-            baseStations={baseStations} 
             onError={(error) => setError(error.message)} 
           />
           {/* Debug info */}

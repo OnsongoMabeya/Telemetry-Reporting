@@ -1,22 +1,42 @@
 import React, { useState, useCallback } from 'react';
+import axios from 'axios';
 import { Button, Box } from '@mui/material';
 import ReportConfigModal from './ReportConfigModal';
 import { generateHTMLReport } from './HTMLReport';
 import { generatePDFReport } from './PDFReport';
 
-const ReportGenerator = ({ nodes, baseStations }) => {
+const ReportGenerator = ({ nodes, onError }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   const handleGenerateReport = useCallback(async (config) => {
     try {
-      // Filter and validate base stations for the selected node
-      const nodeBaseStations = baseStations
-        .filter(station => station && station.node === config.node && station.id && station.name)
-        .map(station => ({
-          name: station.name,
-          id: station.id
-        }));
+      console.log('Generating report for node:', config.node);
       
+      // Fetch base stations for the selected node
+      const response = await axios.get(`${API_BASE_URL}/api/basestations/${config.node}`);
+      console.log('Base stations API response:', response.data);
+
+      if (!Array.isArray(response.data)) {
+        throw new Error('Invalid base stations data format');
+      }
+
+      // Format and validate base stations
+      const nodeBaseStations = response.data
+        .filter(station => {
+          if (!station || !station.NodeBaseStationName) {
+            console.log('Invalid base station:', station);
+            return false;
+          }
+          return true;
+        })
+        .map(station => ({
+          name: station.NodeBaseStationName,
+          id: station.NodeBaseStationName
+        }));
+
+      console.log('Formatted base stations:', nodeBaseStations);
+
       if (nodeBaseStations.length === 0) {
         throw new Error(`No base stations available for node: ${config.node}`);
       }
@@ -29,9 +49,11 @@ const ReportGenerator = ({ nodes, baseStations }) => {
       setIsModalOpen(false);
     } catch (error) {
       console.error('Error generating report:', error);
-      // TODO: Add error handling UI
+      if (onError) {
+        onError(error);
+      }
     }
-  }, [nodes, baseStations]);
+  }, [nodes]);
 
   return (
     <Box>
