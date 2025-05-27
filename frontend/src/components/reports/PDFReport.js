@@ -7,11 +7,10 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-
-
-const generateAnalysis = (metric, data) => {
+const generateAnalysis = (metric, data, title) => {
   if (!data || data.length === 0) {
     return {
+      title,
       currentValue: 0,
       average: 0,
       percentageChange: 0,
@@ -23,6 +22,7 @@ const generateAnalysis = (metric, data) => {
   const values = data.map(item => parseFloat(item[metric])).filter(val => !isNaN(val));
   if (values.length === 0) {
     return {
+      title,
       currentValue: 0,
       average: 0,
       percentageChange: 0,
@@ -55,6 +55,7 @@ const generateAnalysis = (metric, data) => {
   }
 
   return {
+    title,
     currentValue,
     average,
     percentageChange,
@@ -206,8 +207,6 @@ export const generatePDFReport = async (config, baseStations = []) => {
     // Add first page header
     addHeader();
 
-    // Add header with modern styling
-
     // Add report info
     pdf.setFontSize(10);
     pdf.setTextColor(102, 102, 102);
@@ -231,46 +230,51 @@ export const generatePDFReport = async (config, baseStations = []) => {
       const telemetryData = telemetryResponse.data.data;
 
       // Process metrics for this base station
+      let currentY = 40;
+      const graphWidth = 180;
+      const graphHeight = 80;
       for (const metric of metrics) {
-        // Check if we need a new page
-        if (yPosition > 250) {
+        if (currentY + graphHeight + 50 > pdf.internal.pageSize.height) {
           pdf.addPage();
           addHeader();
-          yPosition = 20;
+          currentY = 40;
         }
 
-        // Add metric title
-        pdf.setFontSize(12);
-        pdf.text(metric.title, 25, yPosition + 5);
-
-        // Add graph
         try {
           const graphDataUrl = await renderGraph(telemetryData, metric);
           if (graphDataUrl) {
-            pdf.addImage(graphDataUrl, 'PNG', 15, yPosition + 10, 180, 90);
+            pdf.addImage(graphDataUrl, 'PNG', 15, currentY, graphWidth, graphHeight);
           }
         } catch (error) {
           console.error('Error adding graph to PDF:', error);
         }
 
         // Add analysis
-        const analysis = generateAnalysis(metric.name, telemetryData);
+        const analysis = generateAnalysis(metric.name, telemetryData, metric.title);
+        pdf.setFontSize(11);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('Analysis:', 20, currentY + graphHeight + 15);
+        pdf.setFont(undefined, 'normal');
+        
         pdf.setFontSize(10);
-        pdf.setTextColor(102, 102, 102);
-        const currentValue = isNaN(analysis.currentValue) ? 0 : analysis.currentValue;
-        const average = isNaN(analysis.average) ? 0 : analysis.average;
-        const change = isNaN(analysis.percentageChange) ? 0 : analysis.percentageChange;
-
-        pdf.text(`Current Value: ${currentValue.toFixed(2)} ${metric.unit}`, 25, yPosition + 55);
-        pdf.text(`Average: ${average.toFixed(2)} ${metric.unit}`, 25, yPosition + 60);
-        pdf.text(`Change: ${change.toFixed(2)}%`, 25, yPosition + 65);
-
-        if (analysis.recommendation) {
-          pdf.setTextColor(analysis.status === 'warning' ? 255 : 0, analysis.status === 'warning' ? 0 : 255, 0);
-          pdf.text(analysis.recommendation, 25, yPosition + 70);
+        pdf.text(`Current ${metric.title}: ${analysis.currentValue.toFixed(2)} ${metric.unit}`, 20, currentY + graphHeight + 22);
+        
+        pdf.text(`Average: ${analysis.average.toFixed(2)} ${metric.unit}`, 20, currentY + graphHeight + 27);
+        
+        pdf.text(`Change: ${analysis.percentageChange.toFixed(2)}%`, 20, currentY + graphHeight + 32);
+        
+        pdf.text(`Status: ${analysis.status}`, 20, currentY + graphHeight + 37);
+        
+        // Handle recommendation text wrapping
+        const maxWidth = graphWidth - 10; // Leave some margin
+        const splitText = pdf.splitTextToSize(`Recommendation: ${analysis.recommendation}`, maxWidth);
+        pdf.setFontSize(10);
+        pdf.text(splitText[0], 20, currentY + graphHeight + 42);
+        for (let i = 1; i < splitText.length; i++) {
+          pdf.text(splitText[i], 20, currentY + graphHeight + 42 + (i * 5));
         }
 
-        yPosition += 80; // Move down for next metric
+        currentY += graphHeight + 50; // Move down for next metric
       }
 
       // Add some space between base stations

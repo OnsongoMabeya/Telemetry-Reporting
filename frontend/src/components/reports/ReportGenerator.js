@@ -7,9 +7,13 @@ import { generatePDFReport } from './PDFReport';
 
 const ReportGenerator = ({ nodes, onError }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
   const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
   const handleGenerateReport = useCallback(async (config) => {
+    setIsGenerating(true);
+    setProgress(10);
     try {
       console.log('Generating report for node:', config.node);
       
@@ -41,29 +45,78 @@ const ReportGenerator = ({ nodes, onError }) => {
         throw new Error(`No base stations available for node: ${config.node}`);
       }
 
+      setProgress(30);
       if (config.format === 'html') {
+        setProgress(50);
         await generateHTMLReport(config);
+        setProgress(90);
       } else {
+        setProgress(50);
         await generatePDFReport(config, nodeBaseStations);
+        setProgress(90);
       }
+      setProgress(100);
       setIsModalOpen(false);
     } catch (error) {
       console.error('Error generating report:', error);
       if (onError) {
         onError(error);
       }
+    } finally {
+      setTimeout(() => {
+        setIsGenerating(false);
+        setProgress(0);
+      }, 1000); // Keep progress bar visible briefly
     }
   }, [nodes]);
 
   return (
-    <Box>
+    <Box sx={{ position: 'relative' }}>
       <Button
         variant="contained"
         color="primary"
         onClick={() => setIsModalOpen(true)}
+        disabled={isGenerating}
       >
-        Generate Report
+        {isGenerating ? 'Generating...' : 'Generate Report'}
       </Button>
+      {isGenerating && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            mt: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 1
+          }}
+        >
+          <Box
+            sx={{
+              width: '100%',
+              height: 4,
+              bgcolor: 'background.paper',
+              borderRadius: 1,
+              overflow: 'hidden'
+            }}
+          >
+            <Box
+              sx={{
+                width: `${progress}%`,
+                height: '100%',
+                bgcolor: 'primary.main',
+                transition: 'width 0.3s ease-in-out'
+              }}
+            />
+          </Box>
+          <Box sx={{ typography: 'caption', color: 'text.secondary' }}>
+            {progress < 100 ? 'Generating report...' : 'Finalizing...'}
+          </Box>
+        </Box>
+      )}
       <ReportConfigModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
