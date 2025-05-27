@@ -395,9 +395,9 @@ const PDFReport = {
         // Add statistics
         pdf.setFontSize(10);
         const statsText = `Current: ${analysis.stats.current.toFixed(2)}${metricInfo.unit} | ` +
-                         `Min: ${analysis.stats.min.toFixed(2)}${metricInfo.unit} | ` +
-                         `Max: ${analysis.stats.max.toFixed(2)}${metricInfo.unit} | ` +
-                         `Avg: ${analysis.stats.avg.toFixed(2)}${metricInfo.unit}`;
+                          `Min: ${analysis.stats.min.toFixed(2)}${metricInfo.unit} | ` +
+                          `Max: ${analysis.stats.max.toFixed(2)}${metricInfo.unit} | ` +
+                          `Avg: ${analysis.stats.avg.toFixed(2)}${metricInfo.unit}`;
         pdf.text(statsText, 105, currentY, { align: 'center' });
         currentY += 10;
 
