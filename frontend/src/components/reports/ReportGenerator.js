@@ -9,11 +9,17 @@ const ReportGenerator = ({ nodes, baseStations }) => {
 
   const handleGenerateReport = useCallback(async (config) => {
     try {
-      // Filter base stations for the selected node
-      const nodeBaseStations = baseStations.filter(station => station.node === config.node).map(station => ({
-        name: station.name,
-        id: station.id
-      }));
+      // Filter and validate base stations for the selected node
+      const nodeBaseStations = baseStations
+        .filter(station => station && station.node === config.node && station.id && station.name)
+        .map(station => ({
+          name: station.name,
+          id: station.id
+        }));
+      
+      if (nodeBaseStations.length === 0) {
+        throw new Error(`No base stations available for node: ${config.node}`);
+      }
 
       if (config.format === 'html') {
         await generateHTMLReport(config);

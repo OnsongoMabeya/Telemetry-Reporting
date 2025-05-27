@@ -66,26 +66,58 @@ const generateAnalysis = (metric, data) => {
 const renderGraph = async (data, metric) => {
   if (!data || data.length === 0) return null;
 
+  // Downsample data for PDF graphs
+  const targetPoints = 50;
+  let graphData = data;
+  if (data.length > targetPoints) {
+    const step = Math.ceil(data.length / targetPoints);
+    graphData = data.filter((_, index) => index % step === 0);
+  }
+
+  // Calculate Y-axis domain
+  const values = graphData.map(item => parseFloat(item[metric.name]));
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const padding = (max - min) * 0.1;
+  const yDomain = [min - padding, max + padding];
+
   const chartContainer = document.createElement('div');
-  chartContainer.style.width = '600px';
-  chartContainer.style.height = '300px';
+  chartContainer.style.width = '800px';
+  chartContainer.style.height = '400px';
   chartContainer.style.position = 'fixed';
   chartContainer.style.left = '-9999px';
-  chartContainer.style.left = '-9999px';
+  chartContainer.style.backgroundColor = '#ffffff';
   document.body.appendChild(chartContainer);
 
   const chart = (
-    <LineChart width={600} height={300} data={data}>
+    <LineChart 
+      width={800} 
+      height={400} 
+      data={graphData}
+      margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+    >
       <CartesianGrid strokeDasharray="3 3" />
-      <XAxis dataKey="sample_time" />
-      <YAxis />
-      <Tooltip />
+      <XAxis 
+        dataKey="timestamp"
+        tickFormatter={(timestamp) => new Date(timestamp).toLocaleTimeString()}
+        interval="preserveStartEnd"
+      />
+      <YAxis 
+        domain={yDomain}
+        tickFormatter={(value) => value.toFixed(2)}
+      />
+      <Tooltip 
+        formatter={(value) => value.toFixed(2)}
+        labelFormatter={(timestamp) => new Date(timestamp).toLocaleString()}
+      />
       <Legend />
       <Line
         type="monotone"
         dataKey={metric.name}
         stroke={getGraphColor(metric.name)}
+        strokeWidth={2}
         dot={false}
+        name={metric.title}
       />
     </LineChart>
   );
@@ -215,7 +247,7 @@ export const generatePDFReport = async (config, baseStations = []) => {
         try {
           const graphDataUrl = await renderGraph(telemetryData, metric);
           if (graphDataUrl) {
-            pdf.addImage(graphDataUrl, 'PNG', 25, yPosition + 10, 160, 40);
+            pdf.addImage(graphDataUrl, 'PNG', 15, yPosition + 10, 180, 90);
           }
         } catch (error) {
           console.error('Error adding graph to PDF:', error);

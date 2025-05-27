@@ -364,18 +364,34 @@ const NodeDetail = () => {
       if (!selectedNode) return;
       try {
         const response = await axios.get(`${API_BASE_URL}/api/basestations/${selectedNode}`);
-        const formattedStations = response.data.map(station => ({
-          id: station.NodeBaseStationName,
-          name: station.NodeBaseStationName,
-          node: selectedNode // Include the node information
-        }));
+        const formattedStations = response.data.map(station => {
+          // Ensure we have all required fields
+          if (!station.NodeBaseStationName) {
+            console.error('Invalid base station data:', station);
+            return null;
+          }
+          return {
+            id: station.NodeBaseStationName,
+            name: station.NodeBaseStationName,
+            node: selectedNode
+          };
+        }).filter(Boolean); // Remove any null entries
+
+        if (formattedStations.length === 0) {
+          console.warn(`No valid base stations found for node ${selectedNode}`);
+        }
+
         setBaseStations(formattedStations);
         if (formattedStations.length > 0) {
           setSelectedBaseStation(formattedStations[0].id);
+        } else {
+          setSelectedBaseStation(null);
         }
       } catch (err) {
         console.error('Error fetching base stations:', err);
         setError('Failed to fetch base stations. Please try again later.');
+        setBaseStations([]);
+        setSelectedBaseStation(null);
       }
     };
 
@@ -432,7 +448,18 @@ const NodeDetail = () => {
           <Typography variant="h4" gutterBottom>
             Telemetry Dashboard
           </Typography>
-          <ReportGenerator nodes={nodes} baseStations={baseStations} />
+          <ReportGenerator 
+            nodes={nodes} 
+            baseStations={baseStations} 
+            onError={(error) => setError(error.message)} 
+          />
+          {/* Debug info */}
+          {process.env.NODE_ENV === 'development' && (
+            <div style={{ display: 'none' }}>
+              <pre>Selected Node: {selectedNode}</pre>
+              <pre>Base Stations: {JSON.stringify(baseStations, null, 2)}</pre>
+            </div>
+          )}
         </Box>
         <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
           <FormControl sx={{ minWidth: 200 }}>
