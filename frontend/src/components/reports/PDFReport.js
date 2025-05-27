@@ -29,15 +29,25 @@ const METRIC_UNITS = {
   'Power': 'W'
 };
 
+// Blue theme colors
+const THEME_COLORS = {
+  primary: '#1976d2',    // Primary blue
+  secondary: '#2196f3',  // Secondary blue
+  accent: '#64b5f6',     // Light blue
+  warning: '#ff9800',    // Warning orange
+  text: '#1976d2',       // Text blue
+  lightBlue: '#bbdefb'   // Very light blue
+};
+
 const METRIC_COLORS = {
-  'Forward Power': '#2196f3',
-  'Reflected Power': '#f44336',
-  'VSWR': '#4caf50',
-  'Return Loss': '#ff9800',
-  'Temperature': '#9c27b0',
-  'Voltage': '#795548',
-  'Current': '#607d8b',
-  'Power': '#009688'
+  'Forward Power': THEME_COLORS.primary,
+  'Reflected Power': THEME_COLORS.secondary,
+  'VSWR': THEME_COLORS.accent,
+  'Return Loss': THEME_COLORS.warning,
+  'Temperature': THEME_COLORS.primary,
+  'Voltage': THEME_COLORS.secondary,
+  'Current': THEME_COLORS.accent,
+  'Power': THEME_COLORS.primary
 };
 
 const getMetricInfo = (metric) => {
@@ -268,7 +278,40 @@ const PDFReport = {
   async generateReport(telemetryData, nodeName, baseStation, pdf = new jsPDF()) {
     let currentY = 20;
     
-    // Add header
+    // Add BSI logo
+    const logoImg = new Image();
+    logoImg.src = '/bsilogo512.png';
+    
+    await new Promise((resolve, reject) => {
+      logoImg.onload = () => {
+        try {
+          // Calculate logo dimensions (max height 30px)
+          const aspectRatio = logoImg.width / logoImg.height;
+          const logoHeight = 30;
+          const logoWidth = logoHeight * aspectRatio;
+          
+          // Add logo at top center
+          pdf.addImage(logoImg, 'PNG', (pdf.internal.pageSize.width - logoWidth) / 2, currentY - 15, logoWidth, logoHeight);
+          resolve();
+        } catch (error) {
+          console.error('Error adding logo:', error);
+          resolve(); // Continue without logo if there's an error
+        }
+      };
+      logoImg.onerror = () => {
+        console.error('Error loading logo');
+        resolve(); // Continue without logo if there's an error
+      };
+    });
+    
+    currentY += 20;
+    
+    // Add blue header background
+    pdf.setFillColor(THEME_COLORS.primary);
+    pdf.rect(0, 0, pdf.internal.pageSize.width, 60, 'F');
+
+    // Add header text in white
+    pdf.setTextColor(255, 255, 255);
     pdf.setFontSize(16);
     pdf.text(`Telemetry Report - ${nodeName}`, 105, currentY, { align: 'center' });
     currentY += 10;
@@ -279,6 +322,9 @@ const PDFReport = {
     
     pdf.text(`Generated: ${new Date().toLocaleString()}`, 105, currentY, { align: 'center' });
     currentY += 20;
+
+    // Reset text color to blue for the rest of the document
+    pdf.setTextColor(THEME_COLORS.text);
 
     // Create canvas for graphs
     const canvas = document.createElement('canvas');
@@ -302,8 +348,17 @@ const PDFReport = {
           currentY = 20;
         }
 
-        pdf.text(metric, 105, currentY, { align: 'center' });
-        currentY += 10;
+        // Add metric title with blue background
+        pdf.setFillColor(THEME_COLORS.lightBlue);
+        pdf.rect(0, currentY - 5, pdf.internal.pageSize.width, 20, 'F');
+        pdf.setTextColor(THEME_COLORS.primary);
+        pdf.setFontSize(14);
+        pdf.text(metric, 105, currentY + 5, { align: 'center' });
+        currentY += 15;
+
+        // Add graph with white background
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(5, currentY, 200, 100, 'F');
         pdf.addImage(imgData, 'PNG', 10, currentY, 190, 95);
         currentY += 100;
 
@@ -319,12 +374,16 @@ const PDFReport = {
         pdf.text(statsText, 105, currentY, { align: 'center' });
         currentY += 10;
 
-        // Add status and trend
+        // Add status and trend with themed colors
         pdf.setFontSize(11);
-        pdf.setTextColor(analysis.status === 'Warning' ? '#f44336' : '#4caf50');
+        pdf.setTextColor(analysis.status === 'Warning' ? THEME_COLORS.warning : THEME_COLORS.primary);
         pdf.text(`Status: ${analysis.status} | Trend: ${analysis.stats.trend.charAt(0).toUpperCase() + analysis.stats.trend.slice(1)}`, 105, currentY, { align: 'center' });
-        pdf.setTextColor(0, 0, 0);
+        pdf.setTextColor(THEME_COLORS.text);
         currentY += 15;
+
+        // Add analysis section with light blue background
+        pdf.setFillColor(THEME_COLORS.lightBlue);
+        pdf.rect(15, currentY - 5, pdf.internal.pageSize.width - 30, 40, 'F');
 
         // Add detailed analysis
         pdf.setFontSize(10);
@@ -334,14 +393,14 @@ const PDFReport = {
         });
         currentY += (analysisLines.length * 5) + 10;
 
-        // Add recommendation
+        // Add recommendation with blue accent
         pdf.setFontSize(10);
-        pdf.setTextColor(0, 0, 150);
+        pdf.setTextColor(THEME_COLORS.primary);
         const recommendationLines = pdf.splitTextToSize(`Recommendation: ${analysis.recommendation}`, 170);
         recommendationLines.forEach((line, index) => {
           pdf.text(line, 20, currentY + (index * 5));
         });
-        pdf.setTextColor(0, 0, 0);
+        pdf.setTextColor(THEME_COLORS.text);
         currentY += (recommendationLines.length * 5) + 20;
       }
     }
