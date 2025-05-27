@@ -29,25 +29,36 @@ const METRIC_UNITS = {
   'Power': 'W'
 };
 
-// Blue theme colors
+// Modern theme colors
 const THEME_COLORS = {
-  primary: '#1976d2',    // Primary blue
-  secondary: '#2196f3',  // Secondary blue
-  accent: '#64b5f6',     // Light blue
-  warning: '#ff9800',    // Warning orange
-  text: '#1976d2',       // Text blue
-  lightBlue: '#bbdefb'   // Very light blue
+  primary: '#0A2647',      // Deep navy blue
+  secondary: '#144272',    // Medium navy blue
+  accent: '#205295',       // Bright navy blue
+  highlight: '#2C74B3',    // Light navy blue
+  warning: '#FF4B4B',      // Modern red for warnings
+  success: '#4CAF50',      // Success green
+  text: {
+    primary: '#0A2647',    // Deep navy for primary text
+    secondary: '#525252',   // Dark gray for secondary text
+    light: '#FFFFFF'       // White text
+  },
+  background: {
+    primary: '#FFFFFF',    // White
+    secondary: '#F5F7F9',   // Light gray-blue
+    accent: '#E8F0FE'      // Very light blue
+  },
+  border: '#E0E7FF'        // Light border color
 };
 
 const METRIC_COLORS = {
-  'Forward Power': THEME_COLORS.primary,
-  'Reflected Power': THEME_COLORS.secondary,
-  'VSWR': THEME_COLORS.accent,
-  'Return Loss': THEME_COLORS.warning,
-  'Temperature': THEME_COLORS.primary,
-  'Voltage': THEME_COLORS.secondary,
-  'Current': THEME_COLORS.accent,
-  'Power': THEME_COLORS.primary
+  'Forward Power': '#4361EE',    // Electric blue
+  'Reflected Power': '#FF4B4B',  // Modern red
+  'VSWR': '#3CCF4E',            // Fresh green
+  'Return Loss': '#FFB700',      // Warm yellow
+  'Temperature': '#9B5DE5',      // Modern purple
+  'Voltage': '#00C4B4',         // Turquoise
+  'Current': '#F72585',         // Hot pink
+  'Power': '#4895EF'            // Sky blue
 };
 
 const getMetricInfo = (metric) => {
@@ -306,25 +317,36 @@ const PDFReport = {
     
     currentY += 20;
     
-    // Add blue header background
-    pdf.setFillColor(THEME_COLORS.primary);
-    pdf.rect(0, 0, pdf.internal.pageSize.width, 60, 'F');
+    // Create modern gradient header
+    const gradient = pdf.setFillColor(THEME_COLORS.primary);
+    pdf.rect(0, 0, pdf.internal.pageSize.width, 80, 'F');
 
-    // Add header text in white
+    // Add decorative accent line
+    pdf.setDrawColor(THEME_COLORS.highlight);
+    pdf.setLineWidth(3);
+    pdf.line(20, 70, pdf.internal.pageSize.width - 20, 70);
+
+    // Add header text with modern typography
     pdf.setTextColor(255, 255, 255);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(24);
+    pdf.text(`Telemetry Report`, 105, currentY, { align: 'center' });
+    currentY += 15;
+
+    pdf.setFont('helvetica', 'normal');
     pdf.setFontSize(16);
-    pdf.text(`Telemetry Report - ${nodeName}`, 105, currentY, { align: 'center' });
-    currentY += 10;
+    pdf.text(nodeName, 105, currentY, { align: 'center' });
+    currentY += 12;
     
     pdf.setFontSize(12);
-    pdf.text(`Base Station: ${baseStation}`, 105, currentY, { align: 'center' });
-    currentY += 10;
-    
-    pdf.text(`Generated: ${new Date().toLocaleString()}`, 105, currentY, { align: 'center' });
-    currentY += 20;
+    pdf.text(`Base Station: ${baseStation} | Generated: ${new Date().toLocaleString()}`, 105, currentY, { align: 'center' });
+    currentY += 30;
 
-    // Reset text color to blue for the rest of the document
-    pdf.setTextColor(THEME_COLORS.text);
+    // Reset text color and add page border
+    pdf.setTextColor(THEME_COLORS.text.primary);
+    pdf.setDrawColor(THEME_COLORS.border);
+    pdf.setLineWidth(1);
+    pdf.rect(10, 90, pdf.internal.pageSize.width - 20, pdf.internal.pageSize.height - 100);
 
     // Create canvas for graphs
     const canvas = document.createElement('canvas');
@@ -348,19 +370,24 @@ const PDFReport = {
           currentY = 20;
         }
 
-        // Add metric title with blue background
-        pdf.setFillColor(THEME_COLORS.lightBlue);
-        pdf.rect(0, currentY - 5, pdf.internal.pageSize.width, 20, 'F');
-        pdf.setTextColor(THEME_COLORS.primary);
-        pdf.setFontSize(14);
-        pdf.text(metric, 105, currentY + 5, { align: 'center' });
-        currentY += 15;
+        // Add modern metric section
+        pdf.setFillColor(THEME_COLORS.background.secondary);
+        pdf.roundedRect(20, currentY - 5, pdf.internal.pageSize.width - 40, 160, 3, 3, 'F');
 
-        // Add graph with white background
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(5, currentY, 200, 100, 'F');
-        pdf.addImage(imgData, 'PNG', 10, currentY, 190, 95);
-        currentY += 100;
+        // Add metric title with icon-like indicator
+        pdf.setFillColor(metricInfo.color);
+        pdf.circle(30, currentY + 7, 3, 'F');
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(THEME_COLORS.text.primary);
+        pdf.setFontSize(14);
+        pdf.text(metric, 40, currentY + 8);
+        currentY += 20;
+
+        // Add graph with subtle shadow effect
+        pdf.setFillColor(THEME_COLORS.background.primary);
+        pdf.roundedRect(25, currentY, pdf.internal.pageSize.width - 50, 100, 2, 2, 'F');
+        pdf.addImage(imgData, 'PNG', 30, currentY + 2, pdf.internal.pageSize.width - 60, 95);
+        currentY += 105;
 
         // Add analysis
         const analysis = analyzeMetricData(formattedData, metricInfo);
@@ -374,34 +401,61 @@ const PDFReport = {
         pdf.text(statsText, 105, currentY, { align: 'center' });
         currentY += 10;
 
-        // Add status and trend with themed colors
+        // Add modern stats panel
+        pdf.setFillColor(THEME_COLORS.background.accent);
+        pdf.roundedRect(30, currentY, pdf.internal.pageSize.width - 60, 25, 2, 2, 'F');
+
+        // Add status indicator with modern styling
+        const statusColor = analysis.status === 'Warning' ? THEME_COLORS.warning : THEME_COLORS.success;
+        pdf.setFillColor(statusColor);
+        pdf.circle(40, currentY + 12, 4, 'F');
+
+        // Add status and trend text
+        pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(11);
-        pdf.setTextColor(analysis.status === 'Warning' ? THEME_COLORS.warning : THEME_COLORS.primary);
-        pdf.text(`Status: ${analysis.status} | Trend: ${analysis.stats.trend.charAt(0).toUpperCase() + analysis.stats.trend.slice(1)}`, 105, currentY, { align: 'center' });
-        pdf.setTextColor(THEME_COLORS.text);
-        currentY += 15;
-
-        // Add analysis section with light blue background
-        pdf.setFillColor(THEME_COLORS.lightBlue);
-        pdf.rect(15, currentY - 5, pdf.internal.pageSize.width - 30, 40, 'F');
-
-        // Add detailed analysis
+        pdf.setTextColor(THEME_COLORS.text.primary);
+        pdf.text(`${analysis.status.toUpperCase()} | Trend: ${analysis.stats.trend.charAt(0).toUpperCase() + analysis.stats.trend.slice(1)}`, 50, currentY + 12);
+        
+        // Add stats on the right
+        pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(10);
-        const analysisLines = pdf.splitTextToSize(analysis.analysis, 170);
+        pdf.text(`Current: ${analysis.stats.current.toFixed(2)}${metricInfo.unit} | Avg: ${analysis.stats.avg.toFixed(2)}${metricInfo.unit}`, pdf.internal.pageSize.width - 70, currentY + 12);
+        currentY += 35;
+
+        // Add analysis section with modern card design
+        pdf.setFillColor(THEME_COLORS.background.primary);
+        pdf.roundedRect(30, currentY - 5, pdf.internal.pageSize.width - 60, 50, 2, 2, 'F');
+        
+        // Add analysis icon and title
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(THEME_COLORS.text.primary);
+        pdf.text('Analysis', 40, currentY + 5);
+        
+        // Add analysis content
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(THEME_COLORS.text.secondary);
+        const analysisLines = pdf.splitTextToSize(analysis.analysis, pdf.internal.pageSize.width - 80);
         analysisLines.forEach((line, index) => {
-          pdf.text(line, 20, currentY + (index * 5));
+          pdf.text(line, 40, currentY + 15 + (index * 5));
         });
-        currentY += (analysisLines.length * 5) + 10;
+        currentY += 55;
 
-        // Add recommendation with blue accent
-        pdf.setFontSize(10);
-        pdf.setTextColor(THEME_COLORS.primary);
-        const recommendationLines = pdf.splitTextToSize(`Recommendation: ${analysis.recommendation}`, 170);
+        // Add recommendation section with accent styling
+        pdf.setFillColor(THEME_COLORS.background.accent);
+        pdf.roundedRect(30, currentY - 5, pdf.internal.pageSize.width - 60, 40, 2, 2, 'F');
+        
+        // Add recommendation icon and content
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(THEME_COLORS.accent);
+        pdf.text('Recommendation', 40, currentY + 5);
+        
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(THEME_COLORS.text.secondary);
+        const recommendationLines = pdf.splitTextToSize(analysis.recommendation, pdf.internal.pageSize.width - 80);
         recommendationLines.forEach((line, index) => {
-          pdf.text(line, 20, currentY + (index * 5));
+          pdf.text(line, 40, currentY + 15 + (index * 5));
         });
-        pdf.setTextColor(THEME_COLORS.text);
-        currentY += (recommendationLines.length * 5) + 20;
+        currentY += 45;
       }
     }
 
