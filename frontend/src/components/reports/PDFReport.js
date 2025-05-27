@@ -1,231 +1,202 @@
-import jsPDF from 'jspdf';
 import React from 'react';
-import * as ReactDOM from 'react-dom/client';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import axios from 'axios';
+import * as d3 from 'd3';
+import './PDFReport.css';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-const generateRecommendation = (metric, current, avg, max, min) => {
-  const thresholds = {
-    forwardPower: { min: 10, max: 1000, unit: 'W' },
-    reflectedPower: { min: 0, max: 10, unit: 'W' },
-    vswr: { min: 1, max: 3, unit: '' },
-    returnLoss: { min: -40, max: -10, unit: 'dB' },
-    temperature: { min: 0, max: 50, unit: '°C' },
-    voltage: { min: 11, max: 14, unit: 'V' }
-  };
-
-  const getStatus = (value, limits) => {
-    if (value < limits.min) return 'low';
-    if (value > limits.max) return 'high';
-    return 'normal';
-  };
-
-  const formatValue = (value, unit) => {
-    return `${value.toFixed(2)}${unit}`;
-  };
-
-  const limits = thresholds[metric];
-
-  if (!limits) {
-    return 'No recommendations available for this metric';
-  }
-
-  const status = getStatus(current, limits);
-  const formattedCurrent = formatValue(current, limits.unit);
-  const formattedMin = formatValue(limits.min, limits.unit);
-  const formattedMax = formatValue(limits.max, limits.unit);
-
-  switch (status) {
-    case 'low':
-      return `Current value (${formattedCurrent}) is below minimum threshold of ${formattedMin}. `;
-    case 'high':
-      return `Current value (${formattedCurrent}) is above maximum threshold of ${formattedMax}. `;
-    default:
-      return `Operating normally at ${formattedCurrent} (acceptable range: ${formattedMin} - ${formattedMax}).`;
-  }
+const METRIC_KEYS = {
+  'Forward Power': 'forwardPower',
+  'Reflected Power': 'reflectedPower',
+  'VSWR': 'vswr',
+  'Return Loss': 'returnLoss',
+  'Temperature': 'temperature',
+  'Voltage': 'voltage',
+  'Current': 'current',
+  'Power': 'power'
 };
 
-const generateAnalysis = (metric, data, title) => {
+const METRIC_UNITS = {
+  'Forward Power': 'W',
+  'Reflected Power': 'W',
+  'VSWR': '',
+  'Return Loss': 'dB',
+  'Temperature': '°C',
+  'Voltage': 'V',
+  'Current': 'A',
+  'Power': 'W'
+};
+
+const getMetricInfo = (metric) => {
+  const metricName = METRIC_KEYS[metric];
+  const metricUnit = METRIC_UNITS[metric];
+  return { name: metricName, title: metric, unit: metricUnit };
+};
+
+const formatDataPoints = (data, metricKey) => {
+  if (!data || !Array.isArray(data)) {
+    console.warn(`Invalid data format for ${metricKey}:`, data);
+    return [];
+  }
+
+  return data.map(point => ({
+    x: new Date(point.sample_time).getTime(),
+    y: parseFloat(point[metricKey])
+  })).filter(point => !isNaN(point.y));
+};
+
+const drawGraphOnCanvas = (ctx, data, metric, width, height) => {
   if (!data || data.length === 0) {
-    return {
-      title,
-      currentValue: 0,
-      average: 0,
-      percentageChange: 0,
-      status: 'normal',
-      recommendation: 'No valid data points'
-    };
+    console.warn(`No data points for ${metric}`);
+    return;
   }
 
-  const values = data.map(item => parseFloat(item[metric])).filter(val => !isNaN(val));
-  if (values.length === 0) {
-    return {
-      title,
-      currentValue: 0,
-      average: 0,
-      percentageChange: 0,
-      status: 'normal',
-      recommendation: 'No valid data points'
-    };
-  }
+  // Calculate min/max values for scaling
+  const values = data.map(point => point.y);
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const valuePadding = (maxValue - minValue) * 0.1;
 
-  const currentValue = values[values.length - 1];
-  const average = values.reduce((a, b) => a + b, 0) / values.length;
-  const percentageChange = average !== 0 ? ((currentValue - average) / average) * 100 : 0;
+  // Calculate time range
+  const timestamps = data.map(point => point.x);
+  const minTime = Math.min(...timestamps);
+  const maxTime = Math.max(...timestamps);
 
-  let status = 'normal';
-  let recommendation = '';
+  // Set up scaling functions
+  const scaleX = d3.scaleTime()
+    .domain([new Date(minTime), new Date(maxTime)])
+    .range([50, width - 20]);
 
-  switch (metric) {
-    case 'forwardPower':
-      if (currentValue < 10) {
-        status = 'warning';
-        recommendation = 'Forward power is low. Check transmitter output.';
-      }
-      break;
-    case 'reflectedPower':
-      if (currentValue > 2) {
-        status = 'warning';
-        recommendation = 'High reflected power detected. Check antenna system.';
-      }
-      break;
-    // Add other metrics analysis here
-  }
+  const scaleY = d3.scaleLinear()
+    .domain([minValue - valuePadding, maxValue + valuePadding])
+    .range([height - 30, 20]);
 
-  if (!recommendation) {
-    recommendation = generateRecommendation(metric, currentValue, average, Math.max(...values), Math.min(...values));
-  }
+  // Clear canvas
+  ctx.clearRect(0, 0, width, height);
 
-  return {
-    title,
-    currentValue,
-    average,
-    percentageChange,
-    status,
-    recommendation
-  };
-};
+  // Draw axes
+  ctx.beginPath();
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1;
 
-const formatDate = (timestamp) => {
-  const date = new Date(timestamp);
-  if (isNaN(date.getTime())) return '';
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
+  // Y-axis
+  ctx.moveTo(50, 20);
+  ctx.lineTo(50, height - 30);
+
+  // X-axis
+  ctx.moveTo(50, height - 30);
+  ctx.lineTo(width - 20, height - 30);
+  ctx.stroke();
+
+  // Draw data points and lines
+  ctx.beginPath();
+  ctx.strokeStyle = '#2196f3';
+  ctx.lineWidth = 2;
+
+  data.forEach((point, i) => {
+    const x = scaleX(new Date(point.x));
+    const y = scaleY(point.y);
+
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+
+  ctx.stroke();
+
+  // Add labels
+  ctx.fillStyle = '#000';
+  ctx.font = '12px Arial';
+
+  // Y-axis labels
+  const yTicks = scaleY.ticks(5);
+  yTicks.forEach(tick => {
+    const y = scaleY(tick);
+    ctx.fillText(`${tick.toFixed(1)}${metric.unit}`, 5, y + 4);
+  });
+
+  // X-axis labels
+  const xTicks = scaleX.ticks(5);
+  xTicks.forEach(tick => {
+    const x = scaleX(tick);
+    ctx.fillText(tick.toLocaleTimeString(), x - 20, height - 10);
   });
 };
 
-const renderGraph = async (data, metric) => {
-  if (!data || data.length === 0) return null;
-  
-  // Format timestamps for X-axis
-  const formattedData = data.map(item => ({
-    ...item,
-    timestamp: formatDate(item.timestamp)
-  }));
-
-  // Downsample data for PDF graphs
-  const targetPoints = 50;
-  let graphData = data;
-  if (data.length > targetPoints) {
-    const step = Math.ceil(data.length / targetPoints);
-    graphData = data.filter((_, index) => index % step === 0);
-  }
-
-  // Calculate Y-axis domain
-  const values = graphData.map(item => parseFloat(item[metric.name]));
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const padding = (max - min) * 0.1;
-  const yDomain = [min - padding, max + padding];
-
-  const chartContainer = document.createElement('div');
-  chartContainer.style.width = '800px';
-  chartContainer.style.height = '400px';
-  chartContainer.style.position = 'fixed';
-  chartContainer.style.left = '-9999px';
-  chartContainer.style.backgroundColor = '#ffffff';
-  document.body.appendChild(chartContainer);
-
-  const chart = (
-    <LineChart 
-      width={800} 
-      height={400} 
-      data={graphData}
-      margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-    >
-      <CartesianGrid strokeDasharray="3 3" />
-      <XAxis 
-        dataKey="timestamp"
-        type="category"
-        tick={{ fontSize: 12 }}
-        angle={-45}
-        textAnchor="end"
-        tickFormatter={formatDate}
-      />
-      <YAxis 
-        domain={yDomain}
-        tickFormatter={(value) => value.toFixed(2)}
-      />
-      <Tooltip 
-        formatter={(value) => value.toFixed(2)}
-        labelFormatter={(timestamp) => new Date(timestamp).toLocaleString()}
-      />
-      <Legend />
-      <Line
-        type="monotone"
-        dataKey={metric.name}
-        stroke={getGraphColor(metric.name)}
-        strokeWidth={2}
-        dot={false}
-        name={metric.title}
-      />
-    </LineChart>
-  );
-
-  const root = ReactDOM.createRoot(chartContainer);
-  root.render(chart);
-
-  // Wait for chart to render
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  try {
-    const canvas = await html2canvas(chartContainer, {
-      logging: false,
-      useCORS: true,
-      scale: 2
-    });
+const PDFReport = {
+  async generateReport(telemetryData, nodeName, baseStation) {
+    const pdf = new jsPDF();
+    let currentY = 20;
     
-    const imgData = canvas.toDataURL('image/png', 1.0);
-    root.unmount();
-    document.body.removeChild(chartContainer);
+    // Add header
+    pdf.setFontSize(16);
+    pdf.text(`Telemetry Report - ${nodeName}`, 105, currentY, { align: 'center' });
+    currentY += 10;
     
-    return imgData;
-  } catch (error) {
-    console.error('Error generating chart:', error);
-    root.unmount();
-    document.body.removeChild(chartContainer);
-    throw error;
-  }
-};
+    pdf.setFontSize(12);
+    pdf.text(`Base Station: ${baseStation}`, 105, currentY, { align: 'center' });
+    currentY += 10;
+    
+    pdf.text(`Generated: ${new Date().toLocaleString()}`, 105, currentY, { align: 'center' });
+    currentY += 20;
 
-const getGraphColor = (dataKey) => {
-  switch (dataKey) {
-    case 'forwardPower': return '#4CAF50';
-    case 'reflectedPower': return '#F44336';
-    case 'vswr': return '#2196F3';
-    case 'returnLoss': return '#FF9800';
-    case 'temperature': return '#E91E63';
-    case 'voltage': return '#9C27B0';
-    case 'current': return '#FF5722';
-    case 'power': return '#607D8B';
-    default: return '#757575';
+    // Create canvas for graphs
+    const canvas = document.createElement('canvas');
+    canvas.width = 800;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+
+    // Process each metric
+    for (const metric of Object.keys(METRIC_KEYS)) {
+      const metricInfo = getMetricInfo(metric);
+      const formattedData = formatDataPoints(telemetryData, metricInfo.name);
+
+      if (formattedData.length > 0) {
+        // Draw graph on canvas
+        drawGraphOnCanvas(ctx, formattedData, metricInfo, canvas.width, canvas.height);
+
+        // Add graph to PDF
+        const imgData = canvas.toDataURL('image/png');
+        if (currentY + 200 > pdf.internal.pageSize.height) {
+          pdf.addPage();
+          currentY = 20;
+        }
+
+        pdf.text(metric, 105, currentY, { align: 'center' });
+        currentY += 10;
+        pdf.addImage(imgData, 'PNG', 10, currentY, 190, 95);
+        currentY += 100;
+
+        // Add statistics
+        const values = formattedData.map(point => point.y);
+        const stats = {
+          current: values[values.length - 1].toFixed(2),
+          min: Math.min(...values).toFixed(2),
+          max: Math.max(...values).toFixed(2),
+          avg: (values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)
+        };
+
+        pdf.setFontSize(10);
+        pdf.text(`Current: ${stats.current}${metricInfo.unit} | Min: ${stats.min}${metricInfo.unit} | Max: ${stats.max}${metricInfo.unit} | Avg: ${stats.avg}${metricInfo.unit}`, 105, currentY, { align: 'center' });
+        currentY += 20;
+      }
+    }
+
+    return pdf;
+  },
+
+  async fetchData(nodeName, baseStation, timeFilter) {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/telemetry/${nodeName}/${baseStation}?timeFilter=${timeFilter}`);
+      return response.data.data || [];
+    } catch (error) {
+      console.error('Error fetching telemetry data:', error);
+      return [];
+    }
   }
 };
 
@@ -235,168 +206,37 @@ export const generatePDFReport = async (config, baseStations = []) => {
       throw new Error('No base stations available for this node');
     }
 
-    // 2. Process metrics
-    const metrics = [
-      { name: 'forwardPower', title: 'Forward Power', unit: 'W' },
-      { name: 'reflectedPower', title: 'Reflected Power', unit: 'W' },
-      { name: 'vswr', title: 'VSWR', unit: '' },
-      { name: 'returnLoss', title: 'Return Loss', unit: 'dB' },
-      { name: 'temperature', title: 'Temperature', unit: '°C' },
-      { name: 'voltage', title: 'Voltage', unit: 'V' },
-      { name: 'current', title: 'Current', unit: 'A' },
-      { name: 'power', title: 'Power', unit: 'W' }
-    ];
-
-    // 3. Create PDF document (A4: 210 x 297 mm)
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    let yPosition = 20;
-    let currentPage = 1;
-
-    // Add header function
-    const addHeader = () => {
-      pdf.setFontSize(10);
-      pdf.setTextColor(102, 102, 102);
-      pdf.text(`Page ${currentPage}`, 180, 10);
-      currentPage++;
-
-      // Add footer
-      pdf.setFontSize(8);
-      pdf.text('Generated by BSI Telemetry Reporting System', 20, 287);
-      pdf.text(new Date().toLocaleString(), 150, 287);
-    };
-
-    // Add first page header
-    addHeader();
-
-    // Add title with node name
-    pdf.setFontSize(24);
-    pdf.setTextColor(0, 0, 0);
-    pdf.text(`${config.node} Report`, pdf.internal.pageSize.width / 2, 20, { align: 'center' });
-    yPosition += 15;
-
-    // Add report info with better date formatting and time range
-    pdf.setFontSize(10);
-    pdf.setTextColor(102, 102, 102);
-    const reportDate = new Date().toLocaleString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-
-    // Convert time range to human-readable format
-    const timeRangeText = {
-      '5m': '5 minutes',
-      '10m': '10 minutes',
-      '30m': '30 minutes',
-      '1h': '1 hour',
-      '2h': '2 hours',
-      '6h': '6 hours',
-      '1d': '1 day',
-      '2d': '2 days',
-      '5d': '5 days',
-      '1w': '1 week'
-    }[config.timeRange] || config.timeRange;
-
-    pdf.text(`Generated on: ${reportDate}`, 15, 30);
-    pdf.text(`Time Range: Last ${timeRangeText}`, 15, 35);
-
-    // Process each base station
+    // Fetch telemetry data for each base station
+    const allTelemetryData = {};
     for (const baseStation of baseStations) {
-      // Start each base station on a new page
-      pdf.addPage();
-      yPosition = 40;
-
-      // Add base station header
-      pdf.setFontSize(18);
-      pdf.setTextColor(0, 0, 0);
-      pdf.text(`Base Station: ${baseStation.name}`, pdf.internal.pageSize.width / 2, 20, { align: 'center' });
-      
-      // Add time range info under base station name
-      pdf.setFontSize(10);
-      pdf.setTextColor(102, 102, 102);
-      pdf.text(`Time Range: Last ${timeRangeText}`, pdf.internal.pageSize.width / 2, 30, { align: 'center' });
-
-      // Fetch telemetry data for this base station
-      const telemetryResponse = await axios.get(`${API_BASE_URL}/api/telemetry/${config.node}/${baseStation.id}`, {
-        params: {
-          timeFilter: config.timeRange
-        }
+      if (!baseStation || !baseStation.BaseStationName) {
+        console.warn('Invalid base station:', baseStation);
+        continue;
+      }
+      console.log(`Fetching data for base station: ${baseStation.BaseStationName}`);
+      const telemetryData = await PDFReport.fetchData(config.node, baseStation.BaseStationName, config.timeRange);
+      console.log(`Received data for ${baseStation.BaseStationName}:`, {
+        dataLength: telemetryData.length,
+        sampleData: telemetryData.slice(0, 2)
       });
-      const telemetryData = telemetryResponse.data.data;
-
-      // Process metrics for this base station
-      let currentY = 40;
-      const graphWidth = 180;
-      const graphHeight = 80;
-      for (const metric of metrics) {
-        if (currentY + graphHeight + 50 > pdf.internal.pageSize.height) {
-          pdf.addPage();
-          addHeader();
-          currentY = 40;
-        }
-
-        try {
-          const graphDataUrl = await renderGraph(telemetryData, metric);
-          if (graphDataUrl) {
-            pdf.addImage(graphDataUrl, 'PNG', 15, currentY, graphWidth, graphHeight);
-          }
-        } catch (error) {
-          console.error('Error adding graph to PDF:', error);
-        }
-
-        // Add analysis
-        const analysis = generateAnalysis(metric.name, telemetryData, metric.title);
-        pdf.setFontSize(11);
-        pdf.setFont(undefined, 'bold');
-        pdf.text('Analysis:', 20, currentY + graphHeight + 15);
-        pdf.setFont(undefined, 'normal');
-        
-        pdf.setFontSize(10);
-        pdf.text(`Current ${metric.title}: ${analysis.currentValue.toFixed(2)} ${metric.unit}`, 20, currentY + graphHeight + 22);
-        
-        pdf.text(`Average: ${analysis.average.toFixed(2)} ${metric.unit}`, 20, currentY + graphHeight + 27);
-        
-        pdf.text(`Change: ${analysis.percentageChange.toFixed(2)}%`, 20, currentY + graphHeight + 32);
-        
-        pdf.text(`Status: ${analysis.status}`, 20, currentY + graphHeight + 37);
-        
-        // Handle recommendation text wrapping
-        const maxWidth = graphWidth - 10; // Leave some margin
-        const splitText = pdf.splitTextToSize(`Recommendation: ${analysis.recommendation}`, maxWidth);
-        pdf.setFontSize(10);
-        pdf.text(splitText[0], 20, currentY + graphHeight + 42);
-        for (let i = 1; i < splitText.length; i++) {
-          pdf.text(splitText[i], 20, currentY + graphHeight + 42 + (i * 5));
-        }
-
-        currentY += graphHeight + 50; // Move down for next metric
-      }
-
-      // Add some space between base stations
-      yPosition += 20;
-
-      // Check if we need a new page for the next base station
-      if (yPosition > 250) {
-        pdf.addPage();
-        addHeader();
-        yPosition = 20;
-      }
+      allTelemetryData[baseStation.BaseStationName] = telemetryData;
     }
 
-    // Save the PDF
+    // Generate PDF for each base station
+    const pdf = await PDFReport.generateReport(allTelemetryData[baseStations[0].BaseStationName], config.node, baseStations[0].BaseStationName);
     pdf.save(`${config.node}_telemetry_report.pdf`);
 
+    return {
+      success: true,
+      message: 'PDF report generated successfully'
+    };
   } catch (error) {
     console.error('Error generating PDF report:', error);
-    throw error;
+    return {
+      success: false,
+      message: error.message || 'Error generating PDF report'
+    };
   }
 };
+
+export default PDFReport;

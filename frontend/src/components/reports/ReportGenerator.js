@@ -21,11 +21,16 @@ const ReportGenerator = ({ nodes, onError }) => {
       const response = await axios.get(`${API_BASE_URL}/api/basestations/${config.node}`);
       console.log('Base stations API response:', response.data);
 
-      if (!Array.isArray(response.data)) {
-        throw new Error('Invalid base stations data format');
+      if (!response.data || response.data.length === 0) {
+        throw new Error('No base stations found for this node');
       }
 
-      // Format and validate base stations
+      // Format base stations
+      const baseStations = response.data.map(station => ({
+        BaseStationName: station.NodeBaseStationName || station.BaseStationName,
+        NodeName: station.NodeName
+      }));
+      console.log('Formatted base stations:', baseStations);
       const nodeBaseStations = response.data
         .filter(station => {
           if (!station || !station.NodeBaseStationName) {
@@ -39,34 +44,35 @@ const ReportGenerator = ({ nodes, onError }) => {
           id: station.NodeBaseStationName
         }));
 
-      console.log('Formatted base stations:', nodeBaseStations);
+      console.log('Formatted node base stations:', nodeBaseStations);
 
       if (nodeBaseStations.length === 0) {
         throw new Error(`No base stations available for node: ${config.node}`);
       }
 
       setProgress(30);
-      if (config.format === 'html') {
-        setProgress(50);
-        await generateHTMLReport(config);
-        setProgress(90);
-      } else {
-        setProgress(50);
-        await generatePDFReport(config, nodeBaseStations);
-        setProgress(90);
+
+      // Validate base stations
+      if (!baseStations || baseStations.length === 0) {
+        throw new Error('No base stations available for this node');
       }
+
+      if (config.format === 'pdf') {
+        console.log('Generating PDF report with base stations:', baseStations);
+        await generatePDFReport(config, baseStations);
+      } else {
+        console.log('Generating HTML report with base stations:', baseStations);
+        await generateHTMLReport(config, baseStations);
+      }
+      setProgress(90);
       setProgress(100);
       setIsModalOpen(false);
     } catch (error) {
       console.error('Error generating report:', error);
-      if (onError) {
-        onError(error);
-      }
+      onError(error.message || 'Failed to generate report');
     } finally {
-      setTimeout(() => {
-        setIsGenerating(false);
-        setProgress(0);
-      }, 1000); // Keep progress bar visible briefly
+      setIsGenerating(false);
+      setProgress(0);
     }
   }, [nodes]);
 
