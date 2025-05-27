@@ -7,6 +7,47 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+const generateRecommendation = (metric, current, avg, max, min) => {
+  const thresholds = {
+    forwardPower: { min: 10, max: 1000, unit: 'W' },
+    reflectedPower: { min: 0, max: 10, unit: 'W' },
+    vswr: { min: 1, max: 3, unit: '' },
+    returnLoss: { min: -40, max: -10, unit: 'dB' },
+    temperature: { min: 0, max: 50, unit: '°C' },
+    voltage: { min: 11, max: 14, unit: 'V' }
+  };
+
+  const getStatus = (value, limits) => {
+    if (value < limits.min) return 'low';
+    if (value > limits.max) return 'high';
+    return 'normal';
+  };
+
+  const formatValue = (value, unit) => {
+    return `${value.toFixed(2)}${unit}`;
+  };
+
+  const limits = thresholds[metric];
+
+  if (!limits) {
+    return 'No recommendations available for this metric';
+  }
+
+  const status = getStatus(current, limits);
+  const formattedCurrent = formatValue(current, limits.unit);
+  const formattedMin = formatValue(limits.min, limits.unit);
+  const formattedMax = formatValue(limits.max, limits.unit);
+
+  switch (status) {
+    case 'low':
+      return `Current value (${formattedCurrent}) is below minimum threshold of ${formattedMin}. `;
+    case 'high':
+      return `Current value (${formattedCurrent}) is above maximum threshold of ${formattedMax}. `;
+    default:
+      return `Operating normally at ${formattedCurrent} (acceptable range: ${formattedMin} - ${formattedMax}).`;
+  }
+};
+
 const generateAnalysis = (metric, data, title) => {
   if (!data || data.length === 0) {
     return {
@@ -15,7 +56,7 @@ const generateAnalysis = (metric, data, title) => {
       average: 0,
       percentageChange: 0,
       status: 'normal',
-      recommendation: 'No data available'
+      recommendation: 'No valid data points'
     };
   }
 
@@ -54,6 +95,10 @@ const generateAnalysis = (metric, data, title) => {
     // Add other metrics analysis here
   }
 
+  if (!recommendation) {
+    recommendation = generateRecommendation(metric, currentValue, average, Math.max(...values), Math.min(...values));
+  }
+
   return {
     title,
     currentValue,
@@ -64,8 +109,26 @@ const generateAnalysis = (metric, data, title) => {
   };
 };
 
+const formatDate = (timestamp) => {
+  const date = new Date(timestamp);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
 const renderGraph = async (data, metric) => {
   if (!data || data.length === 0) return null;
+  
+  // Format timestamps for X-axis
+  const formattedData = data.map(item => ({
+    ...item,
+    timestamp: formatDate(item.timestamp)
+  }));
 
   // Downsample data for PDF graphs
   const targetPoints = 50;
@@ -100,8 +163,11 @@ const renderGraph = async (data, metric) => {
       <CartesianGrid strokeDasharray="3 3" />
       <XAxis 
         dataKey="timestamp"
-        tickFormatter={(timestamp) => new Date(timestamp).toLocaleTimeString()}
-        interval="preserveStartEnd"
+        type="category"
+        tick={{ fontSize: 12 }}
+        angle={-45}
+        textAnchor="end"
+        tickFormatter={formatDate}
       />
       <YAxis 
         domain={yDomain}
@@ -207,19 +273,57 @@ export const generatePDFReport = async (config, baseStations = []) => {
     // Add first page header
     addHeader();
 
-    // Add report info
+    // Add title with node name
+    pdf.setFontSize(24);
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(`${config.node} Report`, pdf.internal.pageSize.width / 2, 20, { align: 'center' });
+    yPosition += 15;
+
+    // Add report info with better date formatting and time range
     pdf.setFontSize(10);
     pdf.setTextColor(102, 102, 102);
-    pdf.text(`Time Range: ${config.timeRange}`, 20, yPosition);
-    yPosition += 15;
+    const reportDate = new Date().toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    // Convert time range to human-readable format
+    const timeRangeText = {
+      '5m': '5 minutes',
+      '10m': '10 minutes',
+      '30m': '30 minutes',
+      '1h': '1 hour',
+      '2h': '2 hours',
+      '6h': '6 hours',
+      '1d': '1 day',
+      '2d': '2 days',
+      '5d': '5 days',
+      '1w': '1 week'
+    }[config.timeRange] || config.timeRange;
+
+    pdf.text(`Generated on: ${reportDate}`, 15, 30);
+    pdf.text(`Time Range: Last ${timeRangeText}`, 15, 35);
 
     // Process each base station
     for (const baseStation of baseStations) {
+      // Start each base station on a new page
+      pdf.addPage();
+      yPosition = 40;
+
       // Add base station header
-      pdf.setFontSize(14);
+      pdf.setFontSize(18);
       pdf.setTextColor(0, 0, 0);
-      pdf.text(`Base Station: ${baseStation.name}`, 20, yPosition);
-      yPosition += 10;
+      pdf.text(`Base Station: ${baseStation.name}`, pdf.internal.pageSize.width / 2, 20, { align: 'center' });
+      
+      // Add time range info under base station name
+      pdf.setFontSize(10);
+      pdf.setTextColor(102, 102, 102);
+      pdf.text(`Time Range: Last ${timeRangeText}`, pdf.internal.pageSize.width / 2, 30, { align: 'center' });
 
       // Fetch telemetry data for this base station
       const telemetryResponse = await axios.get(`${API_BASE_URL}/api/telemetry/${config.node}/${baseStation.id}`, {
