@@ -20,12 +20,21 @@ The project is organized into three main directories:
 - Interactive graphs with tooltips
 - Automatic threshold detection
 - Mobile-friendly design
+- Advanced PDF reporting:
+  - Comprehensive multi-base station reports
+  - Color-coded metric visualizations
+  - Intelligent trend analysis and status tracking
+  - Metric-specific recommendations and warnings
+  - Detailed statistical analysis
+  - Professional-grade formatting
 
 ## Prerequisites
 
 - Node.js (v14 or higher)
 - MySQL Server
 - npm or yarn
+- Modern web browser with JavaScript enabled
+- PDF viewer for report access
 
 ## Quick Start
 

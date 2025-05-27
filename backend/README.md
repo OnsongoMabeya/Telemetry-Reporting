@@ -11,6 +11,9 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
 - Robust error handling and logging
 - Environment-based configuration
 - Cross-origin resource sharing (CORS) support
+- Enhanced data validation for PDF reports
+- Multi-base station data aggregation
+- Intelligent metric analysis and statistics
 
 ## API Endpoints
 
@@ -48,8 +51,8 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
    - Power
 
    Data sampling intervals:
-   - 5m-10m: 10-second samples
-   - 30m: 30-second samples
+   - 5m-10m: 10-second samples (recommended for detailed PDF reports)
+   - 30m: 30-second samples (recommended for PDF trend analysis)
    - 1h: 1-minute samples
    - 2h: 2-minute samples
    - 6h: 5-minute samples
@@ -57,6 +60,13 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
    - 2d: 30-minute samples
    - 5d: 1-hour samples
    - 1w: 2-hour samples
+   
+   PDF Report Data Requirements:
+   - Minimum 5 data points for trend analysis
+   - Complete metric set for comprehensive analysis
+   - Valid numerical values for statistical calculations
+   - Timestamps within selected range
+   - Base station identification for multi-station reports
 ```
 
 ## Database Schema
