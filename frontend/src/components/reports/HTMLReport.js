@@ -6,74 +6,7 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-const style = `
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      line-height: 1.6;
-      margin: 0;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-    .header {
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-    }
-    .header h1 {
-      color: #1976d2;
-      margin: 0 0 10px 0;
-    }
-    .header-info {
-      color: #666;
-      font-size: 14px;
-    }
-    .metrics-container {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
-    }
-    .metric {
-      background-color: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .metric-title {
-      font-size: 18px;
-      font-weight: bold;
-      color: #333;
-      margin-bottom: 15px;
-    }
-    .graph {
-      margin: 15px 0;
-    }
-    .graph img {
-      max-width: 100%;
-      height: auto;
-    }
-    .analysis {
-      font-size: 14px;
-      color: #666;
-    }
-    .analysis p {
-      margin: 5px 0;
-    }
-    .warning {
-      color: #f44336;
-      font-weight: bold;
-    }
-    .normal {
-      color: #4caf50;
-      font-weight: bold;
-    }
-  </style>
-`;
-
 const generateAnalysis = (metric, data) => {
-  // Reuse the analysis logic from NodeDetail.js
   const currentValue = parseFloat(data[data.length - 1]?.[metric]) || 0;
   const values = data.map(item => parseFloat(item[metric])).filter(val => !isNaN(val));
   const average = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
@@ -98,22 +31,16 @@ const generateAnalysis = (metric, data) => {
     // Add other metrics analysis here
   }
 
-  return {
-    currentValue,
-    average,
-    percentageChange,
-    status,
-    recommendation
-  };
+  return { currentValue, average, percentageChange, status, recommendation };
 };
 
-// Store React root reference
 let chartRoot = null;
 
 const renderGraph = async (data, metric) => {
-  // Filter out any invalid data points
   const validData = data.filter(point => 
-    point.timestamp && point[metric.name] !== undefined && point[metric.name] !== null
+    point[metric.name] !== null && 
+    point[metric.name] !== undefined && 
+    !isNaN(point[metric.name])
   );
 
   if (validData.length === 0) {
@@ -121,78 +48,86 @@ const renderGraph = async (data, metric) => {
     return null;
   }
 
-  const chartContainer = document.createElement('div');
-  chartContainer.style.width = '800px';
-  chartContainer.style.height = '300px';
-  document.body.appendChild(chartContainer);
+  const canvas = document.createElement('canvas');
+  canvas.width = 800;
+  canvas.height = 400;
+  const ctx = canvas.getContext('2d');
 
-  try {
-    const chart = (
-      <LineChart
-        width={600}
-        height={300}
-        data={validData}
-        margin={{ top: 20, right: 30, bottom: 30, left: 40 }}
-      >
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis 
-          dataKey="timestamp" 
-          angle={-45}
-          textAnchor="end"
-          height={70}
-          interval={Math.floor(validData.length / 5)}
-        />
-        <YAxis 
-          label={{ 
-            value: metric.unit, 
-            angle: -90, 
-            position: 'insideLeft',
-            style: { textAnchor: 'middle' }
-          }} 
-        />
-        <Tooltip />
-        <Legend />
-        <Line
-          type="monotone"
-          dataKey={metric.name}
-          name={metric.title}
-          stroke={getGraphColor(metric.name)}
-          dot={false}
-          strokeWidth={2}
-        />
-      </LineChart>
-    );
+  // Set white background
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    if (chartRoot) {
-      chartRoot.unmount();
+  // Graph margins
+  const margin = { top: 40, right: 30, bottom: 60, left: 60 };
+  const graphWidth = canvas.width - margin.left - margin.right;
+  const graphHeight = canvas.height - margin.top - margin.bottom;
+
+  // Find min/max values
+  const values = validData.map(d => d[metric.name]);
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const valueRange = maxValue - minValue;
+
+  // Draw axes
+  ctx.beginPath();
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 1;
+  
+  // Y-axis
+  ctx.moveTo(margin.left, margin.top);
+  ctx.lineTo(margin.left, canvas.height - margin.bottom);
+  
+  // X-axis
+  ctx.moveTo(margin.left, canvas.height - margin.bottom);
+  ctx.lineTo(canvas.width - margin.right, canvas.height - margin.bottom);
+  ctx.stroke();
+
+  // Draw data points and lines
+  ctx.beginPath();
+  ctx.strokeStyle = getGraphColor(metric.name);
+  ctx.lineWidth = 2;
+
+  validData.forEach((point, i) => {
+    const x = margin.left + (i * (graphWidth / (validData.length - 1)));
+    const normalizedValue = (point[metric.name] - minValue) / valueRange;
+    const y = margin.top + (graphHeight - (normalizedValue * graphHeight));
+
+    if (i === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
     }
-    chartRoot = ReactDOM.createRoot(chartContainer);
-    chartRoot.render(chart);
+  });
+  ctx.stroke();
 
-    // Wait for chart to render
-    await new Promise(resolve => setTimeout(resolve, 500));
+  // Add labels
+  ctx.fillStyle = '#000000';
+  ctx.font = '12px Arial';
+  ctx.textAlign = 'center';
 
-    const canvas = await html2canvas(chartContainer, {
-      logging: false,
-      scale: 2, // Increase resolution
-      useCORS: true
-    });
+  // Title
+  ctx.font = 'bold 14px Arial';
+  ctx.fillText(metric.title, canvas.width / 2, margin.top / 2);
 
-    return canvas.toDataURL('image/png');
-  } catch (error) {
-    console.error('Error rendering graph:', error);
-    return null;
-  } finally {
-    try {
-      if (chartRoot) {
-        chartRoot.unmount();
-        chartRoot = null;
-      }
-      document.body.removeChild(chartContainer);
-    } catch (e) {
-      console.warn('Error cleaning up graph container:', e);
-    }
+  // Y-axis labels
+  ctx.textAlign = 'right';
+  ctx.font = '12px Arial';
+  for (let i = 0; i <= 5; i++) {
+    const value = minValue + (valueRange * (i / 5));
+    const y = margin.top + graphHeight - (graphHeight * (i / 5));
+    ctx.fillText(value.toFixed(1) + metric.unit, margin.left - 5, y + 4);
   }
+
+  // X-axis labels (show only 5 timestamps for clarity)
+  ctx.textAlign = 'center';
+  ctx.font = '12px Arial';
+  for (let i = 0; i < validData.length; i += Math.ceil(validData.length / 5)) {
+    const x = margin.left + (i * (graphWidth / (validData.length - 1)));
+    const timestamp = new Date(validData[i].timestamp).toLocaleTimeString();
+    ctx.fillText(timestamp, x, canvas.height - margin.bottom + 20);
+  }
+
+  return canvas.toDataURL('image/png');
 };
 
 const getGraphColor = (dataKey) => {
@@ -209,48 +144,31 @@ const getGraphColor = (dataKey) => {
   }
 };
 
-const createHTMLReport = async (node, baseStations, timeRange) => {
+const createHTMLReport = (node, baseStations, timeRange) => {
   const style = `
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-
     <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
       body { 
         font-family: 'Inter', sans-serif;
         margin: 40px;
         color: #1a1a1a;
         line-height: 1.6;
       }
-      h1 {
-        color: #1976d2;
-        font-weight: 600;
-        font-size: 28px;
-        margin-bottom: 24px;
-      }
-      h2 {
-        color: #2c3e50;
-        font-weight: 500;
-        font-size: 22px;
-        margin-top: 40px;
-        padding-bottom: 8px;
-        border-bottom: 2px solid #e0e0e0;
+      h1 { color: #1976d2; font-weight: 600; font-size: 28px; margin-bottom: 24px; }
+      h2 { color: #2c3e50; font-weight: 500; font-size: 22px; margin-top: 40px; }
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 24px;
+        margin: 24px 0;
       }
       .metric {
-        margin: 24px 0;
         padding: 24px;
         border-radius: 12px;
         background: #ffffff;
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-        transition: box-shadow 0.3s ease;
       }
-      .metric:hover {
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-      }
-      .metric-title {
-        font-size: 18px;
-        font-weight: 500;
-        color: #2c3e50;
-        margin-bottom: 16px;
-      }
+      .metric-title { font-size: 18px; font-weight: 500; color: #2c3e50; margin-bottom: 16px; }
       .analysis {
         margin-top: 20px;
         padding: 16px;
@@ -258,48 +176,9 @@ const createHTMLReport = async (node, baseStations, timeRange) => {
         border-radius: 8px;
         font-size: 14px;
       }
-      .warning {
-        color: #f44336;
-        padding: 8px 12px;
-        background: #ffebee;
-        border-radius: 4px;
-        margin-top: 8px;
-      }
-      .normal {
-        color: #4caf50;
-        padding: 8px 12px;
-        background: #e8f5e9;
-        border-radius: 4px;
-        margin-top: 8px;
-      }
-      .graph {
-        margin: 20px 0;
-        padding: 16px;
-        background: #f8f9fa;
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      .graph img {
-        width: 100%;
-        height: auto;
-        border-radius: 4px;
-      }
-      .header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 16px 24px;
-        background: #f8f9fa;
-        border-radius: 8px;
-        margin-bottom: 32px;
-      }
-      .header-info {
-        font-size: 14px;
-        color: #666;
-      }
-      @media print {
-        .page-break { page-break-before: always; }
-      }
+      .warning { color: #dc3545; }
+      .normal { color: #28a745; }
+      @media print { .page-break { page-break-before: always; } }
     </style>
   `;
 
@@ -315,6 +194,7 @@ const createHTMLReport = async (node, baseStations, timeRange) => {
       <p>Node: ${node}</p>
       <p>Time Range: ${timeRange}</p>
       <p>Generated: ${new Date().toLocaleString()}</p>
+      <p>Total Base Stations: ${baseStations.length}</p>
   `;
 
   baseStations.forEach((baseStation, index) => {
@@ -322,8 +202,8 @@ const createHTMLReport = async (node, baseStations, timeRange) => {
       content += '<div class="page-break"></div>';
     }
     content += `<h2>Base Station: ${baseStation.name}</h2>`;
+    content += '<div class="metrics-grid">';
     baseStation.metrics.forEach(metric => {
-      const analysis = generateAnalysis(metric.name, metric.data);
       content += `
         <div class="metric">
           <div class="metric-title">${metric.title}</div>
@@ -331,14 +211,15 @@ const createHTMLReport = async (node, baseStations, timeRange) => {
             <img src="${metric.graphImage}" alt="${metric.title} Graph" style="max-width: 100%;">
           </div>
           <div class="analysis">
-            <p>Current Value: ${analysis.currentValue.toFixed(2)} ${metric.unit}</p>
-            <p>Average: ${analysis.average.toFixed(2)} ${metric.unit}</p>
-            <p>Change: ${analysis.percentageChange.toFixed(2)}%</p>
-            <p class="${analysis.status}">${analysis.recommendation}</p>
+            <p>Current Value: ${metric.analysis.currentValue.toFixed(2)} ${metric.unit}</p>
+            <p>Average: ${metric.analysis.average.toFixed(2)} ${metric.unit}</p>
+            <p>Change: ${metric.analysis.percentageChange.toFixed(2)}%</p>
+            ${metric.analysis.recommendation ? `<p class="${metric.analysis.status}">${metric.analysis.recommendation}</p>` : ''}
           </div>
         </div>
       `;
     });
+    content += '</div>';
   });
 
   content += `
@@ -351,7 +232,6 @@ const createHTMLReport = async (node, baseStations, timeRange) => {
 
 export const generateHTMLReport = async (config, baseStations = []) => {
   try {
-    // 1. Define metrics
     const metrics = [
       { name: 'forwardPower', title: 'Forward Power', unit: 'W' },
       { name: 'reflectedPower', title: 'Reflected Power', unit: 'W' },
@@ -363,93 +243,30 @@ export const generateHTMLReport = async (config, baseStations = []) => {
       { name: 'power', title: 'Power', unit: 'W' }
     ];
 
-    // 2. Process each base station
-    const baseStationContent = await Promise.all(baseStations.map(async baseStation => {
-      // Fetch telemetry data for this base station
+    const processedBaseStations = await Promise.all(baseStations.map(async baseStation => {
       const response = await axios.get(`${API_BASE_URL}/api/telemetry/${config.node}/${baseStation.name}`, {
-        params: {
-          timeFilter: config.timeRange
-        }
+        params: { timeFilter: config.timeRange }
       });
       const telemetryData = response.data.data;
 
-      // Generate graphs and analysis for each metric
-      const metricsContent = await Promise.all(metrics.map(async metric => {
+      const processedMetrics = await Promise.all(metrics.map(async metric => {
         const data = telemetryData.map(item => ({
           timestamp: new Date(item.sample_time).toLocaleString(),
-          [metric.name]: item[metric.name]
+          [metric.name]: parseFloat(item[metric.name]) || 0
         }));
 
         const analysis = generateAnalysis(metric.name, telemetryData);
         const graphImage = await renderGraph(data, metric);
 
-        return `
-          <div class="metric">
-            <div class="metric-title">${metric.title}</div>
-            <div class="graph">
-              <img src="${graphImage}" alt="${metric.title} Graph" style="max-width: 100%;">
-            </div>
-            <div class="analysis">
-              <p>Current Value: ${analysis.currentValue.toFixed(2)} ${metric.unit}</p>
-              <p>Average: ${analysis.average.toFixed(2)} ${metric.unit}</p>
-              <p>Change: ${analysis.percentageChange.toFixed(2)}%</p>
-              <p class="${analysis.status}">${analysis.recommendation}</p>
-            </div>
-          </div>
-        `;
+        return { ...metric, data, analysis, graphImage };
       }));
 
-      return `
-        <div class="base-station-section">
-          <h2>Base Station: ${baseStation.BaseStationName}</h2>
-          <div class="metrics-container">
-            ${metricsContent.join('')}
-          </div>
-        </div>
-      `;
+      return { ...baseStation, metrics: processedMetrics };
     }));
 
-    // 3. Generate HTML content
-    const content = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Telemetry Report - ${config.node}</title>
-        ${style}
-        <style>
-          .base-station-section {
-            margin-bottom: 40px;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-          }
-          .base-station-section h2 {
-            color: #1976d2;
-            margin: 0 0 20px 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #e0e0e0;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>Telemetry Report - ${config.node}</h1>
-          <div class="header-info">
-            <p>Time Range: ${config.timeRange}</p>
-            <p>Generated: ${new Date().toLocaleString()}</p>
-            <p>Total Base Stations: ${baseStations.length}</p>
-          </div>
-        </div>
-
-        ${baseStationContent.join('')}
-      </body>
-      </html>
-    `;
-
-    // 4. Save the file
-    const blob = new Blob([content], { type: 'text/html' });
-    saveAs(blob, `telemetry-report-${config.node}.html`);
+    const html = createHTMLReport(config.node, processedBaseStations, config.timeRange);
+    const blob = new Blob([html], { type: 'text/html' });
+    saveAs(blob, `telemetry-report-${config.node}-${new Date().toISOString()}.html`);
   } catch (error) {
     console.error('Error generating HTML report:', error);
     throw error;
