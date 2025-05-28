@@ -108,43 +108,83 @@ const generateAnalysis = (metric, data) => {
 };
 
 const renderGraph = async (data, metric) => {
+  // Filter out any invalid data points
+  const validData = data.filter(point => 
+    point.timestamp && point[metric.name] !== undefined && point[metric.name] !== null
+  );
+
+  if (validData.length === 0) {
+    console.warn(`No valid data points for ${metric.name}`);
+    return null;
+  }
+
   const chartContainer = document.createElement('div');
   chartContainer.style.width = '800px';
   chartContainer.style.height = '300px';
   document.body.appendChild(chartContainer);
 
-  const chart = (
-    <LineChart
-      width={600}
-      height={300}
-      data={data}
-      margin={{ top: 20, right: 30, bottom: 30, left: 40 }}
-    >
-      <CartesianGrid strokeDasharray="3 3" />
-      <XAxis dataKey="timestamp" />
-      <YAxis />
-      <Tooltip />
-      <Legend />
-      <Line
-        type="monotone"
-        dataKey={metric.name}
-        stroke={getGraphColor(metric.name)}
-        dot={false}
-      />
-    </LineChart>
-  );
+  try {
+    const chart = (
+      <LineChart
+        width={600}
+        height={300}
+        data={validData}
+        margin={{ top: 20, right: 30, bottom: 30, left: 40 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis 
+          dataKey="timestamp" 
+          angle={-45}
+          textAnchor="end"
+          height={70}
+          interval={Math.floor(validData.length / 5)}
+        />
+        <YAxis 
+          label={{ 
+            value: metric.unit, 
+            angle: -90, 
+            position: 'insideLeft',
+            style: { textAnchor: 'middle' }
+          }} 
+        />
+        <Tooltip />
+        <Legend />
+        <Line
+          type="monotone"
+          dataKey={metric.name}
+          name={metric.title}
+          stroke={getGraphColor(metric.name)}
+          dot={false}
+          strokeWidth={2}
+        />
+      </LineChart>
+    );
 
-  const root = ReactDOM.createRoot(chartContainer);
-  root.render(chart);
+    const root = ReactDOM.createRoot(chartContainer);
+    root.render(chart);
 
-  // Wait for chart to render
-  await new Promise(resolve => setTimeout(resolve, 100));
+    // Wait for chart to render
+    await new Promise(resolve => setTimeout(resolve, 500));
 
-  const canvas = await html2canvas(chartContainer);
-  root.unmount();
-  document.body.removeChild(chartContainer);
-  
-  return canvas.toDataURL('image/png');
+    const canvas = await html2canvas(chartContainer, {
+      logging: false,
+      scale: 2, // Increase resolution
+      useCORS: true
+    });
+
+    return canvas.toDataURL('image/png');
+  } catch (error) {
+    console.error('Error rendering graph:', error);
+    return null;
+  } finally {
+    try {
+      const root = ReactDOM.createRoot(chartContainer);
+      root.unmount();
+      document.body.removeChild(chartContainer);
+    } catch (e) {
+      console.warn('Error cleaning up graph container:', e);
+    }
+  }
 };
 
 const getGraphColor = (dataKey) => {
@@ -301,17 +341,9 @@ const createHTMLReport = async (node, baseStations, timeRange) => {
   return content;
 };
 
-export const generateHTMLReport = async (config) => {
+export const generateHTMLReport = async (config, baseStations = []) => {
   try {
-    // 1. Fetch telemetry data
-    const response = await axios.get(`${API_BASE_URL}/api/telemetry/${config.node}/${config.baseStation}`, {
-      params: {
-        timeFilter: config.timeRange
-      }
-    });
-    const telemetryData = response.data.data;
-
-    // 2. Process metrics
+    // 1. Define metrics
     const metrics = [
       { name: 'forwardPower', title: 'Forward Power', unit: 'W' },
       { name: 'reflectedPower', title: 'Reflected Power', unit: 'W' },
@@ -323,56 +355,93 @@ export const generateHTMLReport = async (config) => {
       { name: 'power', title: 'Power', unit: 'W' }
     ];
 
-    // 3. Generate graphs and analyses
-    const metricsContent = await Promise.all(metrics.map(async (metric) => {
-      const analysis = generateAnalysis(metric.name, telemetryData);
-      const graphDataUrl = await renderGraph(telemetryData, metric);
-      
-      return `
-        <div class="metric">
-          <div class="metric-title">${metric.title}</div>
-          <div class="graph">
-            ${graphDataUrl ? `<img src="${graphDataUrl}" alt="${metric.title} Graph" />` : ''}
+    // 2. Process each base station
+    const baseStationContent = await Promise.all(baseStations.map(async baseStation => {
+      // Fetch telemetry data for this base station
+      const response = await axios.get(`${API_BASE_URL}/api/telemetry/${config.node}/${baseStation.BaseStationName}`, {
+        params: {
+          timeFilter: config.timeRange
+        }
+      });
+      const telemetryData = response.data.data;
+
+      // Generate graphs and analysis for each metric
+      const metricsContent = await Promise.all(metrics.map(async metric => {
+        const data = telemetryData.map(item => ({
+          timestamp: new Date(item.sample_time).toLocaleString(),
+          [metric.name]: item[metric.name]
+        }));
+
+        const analysis = generateAnalysis(metric.name, telemetryData);
+        const graphImage = await renderGraph(data, metric);
+
+        return `
+          <div class="metric">
+            <div class="metric-title">${metric.title}</div>
+            <div class="graph">
+              <img src="${graphImage}" alt="${metric.title} Graph" style="max-width: 100%;">
+            </div>
+            <div class="analysis">
+              <p>Current Value: ${analysis.currentValue.toFixed(2)} ${metric.unit}</p>
+              <p>Average: ${analysis.average.toFixed(2)} ${metric.unit}</p>
+              <p>Change: ${analysis.percentageChange.toFixed(2)}%</p>
+              <p class="${analysis.status}">${analysis.recommendation}</p>
+            </div>
           </div>
-          <div class="analysis">
-            <p>Current Value: ${analysis.currentValue.toFixed(2)} ${metric.unit}</p>
-            <p>Average: ${analysis.average.toFixed(2)} ${metric.unit}</p>
-            <p>Change: ${analysis.percentageChange.toFixed(2)}%</p>
-            <p class="${analysis.status}">${analysis.recommendation}</p>
+        `;
+      }));
+
+      return `
+        <div class="base-station-section">
+          <h2>Base Station: ${baseStation.BaseStationName}</h2>
+          <div class="metrics-container">
+            ${metricsContent.join('')}
           </div>
         </div>
       `;
     }));
 
-    // 4. Generate HTML content
+    // 3. Generate HTML content
     const content = `
       <!DOCTYPE html>
       <html>
       <head>
         <title>Telemetry Report - ${config.node}</title>
         ${style}
+        <style>
+          .base-station-section {
+            margin-bottom: 40px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          }
+          .base-station-section h2 {
+            color: #1976d2;
+            margin: 0 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+          }
+        </style>
       </head>
       <body>
         <div class="header">
-          <h1>Telemetry Report</h1>
+          <h1>Telemetry Report - ${config.node}</h1>
           <div class="header-info">
-            <p>Node: ${config.node}</p>
-            <p>Base Station: ${config.baseStation}</p>
             <p>Time Range: ${config.timeRange}</p>
             <p>Generated: ${new Date().toLocaleString()}</p>
+            <p>Total Base Stations: ${baseStations.length}</p>
           </div>
         </div>
 
-        <div class="metrics-container">
-          ${metricsContent.join('')}
-        </div>
+        ${baseStationContent.join('')}
       </body>
       </html>
     `;
 
-    // 5. Save the file
+    // 4. Save the file
     const blob = new Blob([content], { type: 'text/html' });
-    saveAs(blob, `telemetry-report-${config.node}-${config.baseStation}.html`);
+    saveAs(blob, `telemetry-report-${config.node}.html`);
   } catch (error) {
     console.error('Error generating HTML report:', error);
     throw error;

@@ -67,10 +67,18 @@ pool.getConnection((err, connection) => {
 app.get('/api/nodes', async (req, res) => {
   try {
     const [rows] = await pool.promise().query('SELECT DISTINCT NodeName FROM node_status_table ORDER BY NodeName');
-    res.json(rows);
+    // Transform the rows into the expected format
+    const nodes = rows.map(row => ({
+      id: row.NodeName,  // Use NodeName as the id
+      name: row.NodeName // Use NodeName as the display name
+    }));
+    res.json(nodes);
   } catch (error) {
     console.error('Error fetching nodes:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Internal server error', 
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    });
   }
 });
 
@@ -81,10 +89,19 @@ app.get('/api/basestations/:nodeName', async (req, res) => {
       'SELECT DISTINCT NodeBaseStationName FROM node_status_table WHERE NodeName = ? ORDER BY NodeBaseStationName',
       [nodeName]
     );
-    res.json(rows);
+    // Transform the rows into the expected format
+    const baseStations = rows.map(row => ({
+      id: row.NodeBaseStationName,
+      name: row.NodeBaseStationName,
+      node: nodeName
+    }));
+    res.json(baseStations);
   } catch (error) {
     console.error('Error fetching base stations:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

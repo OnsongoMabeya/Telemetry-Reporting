@@ -334,7 +334,7 @@ const NodeDetail = () => {
         const response = await axios.get(`${API_BASE_URL}/api/nodes`);
         setNodes(response.data);
         if (response.data.length > 0) {
-          setSelectedNode(response.data[0].NodeName);
+          setSelectedNode(response.data[0].id); // Use id instead of NodeName
         }
       } catch (err) {
         console.error('Error fetching nodes:', err);
@@ -485,8 +485,8 @@ const NodeDetail = () => {
               onChange={(e) => setSelectedNode(e.target.value)}
             >
               {nodes.map((node) => (
-                <MenuItem key={node.NodeName} value={node.NodeName}>
-                  {node.NodeName}
+                <MenuItem key={node.id} value={node.id}>
+                  {node.name}
                 </MenuItem>
               ))}
             </Select>
