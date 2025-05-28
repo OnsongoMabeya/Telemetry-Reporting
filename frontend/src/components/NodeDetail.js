@@ -376,24 +376,12 @@ const NodeDetail = () => {
           throw new Error('Invalid base stations data format');
         }
 
-        const formattedStations = response.data
-          .filter(station => {
-            if (!station || !station.NodeBaseStationName) {
-              console.warn('Invalid base station data:', station);
-              return false;
-            }
-            return true;
-          })
-          .map(station => ({
-            id: station.NodeBaseStationName,
-            name: station.NodeBaseStationName,
-            node: selectedNode
-          }));
-
-        console.log('Formatted base stations:', formattedStations);
+        // The response.data is already in the correct format from the backend
+        const formattedStations = response.data;
+        console.log('Base stations:', formattedStations);
 
         if (formattedStations.length === 0) {
-          console.warn(`No valid base stations found for node ${selectedNode}`);
+          console.warn(`No base stations found for node ${selectedNode}`);
           setError(`No base stations available for node: ${selectedNode}`);
         }
 

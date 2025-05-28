@@ -25,24 +25,9 @@ const ReportGenerator = ({ nodes, onError }) => {
         throw new Error('No base stations found for this node');
       }
 
-      // Format base stations
-      const baseStations = response.data.map(station => ({
-        BaseStationName: station.NodeBaseStationName || station.BaseStationName,
-        NodeName: station.NodeName
-      }));
-      console.log('Formatted base stations:', baseStations);
-      const nodeBaseStations = response.data
-        .filter(station => {
-          if (!station || !station.NodeBaseStationName) {
-            console.log('Invalid base station:', station);
-            return false;
-          }
-          return true;
-        })
-        .map(station => ({
-          name: station.NodeBaseStationName,
-          id: station.NodeBaseStationName
-        }));
+      // The base stations are already in the correct format from the backend
+      const nodeBaseStations = response.data;
+      console.log('Base stations:', nodeBaseStations);
 
       console.log('Formatted node base stations:', nodeBaseStations);
 
@@ -52,17 +37,12 @@ const ReportGenerator = ({ nodes, onError }) => {
 
       setProgress(30);
 
-      // Validate base stations
-      if (!baseStations || baseStations.length === 0) {
-        throw new Error('No base stations available for this node');
-      }
-
       if (config.format === 'pdf') {
-        console.log('Generating PDF report with base stations:', baseStations);
-        await generatePDFReport(config, baseStations);
+        console.log('Generating PDF report with base stations:', nodeBaseStations);
+        await generatePDFReport(config, nodeBaseStations);
       } else {
-        console.log('Generating HTML report with base stations:', baseStations);
-        await generateHTMLReport(config, baseStations);
+        console.log('Generating HTML report with base stations:', nodeBaseStations);
+        await generateHTMLReport(config, nodeBaseStations);
       }
       setProgress(90);
       setProgress(100);

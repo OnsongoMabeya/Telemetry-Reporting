@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { styled } from '@mui/material/styles';
 import {
   Dialog,
@@ -36,9 +36,19 @@ const StyledFormControl = styled(FormControl)(({ theme }) => ({
 }));
 
 const ReportConfigModal = ({ open, onClose, nodes, onGenerate }) => {
+  // Initialize state
   const [selectedNode, setSelectedNode] = useState('');
   const [timeRange, setTimeRange] = useState('1d');
   const [format, setFormat] = useState('html');
+
+  // Reset selectedNode when modal opens with new nodes
+  useEffect(() => {
+    if (nodes && nodes.length > 0) {
+      setSelectedNode(nodes[0].id);
+    }
+  }, [nodes]);
+
+
 
   const timeRanges = [
     { value: '5m', label: 'Last 5 minutes' },
@@ -75,8 +85,8 @@ const ReportConfigModal = ({ open, onClose, nodes, onGenerate }) => {
               onChange={(e) => setSelectedNode(e.target.value)}
             >
               {nodes.map((node) => (
-                <MenuItem key={node.NodeName} value={node.NodeName}>
-                  {node.NodeName}
+                <MenuItem key={node.id} value={node.id}>
+                  {node.name}
                 </MenuItem>
               ))}
             </Select>

@@ -74,10 +74,10 @@ const style = `
 
 const generateAnalysis = (metric, data) => {
   // Reuse the analysis logic from NodeDetail.js
-  const currentValue = data[data.length - 1]?.[metric] || 0;
-  const values = data.map(item => item[metric]).filter(val => val !== null && val !== undefined);
-  const average = values.reduce((a, b) => a + b, 0) / values.length;
-  const percentageChange = ((currentValue - average) / average) * 100;
+  const currentValue = parseFloat(data[data.length - 1]?.[metric]) || 0;
+  const values = data.map(item => parseFloat(item[metric])).filter(val => !isNaN(val));
+  const average = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  const percentageChange = average !== 0 ? ((currentValue - average) / average) * 100 : 0;
 
   let status = 'normal';
   let recommendation = '';
@@ -106,6 +106,9 @@ const generateAnalysis = (metric, data) => {
     recommendation
   };
 };
+
+// Store React root reference
+let chartRoot = null;
 
 const renderGraph = async (data, metric) => {
   // Filter out any invalid data points
@@ -160,8 +163,11 @@ const renderGraph = async (data, metric) => {
       </LineChart>
     );
 
-    const root = ReactDOM.createRoot(chartContainer);
-    root.render(chart);
+    if (chartRoot) {
+      chartRoot.unmount();
+    }
+    chartRoot = ReactDOM.createRoot(chartContainer);
+    chartRoot.render(chart);
 
     // Wait for chart to render
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -178,8 +184,10 @@ const renderGraph = async (data, metric) => {
     return null;
   } finally {
     try {
-      const root = ReactDOM.createRoot(chartContainer);
-      root.unmount();
+      if (chartRoot) {
+        chartRoot.unmount();
+        chartRoot = null;
+      }
       document.body.removeChild(chartContainer);
     } catch (e) {
       console.warn('Error cleaning up graph container:', e);
@@ -358,7 +366,7 @@ export const generateHTMLReport = async (config, baseStations = []) => {
     // 2. Process each base station
     const baseStationContent = await Promise.all(baseStations.map(async baseStation => {
       // Fetch telemetry data for this base station
-      const response = await axios.get(`${API_BASE_URL}/api/telemetry/${config.node}/${baseStation.BaseStationName}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/telemetry/${config.node}/${baseStation.name}`, {
         params: {
           timeFilter: config.timeRange
         }
