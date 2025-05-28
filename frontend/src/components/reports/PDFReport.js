@@ -482,17 +482,17 @@ export const generatePDFReport = async (config, baseStations = []) => {
     // Fetch telemetry data for each base station
     const allTelemetryData = {};
     for (const baseStation of baseStations) {
-      if (!baseStation || !baseStation.BaseStationName) {
+      if (!baseStation || !baseStation.name) {
         console.warn('Invalid base station:', baseStation);
         continue;
       }
-      console.log(`Fetching data for base station: ${baseStation.BaseStationName}`);
-      const telemetryData = await PDFReport.fetchData(config.node, baseStation.BaseStationName, config.timeRange);
-      console.log(`Received data for ${baseStation.BaseStationName}:`, {
+      console.log(`Fetching data for base station: ${baseStation.name}`);
+      const telemetryData = await PDFReport.fetchData(config.node, baseStation.name, config.timeRange);
+      console.log(`Received data for ${baseStation.name}:`, {
         dataLength: telemetryData.length,
         sampleData: telemetryData.slice(0, 2)
       });
-      allTelemetryData[baseStation.BaseStationName] = telemetryData;
+      allTelemetryData[baseStation.name] = telemetryData;
     }
 
     // Generate PDF for each base station
@@ -500,7 +500,7 @@ export const generatePDFReport = async (config, baseStations = []) => {
     let isFirstPage = true;
 
     for (const baseStation of baseStations) {
-      const telemetryData = allTelemetryData[baseStation.BaseStationName];
+      const telemetryData = allTelemetryData[baseStation.name];
       if (!telemetryData || telemetryData.length === 0) continue;
 
       if (!isFirstPage) {
@@ -508,7 +508,7 @@ export const generatePDFReport = async (config, baseStations = []) => {
       }
       isFirstPage = false;
 
-      await PDFReport.generateReport(telemetryData, config.node, baseStation.BaseStationName, pdf);
+      await PDFReport.generateReport(telemetryData, config.node, baseStation.name, pdf);
     }
 
     pdf.save(`${config.node}_telemetry_report.pdf`);

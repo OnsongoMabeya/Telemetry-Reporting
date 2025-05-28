@@ -1,6 +1,4 @@
 import html2canvas from 'html2canvas';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import * as ReactDOM from 'react-dom/client';
 import { saveAs } from 'file-saver';
 import axios from 'axios';
 
@@ -66,7 +64,7 @@ const renderGraph = async (data, metric) => {
   const values = validData.map(d => d[metric.name]);
   const minValue = Math.min(...values);
   const maxValue = Math.max(...values);
-  const valueRange = maxValue - minValue;
+  const valueRange = maxValue - minValue || 1; // Prevent division by zero
 
   // Draw axes
   ctx.beginPath();
@@ -88,7 +86,7 @@ const renderGraph = async (data, metric) => {
   ctx.lineWidth = 2;
 
   validData.forEach((point, i) => {
-    const x = margin.left + (i * (graphWidth / (validData.length - 1)));
+    const x = margin.left + (i * (graphWidth / (validData.length - 1 || 1)));
     const normalizedValue = (point[metric.name] - minValue) / valueRange;
     const y = margin.top + (graphHeight - (normalizedValue * graphHeight));
 
@@ -107,7 +105,7 @@ const renderGraph = async (data, metric) => {
 
   // Title
   ctx.font = 'bold 14px Arial';
-  ctx.fillText(metric.title, canvas.width / 2, margin.top / 2);
+  ctx.fillText(`${metric.title} (${metric.unit})`, canvas.width / 2, margin.top / 2);
 
   // Y-axis labels
   ctx.textAlign = 'right';
@@ -115,14 +113,14 @@ const renderGraph = async (data, metric) => {
   for (let i = 0; i <= 5; i++) {
     const value = minValue + (valueRange * (i / 5));
     const y = margin.top + graphHeight - (graphHeight * (i / 5));
-    ctx.fillText(value.toFixed(1) + metric.unit, margin.left - 5, y + 4);
+    ctx.fillText(value.toFixed(1), margin.left - 5, y + 4);
   }
 
-  // X-axis labels (show only 5 timestamps for clarity)
+  // X-axis labels
   ctx.textAlign = 'center';
   ctx.font = '12px Arial';
   for (let i = 0; i < validData.length; i += Math.ceil(validData.length / 5)) {
-    const x = margin.left + (i * (graphWidth / (validData.length - 1)));
+    const x = margin.left + (i * (graphWidth / (validData.length - 1 || 1)));
     const timestamp = new Date(validData[i].timestamp).toLocaleTimeString();
     ctx.fillText(timestamp, x, canvas.height - margin.bottom + 20);
   }
