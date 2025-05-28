@@ -20,13 +20,16 @@ The project is organized into three main directories:
 - Interactive graphs with tooltips
 - Automatic threshold detection
 - Mobile-friendly design
-- Advanced PDF reporting:
+- Advanced reporting features:
+  - Multiple report formats (HTML and PDF)
   - Comprehensive multi-base station reports
   - Color-coded metric visualizations
   - Intelligent trend analysis and status tracking
   - Metric-specific recommendations and warnings
   - Detailed statistical analysis
   - Professional-grade formatting
+  - Grid layout for HTML reports
+  - Canvas-based graph rendering for consistent display
 
 ## Prerequisites
 

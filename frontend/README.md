@@ -12,13 +12,16 @@ React frontend application for the BSI Telemetry Reports project. Built with Mat
 - Dynamic data sampling based on time range
 - Real-time updates with auto-refresh
 - Mobile-first responsive design
-- Comprehensive PDF reports with:
+- Comprehensive reporting features:
+  - Multiple report formats (HTML and PDF)
   - Multi-base station support
   - Color-coded metric graphs
   - Detailed trend analysis
   - Status indicators and warnings
   - Metric-specific recommendations
   - Statistical summaries
+  - Grid layout for HTML reports
+  - Optimized graph rendering for both formats
 
 ## Component Structure
 
@@ -30,6 +33,7 @@ React frontend application for the BSI Telemetry Reports project. Built with Mat
     │   ├── NodeDetail.js      # Detailed view with graphs
     │   └── reports/
     │       ├── PDFReport.js   # PDF report generation
+    │       ├── HTMLReport.js  # HTML report generation
     │       └── PDFReport.css  # PDF styling
     ├── App.js                 # Main application component
     └── index.js               # Application entry point

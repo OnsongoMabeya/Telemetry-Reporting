@@ -11,9 +11,11 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
 - Robust error handling and logging
 - Environment-based configuration
 - Cross-origin resource sharing (CORS) support
-- Enhanced data validation for PDF reports
+- Enhanced data validation for all report formats
 - Multi-base station data aggregation
 - Intelligent metric analysis and statistics
+- Optimized data handling for both HTML and PDF reports
+- Consistent base station naming across formats
 
 ## API Endpoints
 
