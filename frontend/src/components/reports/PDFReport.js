@@ -5,7 +5,7 @@ import axios from 'axios';
 import * as d3 from 'd3';
 import './PDFReport.css';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = 'http://localhost:5000';  // Hardcoding for now to fix the URL issue
 
 const METRIC_KEYS = {
   'Forward Power': 'forwardPower',

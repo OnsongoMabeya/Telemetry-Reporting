@@ -5,7 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import axios from 'axios';
 
 // API configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = 'http://localhost:5000';  // Hardcoding for now to fix the URL issue
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {

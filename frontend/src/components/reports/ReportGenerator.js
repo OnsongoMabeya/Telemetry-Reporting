@@ -9,7 +9,7 @@ const ReportGenerator = ({ nodes, onError }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+  const API_BASE_URL = 'http://localhost:5000';  // Hardcoding for now to fix the URL issue
 
   const handleGenerateReport = useCallback(async (config) => {
     setIsGenerating(true);

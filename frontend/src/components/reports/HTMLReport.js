@@ -2,7 +2,7 @@ import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = 'http://localhost:5000';  // Hardcoding for now to fix the URL issue
 
 const generateAnalysis = (metric, data) => {
   const currentValue = parseFloat(data[data.length - 1]?.[metric]) || 0;
