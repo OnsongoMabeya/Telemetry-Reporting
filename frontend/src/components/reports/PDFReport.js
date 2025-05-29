@@ -511,7 +511,8 @@ export const generatePDFReport = async (config, baseStations = []) => {
       await PDFReport.generateReport(telemetryData, config.node, baseStation.name, pdf);
     }
 
-    pdf.save(`${config.node}_telemetry_report.pdf`);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    pdf.save(`${config.node}_telemetry_report_${timestamp}.pdf`);
 
     return {
       success: true,
