@@ -20,6 +20,7 @@ React frontend application for the BSI Telemetry Reports project. Built with Mat
   - Status indicators and warnings
   - Metric-specific recommendations
   - Statistical summaries
+  - Timestamped file names for better organization
   - Grid layout for HTML reports
   - Optimized graph rendering for both formats
 
@@ -39,11 +40,33 @@ React frontend application for the BSI Telemetry Reports project. Built with Mat
     └── index.js               # Application entry point
 ```
 
+## Environment Setup
+
+1. Copy the example environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Update the `.env` file with your settings:
+
+   ```env
+   PORT=3010                       # Frontend port (default: 3010)
+   REACT_APP_API_URL=http://localhost:5000  # Backend API URL
+   ```
+
+## Node.js Version Note
+
+If using Node.js v22+, you'll need to set the `NODE_OPTIONS=--openssl-legacy-provider`. You can:
+
+- Install cross-env: `npm install --save-dev cross-env`
+- Or run directly: `$env:NODE_OPTIONS="--openssl-legacy-provider" ; npm start`
+
 ## Available Scripts
 
 ### `npm start`
 
-Runs the app in development mode at [http://localhost:3000](http://localhost:3000).
+Runs the app in development mode at [http://localhost:3010](http://localhost:3010).
 
 ### `npm test`
 

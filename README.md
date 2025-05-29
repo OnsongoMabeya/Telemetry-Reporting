@@ -33,11 +33,15 @@ The project is organized into three main directories:
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v16.x or v18.x recommended)
 - MySQL Server
 - npm or yarn
 - Modern web browser with JavaScript enabled
 - PDF viewer for report access
+
+### Node.js Version Note
+
+If using Node.js v22+, you'll need to set the `NODE_OPTIONS=--openssl-legacy-provider` environment variable or install the `cross-env` package.
 
 ## Quick Start
 
@@ -63,18 +67,34 @@ The project is organized into three main directories:
       npm install
    ```
 
-3. Configure the backend:
-   - Create a `.env` file in the `/backend` directory
-   - Add your MySQL configuration:
+3. Configure environment variables:
 
-      ```env
-         DB_HOST=localhost
-         DB_USER=your_username
-         DB_PASSWORD=your_password
-         DB_NAME=horiserverlive
-         DB_PORT=3306
-         PORT=5000
-      ```
+   Copy the example environment files and update them with your settings:
+
+   ```bash
+   # For backend
+   cp backend/.env.example backend/.env
+   # For frontend
+   cp frontend/.env.example frontend/.env
+   ```
+
+   Backend `.env` example:
+
+   ```env
+   DB_HOST=localhost
+   DB_USER=your_username
+   DB_PASSWORD=your_password
+   DB_NAME=horiserverlive
+   DB_PORT=3306
+   PORT=5000
+   ```
+
+   Frontend `.env` example:
+
+   ```env
+   PORT=3010
+   REACT_APP_API_URL=http://localhost:5000
+   ```
 
 4. Start the application:
 

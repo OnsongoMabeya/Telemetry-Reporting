@@ -16,6 +16,29 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
 - Intelligent metric analysis and statistics
 - Optimized data handling for both HTML and PDF reports
 - Consistent base station naming across formats
+- Support for both local and remote database configurations
+
+## Environment Setup
+
+1. Copy the example environment file:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Update the `.env` file with your database settings:
+
+   ```env
+   # Database Configuration
+   DB_HOST=localhost          # Database host (or remote IP)
+   DB_USER=your_username      # Database username
+   DB_PASSWORD=your_password  # Database password
+   DB_NAME=horiserverlive    # Database name
+   DB_PORT=3306              # Database port (default: 3306)
+
+   # Server Configuration
+   PORT=5000                 # Backend API port
+   ```
 
 ## API Endpoints
 
