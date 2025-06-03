@@ -111,72 +111,138 @@ const analyzeMetricData = (data, metric) => {
   let analysis = '';
   let recommendation = '';
 
+  // Calculate historical context
+  const stdDev = Math.sqrt(values.reduce((acc, val) => acc + Math.pow(val - avg, 2), 0) / values.length);
+  const variability = (stdDev / avg * 100).toFixed(1);
+  const trendDescription = trend === 'increasing' ? 'rising' : trend === 'decreasing' ? 'falling' : 'stable';
+
   switch(metric.name) {
     case 'forwardPower':
       if (current < 0.8 * avg) {
         status = 'Warning';
-        analysis = `Forward power (${current.toFixed(2)}W) is ${((1 - current/avg) * 100).toFixed(1)}% below average (${avg.toFixed(2)}W).`;
-        recommendation = 'Check transmitter output and connections. Consider maintenance if power continues to decrease.';
+        analysis = `Forward power shows significant degradation: Current output ${current.toFixed(2)}W is ${((1 - current/avg) * 100).toFixed(1)}% below average (${avg.toFixed(2)}W). Power trend is ${trendDescription} with ${variability}% variability over the monitoring period. Peak performance was ${max.toFixed(2)}W.`;
+        recommendation = 'Immediate actions required:\n' +
+                        '1. Inspect transmitter output stage\n' +
+                        '2. Verify all RF connections and cable integrity\n' +
+                        '3. Check power supply voltage stability\n' +
+                        '4. Schedule maintenance if issues persist';
       } else {
-        analysis = `Forward power is stable at ${current.toFixed(2)}W, within normal operating range.`;
-        recommendation = 'Continue regular monitoring.';
+        analysis = `Forward power performance is optimal: Current output ${current.toFixed(2)}W with ${variability}% variability. Power levels are ${trendDescription} and within expected range (${min.toFixed(2)}W - ${max.toFixed(2)}W). System showing good stability.`;
+        recommendation = 'Maintenance recommendations:\n' +
+                        '1. Continue regular monitoring\n' +
+                        '2. Document stable performance period\n' +
+                        '3. Schedule routine inspection within normal maintenance window';
       }
       break;
 
     case 'reflectedPower':
       const forwardRatio = current / (values.find(v => v > 0) || 1);
+      const reflectedTrend = recentValues.reduce((acc, val, i) => i > 0 ? acc + (val - recentValues[i-1]) : 0, 0);
+      
       if (forwardRatio > 0.2) {
         status = 'Warning';
-        analysis = `High reflected power detected (${current.toFixed(2)}W). This indicates potential impedance mismatch.`;
-        recommendation = 'Inspect antenna system, connections, and VSWR readings. Consider immediate maintenance.';
+        analysis = `Critical reflection levels detected: Current reflected power ${current.toFixed(2)}W represents ${(forwardRatio * 100).toFixed(1)}% of forward power. Showing ${trendDescription} pattern with ${variability}% variation. Historical range: ${min.toFixed(2)}W to ${max.toFixed(2)}W. ${reflectedTrend > 0 ? 'Reflected power is increasing, indicating worsening conditions.' : 'Condition appears stable but requires attention.'}`;
+        recommendation = 'Urgent actions required:\n' +
+                        '1. Perform full antenna system diagnostic\n' +
+                        '2. Check all RF connections and terminations\n' +
+                        '3. Verify antenna alignment and physical condition\n' +
+                        '4. Consider reducing power until resolved\n' +
+                        '5. Schedule immediate technical inspection';
       } else {
-        analysis = `Reflected power is at acceptable levels (${current.toFixed(2)}W).`;
-        recommendation = 'Maintain current system configuration.';
+        analysis = `Reflected power within specifications: Current level ${current.toFixed(2)}W (${(forwardRatio * 100).toFixed(1)}% of forward power). Measurements show ${trendDescription} trend with ${variability}% variability. System maintaining good impedance match.`;
+        recommendation = 'Preventive measures:\n' +
+                        '1. Document current baseline performance\n' +
+                        '2. Monitor for any trend changes\n' +
+                        '3. Include in next routine maintenance check';
       }
       break;
 
     case 'vswr':
+      const vswrChange = ((current - values[0]) / values[0] * 100).toFixed(1);
       if (current > 1.5) {
         status = 'Warning';
-        analysis = `VSWR is elevated at ${current.toFixed(2)}:1. This indicates potential antenna system issues.`;
-        recommendation = 'Check antenna system, feedline, and connections. Consider professional inspection if VSWR remains high.';
+        analysis = `VSWR requires attention: Current ratio ${current.toFixed(2)}:1 exceeds optimal range. ${vswrChange}% change from initial reading. Showing ${trendDescription} pattern with peak value of ${max.toFixed(2)}:1. Variability of ${variability}% indicates ${variability > 5 ? 'potential system instability' : 'relatively stable conditions despite elevated levels'}.`;
+        recommendation = 'Technical intervention required:\n' +
+                        '1. Full RF system diagnostic scan\n' +
+                        '2. Inspect all RF connections and grounds\n' +
+                        '3. Check antenna physical condition and alignment\n' +
+                        '4. Verify transmission line integrity\n' +
+                        '5. Consider weather impact on readings';
       } else {
-        analysis = `VSWR is good at ${current.toFixed(2)}:1, indicating proper impedance matching.`;
-        recommendation = 'Continue regular monitoring of VSWR trends.';
+        analysis = `VSWR performance optimal: Current ratio ${current.toFixed(2)}:1 with ${variability}% variability. ${vswrChange}% change from initial reading. System maintaining excellent impedance match across ${trendDescription} trend. Range: ${min.toFixed(2)}:1 - ${max.toFixed(2)}:1.`;
+        recommendation = 'Maintenance guidance:\n' +
+                        '1. Record current performance metrics\n' +
+                        '2. Monitor for any trend changes\n' +
+                        '3. Update baseline measurements';
       }
       break;
 
     case 'temperature':
+      const tempChange = ((current - values[0]) / values[0] * 100).toFixed(1);
+      const tempRate = ((recentValues[recentValues.length-1] - recentValues[0]) / 5).toFixed(2); // °C per interval
+
       if (current > 40) {
         status = 'Warning';
-        analysis = `Temperature is high at ${current.toFixed(2)}°C, above recommended operating range.`;
-        recommendation = 'Check cooling system, airflow, and ventilation. Consider reducing power if temperature continues to rise.';
+        analysis = `Temperature requires monitoring: Current reading ${current.toFixed(2)}°C exceeds optimal range. ${tempChange}% change from initial reading, with ${tempRate}°C change per interval. Peak temperature was ${max.toFixed(2)}°C. System shows ${trendDescription} pattern with ${variability}% thermal variability. ${trend === 'increasing' ? 'Continued rise may impact system performance.' : 'Temperature stabilization needed for optimal operation.'}`;
+        recommendation = 'Thermal management actions required:\n' +
+                        '1. Verify all cooling fans operation\n' +
+                        '2. Clean air filters and heat sinks\n' +
+                        '3. Check ambient temperature conditions\n' +
+                        '4. Inspect airflow obstructions\n' +
+                        '5. Consider temporary power reduction';
       } else {
-        analysis = `Temperature is normal at ${current.toFixed(2)}°C.`;
-        recommendation = 'Maintain current cooling configuration.';
+        analysis = `Temperature within specifications: Current reading ${current.toFixed(2)}°C with ${variability}% variability. Operating range ${min.toFixed(2)}°C - ${max.toFixed(2)}°C shows ${trendDescription} pattern. Thermal stability indicates proper cooling performance.`;
+        recommendation = 'Preventive thermal measures:\n' +
+                        '1. Document current thermal profile\n' +
+                        '2. Schedule routine cooling system check\n' +
+                        '3. Monitor seasonal temperature variations';
       }
       break;
 
     case 'voltage':
       const voltageVariation = Math.abs((current - avg) / avg * 100);
+      const voltageRange = max - min;
+      const nominalVoltage = 220; // Assuming 220V system
+      const voltageDeviation = Math.abs((current - nominalVoltage) / nominalVoltage * 100).toFixed(1);
+
       if (voltageVariation > 10) {
         status = 'Warning';
-        analysis = `Voltage shows ${voltageVariation.toFixed(1)}% variation from average. Current: ${current.toFixed(2)}V, Avg: ${avg.toFixed(2)}V.`;
-        recommendation = 'Monitor power supply stability. Consider UPS or voltage regulation if fluctuations persist.';
+        analysis = `Voltage stability concern: Current reading ${current.toFixed(2)}V shows ${voltageVariation.toFixed(1)}% variation from ${avg.toFixed(2)}V average. Range span is ${voltageRange.toFixed(2)}V with ${voltageDeviation}% deviation from nominal. System shows ${trendDescription} pattern with ${variability}% overall variability. Power quality may be affecting system performance.`;
+        recommendation = 'Power stability measures required:\n' +
+                        '1. Monitor main power source quality\n' +
+                        '2. Check all power connections\n' +
+                        '3. Verify UPS operation if installed\n' +
+                        '4. Consider power conditioning equipment\n' +
+                        '5. Log voltage events for analysis';
       } else {
-        analysis = `Voltage is stable at ${current.toFixed(2)}V with normal variation.`;
-        recommendation = 'Continue monitoring power supply performance.';
+        analysis = `Voltage performance optimal: Current level ${current.toFixed(2)}V with ${voltageVariation.toFixed(1)}% variation from average. Operating range ${min.toFixed(2)}V - ${max.toFixed(2)}V shows good stability. Power supply maintaining consistent output.`;
+        recommendation = 'Power system maintenance:\n' +
+                        '1. Document current power profile\n' +
+                        '2. Schedule routine electrical inspection\n' +
+                        '3. Monitor for any trend changes';
       }
       break;
 
     case 'current':
+      const currentSpike = ((current - avg) / avg * 100).toFixed(1);
+      const currentEfficiency = (current * values.find(v => metric.name === 'voltage') || 220) / 1000; // Power in kW
+      const loadFactor = (avg / max * 100).toFixed(1);
+
       if (current > 1.2 * avg) {
         status = 'Warning';
-        analysis = `Current draw is ${((current/avg - 1) * 100).toFixed(1)}% above average. Current: ${current.toFixed(2)}A, Avg: ${avg.toFixed(2)}A.`;
-        recommendation = 'Check for potential short circuits or equipment malfunction. Monitor power consumption closely.';
+        analysis = `Current consumption alert: Drawing ${current.toFixed(2)}A, ${currentSpike}% above average (${avg.toFixed(2)}A). Peak current was ${max.toFixed(2)}A with ${loadFactor}% load factor. System shows ${trendDescription} pattern with ${variability}% variability. Estimated power consumption at ${currentEfficiency.toFixed(2)}kW.`;
+        recommendation = 'Electrical system actions needed:\n' +
+                        '1. Check for abnormal loads\n' +
+                        '2. Inspect all power connections\n' +
+                        '3. Verify equipment operating states\n' +
+                        '4. Monitor for thermal issues\n' +
+                        '5. Consider load distribution analysis';
       } else {
-        analysis = `Current draw is normal at ${current.toFixed(2)}A.`;
-        recommendation = 'Maintain regular monitoring of current consumption.';
+        analysis = `Current draw within specifications: Operating at ${current.toFixed(2)}A with ${variability}% variability. Range ${min.toFixed(2)}A - ${max.toFixed(2)}A indicates normal load pattern. ${loadFactor}% load factor shows efficient system operation.`;
+        recommendation = 'Power optimization steps:\n' +
+                        '1. Document current consumption baseline\n' +
+                        '2. Monitor for efficiency changes\n' +
+                        '3. Plan regular load analysis';
       }
       break;
 
@@ -281,13 +347,15 @@ const drawGraphOnCanvas = (ctx, data, metric, width, height) => {
   const xTicks = scaleX.ticks(5);
   xTicks.forEach(tick => {
     const x = scaleX(tick);
-    ctx.fillText(tick.toLocaleTimeString(), x - 20, height - 10);
+    ctx.fillText(tick.toLocaleTimeString(), x - 20, height - 5);
   });
 };
 
 const PDFReport = {
   async generateReport(telemetryData, nodeName, baseStation, pdf = new jsPDF()) {
-    let currentY = 20;
+    let currentY = 15;
+    const pageWidth = pdf.internal.pageSize.width;
+    const marginX = 15;
     
     // Add BSI logo
     const logoImg = new Image();
@@ -296,62 +364,50 @@ const PDFReport = {
     await new Promise((resolve, reject) => {
       logoImg.onload = () => {
         try {
-          // Calculate logo dimensions (max height 30px)
           const aspectRatio = logoImg.width / logoImg.height;
-          const logoHeight = 30;
+          const logoHeight = 20;
           const logoWidth = logoHeight * aspectRatio;
-          
-          // Add logo at top center
-          pdf.addImage(logoImg, 'PNG', (pdf.internal.pageSize.width - logoWidth) / 2, currentY - 15, logoWidth, logoHeight);
+          pdf.addImage(logoImg, 'PNG', marginX, currentY - 10, logoWidth, logoHeight);
           resolve();
         } catch (error) {
           console.error('Error adding logo:', error);
-          resolve(); // Continue without logo if there's an error
+          resolve();
         }
       };
       logoImg.onerror = () => {
         console.error('Error loading logo');
-        resolve(); // Continue without logo if there's an error
+        resolve();
       };
     });
     
-    currentY += 20;
-    
-    // Create modern gradient header
-    const gradient = pdf.setFillColor(THEME_COLORS.primary);
-    pdf.rect(0, 0, pdf.internal.pageSize.width, 80, 'F');
+    // Add compact header
+    pdf.setFillColor(THEME_COLORS.primary);
+    pdf.rect(0, 0, pageWidth, 40, 'F');
 
-    // Add decorative accent line
-    pdf.setDrawColor(THEME_COLORS.highlight);
-    pdf.setLineWidth(3);
-    pdf.line(20, 70, pdf.internal.pageSize.width - 20, 70);
-
-    // Add header text with modern typography
+    // Add header text
     pdf.setTextColor(255, 255, 255);
     pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(24);
-    pdf.text(`Telemetry Report`, 105, currentY, { align: 'center' });
+    pdf.setFontSize(16);
+    pdf.text('Telemetry Report', pageWidth - marginX, currentY, { align: 'right' });
+    
+    currentY += 8;
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+    pdf.text(`${nodeName} | ${baseStation}`, pageWidth - marginX, currentY, { align: 'right' });
+    
+    currentY += 6;
+    pdf.setFontSize(8);
+    pdf.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - marginX, currentY, { align: 'right' });
+    
     currentY += 15;
 
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(16);
-    pdf.text(nodeName, 105, currentY, { align: 'center' });
-    currentY += 12;
-    
-    pdf.setFontSize(12);
-    pdf.text(`Base Station: ${baseStation} | Generated: ${new Date().toLocaleString()}`, 105, currentY, { align: 'center' });
-    currentY += 30;
-
-    // Reset text color and add page border
+    // Reset text color
     pdf.setTextColor(THEME_COLORS.text.primary);
-    pdf.setDrawColor(THEME_COLORS.border);
-    pdf.setLineWidth(1);
-    pdf.rect(10, 90, pdf.internal.pageSize.width - 20, pdf.internal.pageSize.height - 100);
-
+    
     // Create canvas for graphs
     const canvas = document.createElement('canvas');
     canvas.width = 800;
-    canvas.height = 400;
+    canvas.height = 150; // Further reduced height for more compact graphs
     const ctx = canvas.getContext('2d');
 
     // Process each metric
@@ -363,20 +419,20 @@ const PDFReport = {
         // Draw graph on canvas
         drawGraphOnCanvas(ctx, formattedData, metricInfo, canvas.width, canvas.height);
 
-        // Add graph to PDF
+        // Add graph to PDF with proper page breaks
         const imgData = canvas.toDataURL('image/png');
-        if (currentY + 200 > pdf.internal.pageSize.height) {
+        if (currentY + 90 > pdf.internal.pageSize.height) { // Reduced height check
           pdf.addPage();
           currentY = 20;
         }
 
-        // Add modern metric section
+        // Add compact metric section
         pdf.setFillColor(THEME_COLORS.background.secondary);
-        pdf.roundedRect(20, currentY - 5, pdf.internal.pageSize.width - 40, 160, 3, 3, 'F');
+        pdf.rect(marginX, currentY - 5, pageWidth - (marginX * 2), 80, 'F'); // Reduced section height
 
-        // Add metric title with icon-like indicator
+        // Add metric title efficiently
         pdf.setFillColor(metricInfo.color);
-        pdf.circle(30, currentY + 7, 3, 'F');
+        pdf.circle(marginX + 5, currentY + 7, 2, 'F');
         pdf.setFont('helvetica', 'bold');
         pdf.setTextColor(THEME_COLORS.text.primary);
         pdf.setFontSize(14);
