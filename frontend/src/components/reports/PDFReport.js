@@ -1,7 +1,6 @@
-import React from 'react';
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 import axios from 'axios';
+import BSILogo from '../../assets/images/bsilogo512.png';
 import * as d3 from 'd3';
 import './PDFReport.css';
 
@@ -353,24 +352,15 @@ const drawGraphOnCanvas = (ctx, data, metric, width, height) => {
 
 const PDFReport = {
   async generateReport(telemetryData, nodeName, baseStation, pdf = new jsPDF()) {
-    let currentY = 15;
-    const pageWidth = pdf.internal.pageSize.width;
-    const marginX = 15;
-    
-    // Add BSI logo
+    // Load logo once for reuse
     const logoImg = new Image();
-    logoImg.src = '/bsilogo512.png';
-    
-    await new Promise((resolve, reject) => {
+    logoImg.src = BSILogo;
+    await new Promise((resolve) => {
       logoImg.onload = () => {
         try {
-          const aspectRatio = logoImg.width / logoImg.height;
-          const logoHeight = 20;
-          const logoWidth = logoHeight * aspectRatio;
-          pdf.addImage(logoImg, 'PNG', marginX, currentY - 10, logoWidth, logoHeight);
           resolve();
         } catch (error) {
-          console.error('Error adding logo:', error);
+          console.error('Error loading logo:', error);
           resolve();
         }
       };
@@ -379,27 +369,88 @@ const PDFReport = {
         resolve();
       };
     });
+
+    // Helper function to add header and footer
+    const addHeaderFooter = (pageNum, totalPages) => {
+      // Header with small logo
+      const headerLogoSize = 12;
+      pdf.addImage(logoImg, 'PNG', marginX, marginY/2, headerLogoSize, headerLogoSize/2);
+      
+      // Footer with small logo and page number
+      const footerY = pageHeight - marginY/2;
+      pdf.addImage(logoImg, 'PNG', marginX, footerY - headerLogoSize/2, headerLogoSize, headerLogoSize/2);
+      pdf.setFontSize(FONTS.caption);
+      pdf.setTextColor(THEME_COLORS.text.primary);
+      pdf.text(`Page ${pageNum} of ${totalPages}`, pageWidth - marginX, footerY, { align: 'right' });
+    };
+    // Set consistent margins and spacing
+    const marginX = 20; // Increased margins for better readability
+    const marginY = 25; // Increased for header/footer space
+    const pageWidth = pdf.internal.pageSize.width;
+    const pageHeight = pdf.internal.pageSize.height;
+    const contentWidth = pageWidth - (2 * marginX);
     
-    // Add compact header
-    pdf.setFillColor(THEME_COLORS.primary);
-    pdf.rect(0, 0, pageWidth, 40, 'F');
+    // Font sizes for different content types
+    const FONTS = {
+      title: 16,
+      subtitle: 12,
+      heading: 14,
+      subheading: 11,
+      body: 10,
+      caption: 8
+    };
+
+    // Line heights for different content types
+    const LINE_HEIGHTS = {
+      title: 1.5,
+      normal: 1.3,
+      compact: 1.2
+    };
+    
+    // Use consistent dark text color
+    const textColor = THEME_COLORS.text.primary;
+    
+    // Helper function to wrap text and return height
+    const wrapText = (text, fontSize) => {
+      pdf.setFontSize(fontSize);
+      return pdf.splitTextToSize(text, contentWidth - 15);
+    };
+    
+    // Helper function to add wrapped text and return new Y position
+    const addWrappedText = (text, x, y, fontSize, fontStyle = 'normal', lineHeightFactor = LINE_HEIGHTS.normal) => {
+      pdf.setFont('helvetica', fontStyle);
+      pdf.setFontSize(fontSize);
+      const lines = wrapText(text, fontSize);
+      const lineHeight = fontSize * lineHeightFactor / 72 * 25.4;
+      lines.forEach((line, i) => {
+        pdf.text(line, x, y + (i * lineHeight));
+      });
+      return y + (lines.length * lineHeight);
+    };
+
+    // Helper function to add section with background
+    const addSection = (y, height, color) => {
+      pdf.setFillColor(color);
+      pdf.roundedRect(marginX, y - 5, contentWidth, height, 3, 3, 'F');
+      return y;
+    };
+    let currentY = marginY;
+    
+    // Initialize first page header/footer
+    addHeaderFooter(1, 1);
 
     // Add header text
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFont('helvetica', 'bold');
-    pdf.setFontSize(16);
-    pdf.text('Telemetry Report', pageWidth - marginX, currentY, { align: 'right' });
+    pdf.setTextColor(textColor);
+    currentY = addWrappedText('Telemetry Report', pageWidth - marginX - 80, currentY + 5, FONTS.title, 'bold', LINE_HEIGHTS.title);
     
-    currentY += 8;
-    pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(10);
-    pdf.text(`${nodeName} | ${baseStation}`, pageWidth - marginX, currentY, { align: 'right' });
+    // Add subheader info
+    const headerText = `${nodeName} | ${baseStation}`;
+    currentY = addWrappedText(headerText, pageWidth - marginX - 80, currentY, FONTS.subtitle, 'normal');
     
-    currentY += 6;
-    pdf.setFontSize(8);
-    pdf.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - marginX, currentY, { align: 'right' });
+    // Add timestamp
+    currentY = addWrappedText(`Generated: ${new Date().toLocaleString()}`, pageWidth - marginX - 80, currentY, FONTS.caption, 'normal');
     
-    currentY += 15;
+    currentY += 15; // Add space after header
 
     // Reset text color
     pdf.setTextColor(THEME_COLORS.text.primary);
@@ -419,99 +470,102 @@ const PDFReport = {
         // Draw graph on canvas
         drawGraphOnCanvas(ctx, formattedData, metricInfo, canvas.width, canvas.height);
 
-        // Add graph to PDF with proper page breaks
-        const imgData = canvas.toDataURL('image/png');
-        if (currentY + 90 > pdf.internal.pageSize.height) { // Reduced height check
+        // Get analysis data
+        const analysis = analyzeMetricData(formattedData, metricInfo);
+        if (!analysis) continue;
+
+        // Check if we need a new page
+        if (currentY + 90 > pageHeight - marginY) {
           pdf.addPage();
-          currentY = 20;
+          currentY = marginY + 10;
+          addHeaderFooter(pdf.internal.getNumberOfPages(), pdf.internal.getNumberOfPages());
         }
 
-        // Add compact metric section
-        pdf.setFillColor(THEME_COLORS.background.secondary);
-        pdf.rect(marginX, currentY - 5, pageWidth - (marginX * 2), 80, 'F'); // Reduced section height
-
-        // Add metric title efficiently
-        pdf.setFillColor(metricInfo.color);
-        pdf.circle(marginX + 5, currentY + 7, 2, 'F');
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(THEME_COLORS.text.primary);
-        pdf.setFontSize(14);
-        pdf.text(metric, 40, currentY + 8);
-        currentY += 20;
-
-        // Add graph with subtle shadow effect
-        pdf.setFillColor(THEME_COLORS.background.primary);
-        pdf.roundedRect(25, currentY, pdf.internal.pageSize.width - 50, 100, 2, 2, 'F');
-        pdf.addImage(imgData, 'PNG', 30, currentY + 2, pdf.internal.pageSize.width - 60, 95);
-        currentY += 105;
-
-        // Add analysis
-        const analysis = analyzeMetricData(formattedData, metricInfo);
+        // Add graph to PDF
+        const imgData = canvas.toDataURL('image/png');
         
-        // Add statistics
-        pdf.setFontSize(10);
-        const statsText = `Current: ${analysis.stats.current.toFixed(2)}${metricInfo.unit} | ` +
-                          `Min: ${analysis.stats.min.toFixed(2)}${metricInfo.unit} | ` +
-                          `Max: ${analysis.stats.max.toFixed(2)}${metricInfo.unit} | ` +
-                          `Avg: ${analysis.stats.avg.toFixed(2)}${metricInfo.unit}`;
-        pdf.text(statsText, 105, currentY, { align: 'center' });
+        // Add compact metric section with proper margins
+        pdf.setFillColor(THEME_COLORS.background.secondary);
+        pdf.rect(marginX, currentY - 5, contentWidth, 80, 'F'); // Use contentWidth for consistent margins
+
+        // Add metric section
+        const metricSectionY = currentY;
+        const metricHeight = 30;
+        addSection(metricSectionY, metricHeight, THEME_COLORS.background.secondary);
+
+        // Add metric title with status indicator
+        pdf.setFillColor(metricInfo.color);
+        pdf.circle(marginX + 5, currentY + 10, 4, 'F');
+        
+        // Add metric name and current value
+        pdf.setTextColor(THEME_COLORS.text.primary);
+        currentY = addWrappedText(metric, marginX + 15, currentY + 7, FONTS.heading, 'bold');
+        
+        // Add current value and status
+        pdf.setTextColor(THEME_COLORS.text.secondary);
+        const statusText = `Current: ${analysis.stats.current.toFixed(2)}${metricInfo.unit} | Status: ${analysis.status}`;
+        currentY = addWrappedText(statusText, marginX + 15, currentY, FONTS.subheading, 'normal');
+        
         currentY += 10;
 
-        // Add modern stats panel
-        pdf.setFillColor(THEME_COLORS.background.accent);
-        pdf.roundedRect(30, currentY, pdf.internal.pageSize.width - 60, 25, 2, 2, 'F');
+        // Add graph with proper sizing
+        const graphWidth = contentWidth - 30;
+        const graphHeight = 100;
+        pdf.addImage(imgData, 'PNG', marginX + 15, currentY, graphWidth, graphHeight);
+        currentY += graphHeight + 15;
 
-        // Add status indicator with modern styling
-        const statusColor = analysis.status === 'Warning' ? THEME_COLORS.warning : THEME_COLORS.success;
-        pdf.setFillColor(statusColor);
-        pdf.circle(40, currentY + 12, 4, 'F');
+        // Add analysis section with proper spacing
+        if (currentY + 100 > pageHeight - marginY) {
+          pdf.addPage();
+          currentY = marginY + 10;
+          addHeaderFooter(pdf.internal.getNumberOfPages(), pdf.internal.getNumberOfPages());
+        }
 
-        // Add status and trend text
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(11);
+        // Analysis section background
+        const analysisSectionY = currentY;
+        addSection(analysisSectionY, 60, THEME_COLORS.background.primary);
+
+        // Add Analysis heading
         pdf.setTextColor(THEME_COLORS.text.primary);
-        pdf.text(`${analysis.status.toUpperCase()} | Trend: ${analysis.stats.trend.charAt(0).toUpperCase() + analysis.stats.trend.slice(1)}`, 50, currentY + 12);
-        
-        // Add stats on the right
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(10);
-        pdf.text(`Current: ${analysis.stats.current.toFixed(2)}${metricInfo.unit} | Avg: ${analysis.stats.avg.toFixed(2)}${metricInfo.unit}`, pdf.internal.pageSize.width - 70, currentY + 12);
-        currentY += 35;
+        currentY = addWrappedText('Analysis', marginX + 10, currentY + 7, FONTS.subheading, 'bold');
 
-        // Add analysis section with modern card design
-        pdf.setFillColor(THEME_COLORS.background.primary);
-        pdf.roundedRect(30, currentY - 5, pdf.internal.pageSize.width - 60, 50, 2, 2, 'F');
-        
-        // Add analysis icon and title
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(THEME_COLORS.text.primary);
-        pdf.text('Analysis', 40, currentY + 5);
-        
         // Add analysis content
-        pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(THEME_COLORS.text.secondary);
-        const analysisLines = pdf.splitTextToSize(analysis.analysis, pdf.internal.pageSize.width - 80);
-        analysisLines.forEach((line, index) => {
-          pdf.text(line, 40, currentY + 15 + (index * 5));
-        });
-        currentY += 55;
+        currentY = addWrappedText(analysis.analysis, marginX + 10, currentY + 5, FONTS.body, 'normal');
+        
+        currentY += 15;
 
-        // Add recommendation section with accent styling
-        pdf.setFillColor(THEME_COLORS.background.accent);
-        pdf.roundedRect(30, currentY - 5, pdf.internal.pageSize.width - 60, 40, 2, 2, 'F');
-        
-        // Add recommendation icon and content
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(THEME_COLORS.accent);
-        pdf.text('Recommendation', 40, currentY + 5);
-        
-        pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(THEME_COLORS.text.secondary);
-        const recommendationLines = pdf.splitTextToSize(analysis.recommendation, pdf.internal.pageSize.width - 80);
-        recommendationLines.forEach((line, index) => {
-          pdf.text(line, 40, currentY + 15 + (index * 5));
+        // Check for page break before recommendations
+        if (currentY + 80 > pageHeight - marginY) {
+          pdf.addPage();
+          currentY = marginY + 10;
+          addHeaderFooter(pdf.internal.getNumberOfPages(), pdf.internal.getNumberOfPages());
+        }
+
+        // Recommendations section
+        const recommendationSectionY = currentY;
+        addSection(recommendationSectionY, 70, THEME_COLORS.background.accent);
+
+        // Add Recommendations heading
+        pdf.setTextColor(textColor);
+        currentY = addWrappedText('Recommendations', marginX + 10, currentY + 7, FONTS.subheading, 'bold');
+
+        // Add recommendations content with bullet points
+        pdf.setTextColor(textColor);
+        const recommendations = analysis.recommendation.split('\n');
+        // Store currentY in a local variable to avoid closure issues
+        let sectionY = currentY;
+        recommendations.forEach((rec) => {
+          if (rec.trim()) {
+            sectionY = addWrappedText(`• ${rec.trim()}`, marginX + 15, sectionY + 5, FONTS.body, 'normal');
+          }
         });
-        currentY += 45;
+        currentY = sectionY;
+
+        currentY += 20;
+        
+        // Add header and footer to current page
+        addHeaderFooter(pdf.internal.getNumberOfPages(), pdf.internal.getNumberOfPages());
       }
     }
 
