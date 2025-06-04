@@ -30,11 +30,11 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
 
    ```env
    # Database Configuration
-   DB_HOST=localhost          # Database host (or remote IP)
-   DB_USER=your_username      # Database username
-   DB_PASSWORD=your_password  # Database password
-   DB_NAME=horiserverlive    # Database name
-   DB_PORT=3306              # Database port (default: 3306)
+   DB_HOST=localhost          # Database host (local or remote)
+   DB_USER=john               # Database username
+   DB_PASSWORD=password       # Database password
+   DB_NAME=horiserverlive     # Database name
+   DB_PORT=3306               # MySQL port
 
    # Server Configuration
    PORT=5000                 # Backend API port
@@ -86,12 +86,11 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
    - 5d: 1-hour samples
    - 1w: 2-hour samples
    
-   PDF Report Data Requirements:
-   - Minimum 5 data points for trend analysis
-   - Complete metric set for comprehensive analysis
-   - Valid numerical values for statistical calculations
-   - Timestamps within selected range
-   - Base station identification for multi-station reports
+   Data Requirements:
+   - Valid numerical values
+   - Timestamps within range
+   - Complete metric set
+   - Base station identification
 ```
 
 ## Database Schema

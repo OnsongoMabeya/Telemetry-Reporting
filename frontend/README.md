@@ -7,14 +7,20 @@ React frontend application for the BSI Telemetry Reports project. Built with Mat
 - Modern, responsive Material UI design with 2x4 grid layout
 - Smart data analysis with percentage changes and trends
 - Time-range aware data visualization
-- Interactive graphs with detailed tooltips
-- Automatic threshold-based recommendations
+- Interactive graphs with tooltips
+- Automatic threshold detection
 - Dynamic data sampling based on time range
 - Real-time updates with auto-refresh
 - Mobile-first responsive design
-- Comprehensive reporting features:
-  - Multiple report formats (HTML and PDF)
-  - Multi-base station support
+
+## PDF Report Features
+
+- Professional layout with BSI branding
+- Metric-by-metric analysis
+- Clear data visualization
+- Status indicators for issues
+- Automatic data sampling
+- Multi-base station support
   - Color-coded metric graphs
   - Detailed trend analysis
   - Status indicators and warnings
@@ -68,13 +74,17 @@ If using Node.js v22+, you'll need to set the `NODE_OPTIONS=--openssl-legacy-pro
 
 Runs the app in development mode at [http://localhost:3010](http://localhost:3010).
 
-### `npm test`
+### `npm run start`
 
-Launches the test runner in interactive watch mode.
+Runs the app in development mode at [http://localhost:3010](http://localhost:3010).
 
 ### `npm run build`
 
 Builds the app for production to the `build` folder.
+
+### `npm run dev`
+
+Runs the app in development mode with hot reloading.
 
 ## Key Technologies
 

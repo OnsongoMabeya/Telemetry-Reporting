@@ -14,22 +14,20 @@ The project is organized into three main directories:
 
 - Real-time telemetry data visualization with auto-refresh
 - Intelligent data analysis and recommendations
-- Responsive 2x4 grid layout for optimal viewing
-- Time-range aware data sampling
+- Responsive grid layout for optimal viewing
+- Time-range aware data sampling and visualization
 - Multiple node and base station support
 - Interactive graphs with tooltips
 - Automatic threshold detection
 - Mobile-friendly design
-- Advanced reporting features:
-  - Multiple report formats (HTML and PDF)
-  - Comprehensive multi-base station reports
-  - Color-coded metric visualizations
-  - Intelligent trend analysis and status tracking
-  - Metric-specific recommendations and warnings
-  - Detailed statistical analysis
-  - Professional-grade formatting
-  - Grid layout for HTML reports
-  - Canvas-based graph rendering for consistent display
+- PDF Report Features:
+  - Professional layout with company branding
+  - Comprehensive metric analysis
+  - Clear data visualization with graphs
+  - Status indicators and warnings
+  - Time-stamped data points
+  - Automatic data sampling based on time range
+  - Multi-base station support
 
 ## Prerequisites
 
