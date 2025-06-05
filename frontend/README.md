@@ -74,10 +74,6 @@ If using Node.js v22+, you'll need to set the `NODE_OPTIONS=--openssl-legacy-pro
 
 Runs the app in development mode at [http://localhost:3010](http://localhost:3010).
 
-### `npm start`
-
-Runs the app in development mode at [http://localhost:3010](http://localhost:3010).
-
 ### `npm run build`
 
 Builds the app for production to the `build` folder.
