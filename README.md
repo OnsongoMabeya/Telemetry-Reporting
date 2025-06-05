@@ -31,15 +31,15 @@ The project is organized into three main directories:
 
 ## Prerequisites
 
-- Node.js (v16.x or v18.x recommended)
+- Node.js (v19.x or higher recommended)
 - MySQL Server
-- npm or yarn
+- npm
 - Modern web browser with JavaScript enabled
 - PDF viewer for report access
 
 ### Node.js Version Note
 
-If using Node.js v22+, you'll need to set the `NODE_OPTIONS=--openssl-legacy-provider` environment variable or install the `cross-env` package.
+The project uses the `cross-env` package to handle Node.js v22+ compatibility with the `--openssl-legacy-provider` flag. This is already configured in the project.
 
 ## Quick Start
 
