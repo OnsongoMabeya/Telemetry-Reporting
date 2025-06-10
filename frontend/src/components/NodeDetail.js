@@ -442,8 +442,25 @@ const NodeDetail = () => {
   }, [selectedBaseStation, timeFilter, selectedNode]);
 
   useEffect(() => {
+    // Initial fetch
     fetchTelemetryData();
-  }, [fetchTelemetryData]);
+
+    // Set up auto-refresh interval based on time filter
+    const getRefreshInterval = () => {
+      switch (timeFilter) {
+        case '5m': return 10000;  // 10 seconds for 5m view
+        case '10m': return 15000; // 15 seconds for 10m view
+        case '30m': return 30000; // 30 seconds for 30m view
+        case '1h': return 60000;  // 1 minute for 1h view
+        default: return 300000;   // 5 minutes for longer ranges
+      }
+    };
+
+    const intervalId = setInterval(fetchTelemetryData, getRefreshInterval());
+
+    // Cleanup interval on unmount or when dependencies change
+    return () => clearInterval(intervalId);
+  }, [fetchTelemetryData, timeFilter]);
 
   return (
     <ErrorBoundary>
