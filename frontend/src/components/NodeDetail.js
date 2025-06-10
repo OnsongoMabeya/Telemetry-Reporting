@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Grid, Paper, CircularProgress, Alert } from '@mui/material';
+import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Paper, CircularProgress, Alert } from '@mui/material';
 import ReportGenerator from './reports/ReportGenerator';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
-// API configuration
-const API_BASE_URL = 'http://localhost:5000';  // Hardcoding for now to fix the URL issue
+
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {

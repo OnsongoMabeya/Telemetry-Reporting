@@ -4,12 +4,12 @@ import { Button, Box } from '@mui/material';
 import ReportConfigModal from './ReportConfigModal';
 import { generateHTMLReport } from './HTMLReport';
 import { generatePDFReport } from './PDFReport';
+import { API_BASE_URL } from '../../config/api';
 
 const ReportGenerator = ({ nodes, onError }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
-  const API_BASE_URL = 'http://localhost:5000';  // Hardcoding for now to fix the URL issue
 
   const handleGenerateReport = useCallback(async (config) => {
     setIsGenerating(true);
@@ -54,7 +54,7 @@ const ReportGenerator = ({ nodes, onError }) => {
       setIsGenerating(false);
       setProgress(0);
     }
-  }, [nodes]);
+  }, [onError]);
 
   return (
     <Box sx={{ position: 'relative' }}>

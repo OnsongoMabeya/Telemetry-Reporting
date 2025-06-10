@@ -1,8 +1,6 @@
-import html2canvas from 'html2canvas';
 import { saveAs } from 'file-saver';
 import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:5000';  // Hardcoding for now to fix the URL issue
+import { API_BASE_URL } from '../../config/api';
 
 const generateAnalysis = (metric, data) => {
   const currentValue = parseFloat(data[data.length - 1]?.[metric]) || 0;
@@ -26,7 +24,9 @@ const generateAnalysis = (metric, data) => {
         recommendation = 'High reflected power detected. Check antenna system.';
       }
       break;
-    // Add other metrics analysis here
+    default:
+      // For other metrics, keep default status and no specific recommendation
+      break;
   }
 
   return { currentValue, average, percentageChange, status, recommendation };

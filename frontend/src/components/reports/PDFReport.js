@@ -3,8 +3,7 @@ import axios from 'axios';
 import BSILogo from '../../assets/images/bsilogo512.png';
 import * as d3 from 'd3';
 import './PDFReport.css';
-
-const API_BASE_URL = 'http://localhost:5000';  // Hardcoding for now to fix the URL issue
+import { API_BASE_URL } from '../../config/api';
 
 const METRIC_KEYS = {
   'Forward Power': 'forwardPower',
