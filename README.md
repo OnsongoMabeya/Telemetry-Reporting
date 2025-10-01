@@ -1,110 +1,155 @@
-# BSI Telemetry Reports
+# BSI Telemetry Reporting System
 
-A full-stack web application for visualizing and analyzing telemetry data from various nodes and base stations. Features intelligent data analysis, responsive grid layouts, and real-time monitoring capabilities.
+A comprehensive telemetry monitoring solution for tracking and analyzing node performance across multiple base stations. The system provides real-time data visualization, historical analysis, and automated reporting capabilities.
 
-## Project Structure
+## 🚀 Key Features
 
-The project is organized into three main directories:
+### Real-time Monitoring
 
-- `/frontend`: React application with Material UI for the user interface
-- `/backend`: Node.js/Express server handling database operations and API endpoints
-- `/`: Root directory containing project-wide configuration and scripts
+- Live telemetry data visualization with auto-refresh
+- Interactive dashboards with multiple chart types
+- Real-time alerts and notifications
 
-## Features
+### Data Analysis
 
-- Real-time telemetry data visualization with auto-refresh
-- Intelligent data analysis and recommendations
-- Responsive grid layout for optimal viewing
-- Time-range aware data sampling and visualization
-- Multiple node and base station support
-- Interactive graphs with tooltips
-- Automatic threshold detection
-- Mobile-friendly design
-- PDF Report Features:
-  - Professional layout with company branding
-  - Comprehensive metric analysis
-  - Clear data visualization with graphs
-  - Status indicators and warnings
-  - Time-stamped data points
-  - Automatic data sampling based on time range
-  - Multi-base station support
+- Intelligent data sampling based on time range
+- Automatic threshold detection and alerts
+- Performance trend analysis
+- Multi-metric correlation
 
-## Prerequisites
+### Reporting
 
-- Node.js (v19.x or higher recommended)
-- MySQL Server
-- npm
-- Modern web browser with JavaScript enabled
-- PDF viewer for report access
+- Automated PDF report generation
+- Customizable report templates
+- Export functionality for data analysis
+- Scheduled report delivery
 
-### Node.js Version Note
+### System Architecture
 
-The project uses the `cross-env` package to handle Node.js v22+ compatibility with the `--openssl-legacy-provider` flag. This is already configured in the project.
+- **Frontend**: React with Material-UI
+- **Backend**: Node.js/Express with MySQL
+- **Data Processing**: Optimized SQL queries with time-based sampling
+- **Caching**: In-memory caching for improved performance
 
-## Quick Start
+## 📋 Prerequisites
 
-1. Clone the repository:
+- Node.js v18+ (LTS recommended)
+- MySQL 8.0+
+- npm 9.x or later
+- Modern web browser (Chrome, Firefox, Edge, or Safari)
+
+## 🛠️ Installation
+
+1. **Clone the repository**
 
    ```bash
-      git clone git@github.com:OnsongoMabeya/Telemetry-Reporting.git
-      cd BSI-telemetry-reporting
+   git clone https://github.com/OnsongoMabeya/Telemetry-Reporting.git
+   cd BSI-telemetry-reporting
    ```
 
-2. Install dependencies:
+2. **Install dependencies**
 
    ```bash
-      # Install root dependencies
-      npm install
-
-      # Install frontend dependencies
-      cd frontend
-      npm install
-
-      # Install backend dependencies
-      cd ../backend
-      npm install
+   # Install root dependencies
+   npm install
+   
+   # Install frontend dependencies
+   cd frontend
+   npm install
+   
+   # Install backend dependencies
+   cd ../backend
+   npm install
+   cd ..
    ```
 
-3. Configure environment variables:
-
-   Copy the example environment files and update them with your settings:
+3. **Configure environment**
 
    ```bash
-   # For backend
+   # Copy and configure backend environment
    cp backend/.env.example backend/.env
-   # For frontend
+   
+   # Copy and configure frontend environment
    cp frontend/.env.example frontend/.env
    ```
 
-   Backend `.env` example:
+4. **Environment Variables**
+
+   `backend/.env`:
 
    ```env
+   # Database Configuration
    DB_HOST=localhost
    DB_USER=your_username
-   DB_PASSWORD=your_password
+   DB_PASSWORD=your_secure_password
    DB_NAME=horiserverlive
    DB_PORT=3306
+   
+   # Server Configuration
    PORT=5000
+   NODE_ENV=development
+   CACHE_TTL=300  # 5 minutes cache TTL
    ```
 
-   Frontend `.env` example:
+   `frontend/.env`:
 
    ```env
    PORT=3010
    REACT_APP_API_URL=http://localhost:5000
+   REACT_APP_DEFAULT_TIME_RANGE=1h
    ```
 
-4. Start the application:
+## 🚦 Running the Application
+
+1. **Start the backend server**
 
    ```bash
-      # From the root directory
-      npm run dev
+   cd backend
+   npm start
    ```
 
-The application will be available at:
+2. **Start the frontend development server**
 
-- Frontend: [http://localhost:3000](http://localhost:3000)
-- Backend API: [http://localhost:5000](http://localhost:5000)
+   ```bash
+   cd frontend
+   npm start
+   ```
+
+3. **Access the application**
+   - Frontend: [http://localhost:3010](http://localhost:3010)
+   - API Documentation: [http://localhost:5000/api-docs](http://localhost:5000/api-docs) (if Swagger is configured)
+
+## 📊 Data Sampling Intervals
+
+The system automatically adjusts data sampling based on the selected time range:
+
+| Time Range | Sample Interval | Data Points | Best For |
+|------------|-----------------|-------------|----------|
+| 5m - 10m   | 10 seconds      | 30-60       | Real-time monitoring |
+| 30m        | 30 seconds      | 60          | Short-term analysis |
+| 1h         | 1 minute        | 60          | Hourly trends |
+| 2h         | 2 minutes       | 60          | Multi-hour monitoring |
+| 6h         | 5 minutes       | 72          | Half-day analysis |
+| 1d         | 15 minutes      | 96          | Daily overview |
+| 2d         | 30 minutes      | 96          | Two-day trends |
+| 5d         | 1 hour          | 120         | Weekly analysis |
+| 1w         | 2 hours         | 84          | Weekly summary |
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📧 Contact
+
+For questions or support, please contact the development team at [your-email@example.com](mailto:your-email@example.com)
 
 ## Available Scripts
 
