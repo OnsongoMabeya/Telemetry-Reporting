@@ -87,7 +87,7 @@ Currently, the API is open. For production, implement authentication middleware.
 GET /api/nodes
 ```
 
-**Response**
+### Response (All Nodes)
 
 ```json
 [
@@ -103,11 +103,11 @@ GET /api/nodes
 GET /api/basestations/:nodeName
 ```
 
-**Parameters**
+### Parameters (Base Stations)
 
 - `nodeName` (string, required): Name of the node
 
-**Response**
+### Response (Base Stations)
 
 ```json
 [
@@ -122,7 +122,7 @@ GET /api/basestations/:nodeName
 GET /api/telemetry/:nodeName/:baseStation
 ```
 
-**Parameters**
+### Parameters (Telemetry Data)
 
 - `nodeName` (string, required): Name of the node
 - `baseStation` (string, required): Name of the base station
@@ -132,7 +132,7 @@ GET /api/telemetry/:nodeName/:baseStation
 - `page` (number, optional): Page number for pagination (default: 1)
 - `pageSize` (number, optional): Number of items per page (default: 200, max: 1000)
 
-**Response**
+### Response (Telemetry Data)
 
 ```json
 {
