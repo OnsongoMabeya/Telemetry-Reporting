@@ -64,6 +64,84 @@ const getGraphColor = (dataKey) => {
 
 // Telemetry Graph Component
 const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter }) => {
+  // Format x-axis tick values based on time range with timezone support
+  const formatXAxis = (tickItem) => {
+    if (!tickItem) return '';
+    
+    try {
+      const date = new Date(tickItem);
+      if (isNaN(date.getTime())) return '';
+      
+      // Determine the time range span
+      if (!data || data.length < 2) {
+        return new Intl.DateTimeFormat('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Africa/Nairobi',
+          hour12: false
+        }).format(date);
+      }
+      
+      const timeRange = new Date(data[data.length - 1].timestamp) - new Date(data[0].timestamp);
+      const oneDay = 24 * 60 * 60 * 1000;
+      
+      if (timeRange <= 2 * 60 * 60 * 1000) {
+        // Less than 2 hours: show hours:minutes:seconds
+        return new Intl.DateTimeFormat('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZone: 'Africa/Nairobi',
+          hour12: false
+        }).format(date);
+      } else if (timeRange <= oneDay) {
+        // Less than 1 day: show hours:minutes
+        return new Intl.DateTimeFormat('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Africa/Nairobi',
+          hour12: false
+        }).format(date);
+      } else if (timeRange <= 7 * oneDay) {
+        // Less than 1 week: show date and time
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Africa/Nairobi',
+          hour12: false
+        }).format(date);
+      } else {
+        // More than 1 week: show date only
+        return new Intl.DateTimeFormat('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          timeZone: 'Africa/Nairobi'
+        }).format(date);
+      }
+    } catch (error) {
+      console.error('Error formatting x-axis tick:', error, 'Value:', tickItem);
+      return '';
+    }
+  };
+
+  // Calculate time domain based on timeFilter
+  const getTimeDomain = useCallback(() => {
+    if (!data || data.length === 0) return [0, 1];
+    
+    // Use the actual data range instead of calculating from current time
+    const timestamps = data.map(d => d.timestamp);
+    const minTimestamp = Math.min(...timestamps);
+    const maxTimestamp = Math.max(...timestamps);
+    
+    // Add a small buffer to the domain to ensure all points are visible
+    const buffer = (maxTimestamp - minTimestamp) * 0.05; // 5% buffer on each side
+    
+    return [minTimestamp - buffer, maxTimestamp + buffer];
+  }, [data]);
+
   // Downsample data points for smoother rendering
   const downsampledData = useMemo(() => {
     const targetPoints = 100;
@@ -73,16 +151,41 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
     return data.filter((_, index) => index % step === 0);
   }, [data]);
 
-  const getYAxisDomain = () => {
+  const getYAxisDomain = useCallback(() => {
     if (!data || data.length === 0) return [0, 1];
     
-    const values = data.map(item => item[dataKey]);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const padding = (max - min) * 0.1;
+    // Get all valid values for the current data key
+    const values = data
+      .map(item => typeof item[dataKey] === 'number' ? item[dataKey] : null)
+      .filter(val => val !== null && !isNaN(val));
+      
+    if (values.length === 0) return [0, 1];
     
-    return [min - padding, max + padding];
-  };
+    // Calculate min and max with some smart padding
+    let min = Math.min(...values);
+    let max = Math.max(...values);
+    
+    // Handle case where all values are the same
+    if (min === max) {
+      // For zero values, use a default range
+      if (min === 0) return [0, 1];
+      
+      // For non-zero values, create a range around the value
+      const padding = Math.max(0.1, Math.abs(min * 0.1));
+      return [min - padding, max + padding];
+    }
+    
+    // Calculate dynamic padding based on the value range
+    const range = max - min;
+    const padding = range * 0.1; // 10% padding
+    
+    // Ensure we don't go below zero for metrics that can't be negative
+    const minDomain = ['vswr', 'returnLoss', 'forwardPower', 'reflectedPower'].includes(dataKey) 
+      ? Math.max(0, min - padding) 
+      : min - padding;
+      
+    return [minDomain, max + padding];
+  }, [data, dataKey]);
 
   if (isLoading) {
     return (
@@ -130,56 +233,140 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
         </Typography>
       </Box>
 
-      <Box height={300} mt={2}>
+      <Box height={350} mt={2}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={downsampledData}
             margin={{
-              top: 5,
+              top: 10,
               right: 30,
-              left: 20,
-              bottom: 5,
+              left: 10,
+              bottom: 10,
             }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
             <XAxis
               dataKey="timestamp"
               type="number"
               scale="time"
-              domain={['auto', 'auto']}
-              tickFormatter={(timestamp) => {
-                const date = new Date(timestamp);
-                if (timeFilter === '5m' || timeFilter === '10m' || timeFilter === '30m') {
-                  return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
-                } else if (timeFilter === '1h' || timeFilter === '2h' || timeFilter === '6h') {
-                  return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-                } else if (timeFilter === '1d' || timeFilter === '2d') {
-                  return `${date.getHours()}:00`;
-                } else if (timeFilter === '5d' || timeFilter === '1w') {
-                  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`;
-                } else {
-                  return `${date.getMonth() + 1}/${date.getDate()}`;
-                }
-              }}
+              domain={getTimeDomain()}
+              tickFormatter={formatXAxis}
+              tick={{ fontSize: 12, fill: '#666' }}
+              ticks={(() => {
+                if (!downsampledData || downsampledData.length === 0) return [];
+                const min = downsampledData[0].timestamp;
+                const max = downsampledData[downsampledData.length - 1].timestamp;
+                const tickCount = Math.min(6, downsampledData.length);
+                const step = (max - min) / (tickCount - 1);
+                return Array.from({ length: tickCount }, (_, i) => min + (step * i));
+              })()}
+              axisLine={{ stroke: '#ccc' }}
+              tickLine={{ stroke: '#ccc' }}
+              padding={{ left: 10, right: 10 }}
+              interval="preserveStartEnd"
             />
             <YAxis
               domain={getYAxisDomain()}
-              tickFormatter={(value) => `${value}${unit}`}
+              tickFormatter={(value) => {
+                // Format numbers with appropriate decimal places
+                if (value === null || value === undefined) return 'N/A';
+                
+                // For very small numbers, use scientific notation
+                if (Math.abs(value) > 0 && Math.abs(value) < 0.01) {
+                  return value.toExponential(2);
+                }
+                
+                // For numbers with many decimal places, limit to 4
+                const strValue = value.toString();
+                if (strValue.includes('.') && strValue.split('.')[1].length > 4) {
+                  return value.toFixed(4);
+                }
+                
+                // For whole numbers, don't show decimal places
+                if (Number.isInteger(value)) {
+                  return value.toString();
+                }
+                
+                // For other numbers, show up to 2 decimal places
+                return value.toFixed(2);
+              }}
+              tick={{
+                fontSize: 11,
+                fill: '#666',
+                fontFamily: 'monospace'
+              }}
+              width={70}
+              axisLine={{ stroke: '#ddd' }}
+              tickLine={{ stroke: '#eee' }}
+              padding={{ top: 10, bottom: 10 }}
+              label={{
+                value: unit,
+                angle: -90,
+                position: 'insideLeft',
+                offset: -10,
+                style: { textAnchor: 'middle', fill: '#666' },
+              }}
             />
             <Tooltip
-              labelFormatter={(timestamp) => {
-                const date = new Date(timestamp);
-                return date.toLocaleString();
+              contentStyle={{
+                backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                padding: '10px',
+                fontSize: '13px',
+                minWidth: '180px',
               }}
-              formatter={(value) => [`${value}${unit}`, title]}
+              labelFormatter={(timestamp) => {
+                try {
+                  const date = new Date(timestamp);
+                  return new Intl.DateTimeFormat('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZone: 'Africa/Nairobi',
+                    hour12: false
+                  }).format(date);
+                } catch (error) {
+                  console.error('Error formatting tooltip date:', error);
+                  return timestamp || 'N/A';
+                }
+              }}
+              formatter={(value, name, props) => {
+                const formattedValue = value !== null && value !== undefined 
+                  ? `${Number(value).toFixed(2)} ${unit}`
+                  : 'N/A';
+                
+                // Return an array with the value and name (title)
+                return [formattedValue, title];
+              }}
+              labelStyle={{ 
+                fontWeight: 'bold', 
+                marginBottom: '5px',
+                color: '#333',
+                fontSize: '0.9em'
+              }}
+              itemStyle={{
+                padding: '2px 0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+              separator=": "
             />
-            <Legend />
+            <Legend wrapperStyle={{ paddingTop: '10px' }} />
             <Line
               type="monotone"
               dataKey={dataKey}
               stroke={getGraphColor(dataKey)}
+              strokeWidth={2}
               dot={false}
-              activeDot={{ r: 8 }}
+              activeDot={{ r: 6, strokeWidth: 0 }}
+              isAnimationActive={false}
+              name={title}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -405,36 +592,77 @@ const NodeDetail = () => {
   const fetchTelemetryData = useCallback(async () => {
     if (!selectedBaseStation || !timeFilter || !selectedNode) return;
 
+    console.log(`Fetching data for time filter: ${timeFilter}`);
     setIsLoading(true);
     try {
+      const startTime = Date.now();
       const response = await axios.get(`${API_BASE_URL}/api/telemetry/${selectedNode}/${selectedBaseStation}`, {
-        params: {
-          timeFilter
-        },
-        timeout: 10000 // 10 second timeout
+        params: { timeFilter },
+        timeout: 30000 // Increased timeout for larger time ranges
+      });
+      
+      console.log(`API response received in ${Date.now() - startTime}ms`);
+      console.log('Response data structure:', {
+        hasData: !!response.data,
+        dataLength: response.data?.data?.length,
+        firstItem: response.data?.data?.[0]
       });
 
-      // The response.data.data contains the actual telemetry records
-      const formattedData = response.data.data.map(item => ({
-        timestamp: new Date(item.sample_time).getTime(),
-        temperature: item.temperature,
-        voltage: item.voltage,
-        current: item.current,
-        power: item.power,
-        forwardPower: item.forwardPower,
-        reflectedPower: item.reflectedPower,
-        vswr: item.vswr,
-        returnLoss: item.returnLoss
-      }));
+      if (!response.data?.data || !Array.isArray(response.data.data)) {
+        console.error('Invalid data format received:', response.data);
+        throw new Error('Invalid data format received from server');
+      }
+
+      // Process and sort the data by timestamp
+      const formattedData = response.data.data
+        .filter(item => item && item.sample_time) // Filter out invalid items
+        .map(item => {
+          const timestamp = new Date(item.sample_time).getTime();
+          if (isNaN(timestamp)) {
+            console.warn('Invalid timestamp:', item.sample_time, 'in item:', item);
+            return null;
+          }
+          return {
+            timestamp,
+            temperature: parseFloat(item.temperature) || 0,
+            voltage: parseFloat(item.voltage) || 0,
+            current: parseFloat(item.current) || 0,
+            power: parseFloat(item.power) || 0,
+            forwardPower: parseFloat(item.forwardPower) || 0,
+            reflectedPower: parseFloat(item.reflectedPower) || 0,
+            vswr: parseFloat(item.vswr) || 0,
+            returnLoss: parseFloat(item.returnLoss) || 0
+          };
+        })
+        .filter(Boolean) // Remove any null entries from invalid timestamps
+        .sort((a, b) => a.timestamp - b.timestamp);
+
+      console.log(`Processed ${formattedData.length} valid data points`);
+      if (formattedData.length > 0) {
+        const startDate = new Date(formattedData[0].timestamp);
+        const endDate = new Date(formattedData[formattedData.length - 1].timestamp);
+        const timeDiff = endDate - startDate;
+        console.log('Data time range:', {
+          start: startDate.toISOString(),
+          end: endDate.toISOString(),
+          duration: `${(timeDiff / (1000 * 60 * 60)).toFixed(2)} hours`,
+          pointsPerHour: (formattedData.length / (timeDiff / (1000 * 60 * 60))).toFixed(2)
+        });
+      } else {
+        console.warn('No valid data points found after processing');
+      }
 
       setTelemetryData(formattedData);
       setError(null);
     } catch (err) {
       console.error('Error fetching telemetry data:', err);
       if (err.code === 'ECONNABORTED') {
-        setError('Request timed out. Please try again.');
+        setError('Request timed out. The server is taking too long to respond. Try a smaller time range.');
+      } else if (err.response) {
+        // Server responded with an error status code
+        setError(`Error: ${err.response.data.error || 'Failed to fetch data'}`);
       } else {
-        setError('Failed to fetch telemetry data. Please try again later.');
+        setError('Failed to fetch telemetry data. Please check your connection and try again.');
       }
     } finally {
       setIsLoading(false);

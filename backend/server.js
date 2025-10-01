@@ -83,139 +83,280 @@ app.get('/api/nodes', async (req, res) => {
 });
 
 app.get('/api/basestations/:nodeName', async (req, res) => {
+  const { nodeName } = req.params;
   try {
-    const { nodeName } = req.params;
     const [rows] = await pool.promise().query(
-      'SELECT DISTINCT NodeBaseStationName FROM node_status_table WHERE NodeName = ? ORDER BY NodeBaseStationName',
+      'SELECT DISTINCT NodeBaseStationName FROM node_status_table WHERE NodeName = ?',
       [nodeName]
     );
-    // Transform the rows into the expected format
+    
     const baseStations = rows.map(row => ({
       id: row.NodeBaseStationName,
-      name: row.NodeBaseStationName,
-      node: nodeName
+      name: row.NodeBaseStationName
     }));
+    
     res.json(baseStations);
   } catch (error) {
     console.error('Error fetching base stations:', error);
     res.status(500).json({ 
       error: 'Internal server error',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined 
     });
   }
 });
 
-// Helper function to get data with pagination
-const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 1, pageSize = 100) => {
-  // Adjust sampling rate based on time range
-  let samplingInterval;
-  if (timeFilter === '5m' || timeFilter === '10m') samplingInterval = '10 SECOND';
-  else if (timeFilter === '30m') samplingInterval = '30 SECOND';
-  else if (timeFilter === '1h') samplingInterval = '1 MINUTE';
-  else if (timeFilter === '2h') samplingInterval = '2 MINUTE';
-  else if (timeFilter === '6h') samplingInterval = '5 MINUTE';
-  else if (timeFilter === '1d') samplingInterval = '15 MINUTE';
-  else if (timeFilter === '2d') samplingInterval = '30 MINUTE';
-  else if (timeFilter === '5d') samplingInterval = '1 HOUR';
-  else if (timeFilter === '1w') samplingInterval = '2 HOUR';
-  else if (timeFilter === '2w') samplingInterval = '4 HOUR';
-  else if (timeFilter === '30d') samplingInterval = '6 HOUR';
-  else samplingInterval = '1 MINUTE';
-  const offset = (page - 1) * pageSize;
-  let minutesToSubtract;
-  switch (timeFilter) {
-    case '5m': minutesToSubtract = 5; break;
-    case '10m': minutesToSubtract = 10; break;
-    case '30m': minutesToSubtract = 30; break;
-    case '1h': minutesToSubtract = 60; break;
-    case '2h': minutesToSubtract = 120; break;
-    case '6h': minutesToSubtract = 360; break;
-    case '1d': minutesToSubtract = 1440; break;
-    case '2d': minutesToSubtract = 2880; break;
-    case '5d': minutesToSubtract = 7200; break;
-    case '1w': minutesToSubtract = 10080; break;
-    case '2w': minutesToSubtract = 20160; break;
-    case '30d': minutesToSubtract = 43200; break;
-    default: minutesToSubtract = 60;
-  }
+// Helper function to calculate optimal number of data points based on time range
+const calculateDataPoints = (minutes) => {
+  if (minutes <= 15) return 60;        // High resolution for very short ranges
+  if (minutes <= 60) return 120;       // 2 points per minute for 1h
+  if (minutes <= 360) return 180;      // 1 point per 2 minutes for 6h
+  if (minutes <= 1440) return 240;     // 1 point per 6 minutes for 1d
+  if (minutes <= 4320) return 200;     // 1 point per 21.6 minutes for 3d
+  if (minutes <= 10080) return 210;    // 1 point per 48 minutes for 1w
+  return 200;                          // Cap at 200 points for very long ranges
+};
 
-  // Debug query to check time range
+// Helper function to get telemetry data with pagination
+const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 1, pageSize = 500) => {
+  // Set time range based on filter
+  let timeRangeMinutes;
+  let samplingInterval;
+  
+  switch (timeFilter) {
+    case '5m': 
+      timeRangeMinutes = 5;
+      samplingInterval = '10 SECOND';
+      break;
+    case '10m':
+      timeRangeMinutes = 10;
+      samplingInterval = '15 SECOND';
+      break;
+    case '30m':
+      timeRangeMinutes = 30;
+      samplingInterval = '30 SECOND';
+      break;
+    case '1h':
+      timeRangeMinutes = 60;
+      samplingInterval = '1 MINUTE';
+      break;
+    case '2h':
+      timeRangeMinutes = 120;
+      samplingInterval = '2 MINUTE';
+      break;
+    case '6h':
+      timeRangeMinutes = 360;
+      samplingInterval = '5 MINUTE';
+      break;
+    case '1d':
+      timeRangeMinutes = 1440;
+      samplingInterval = '15 MINUTE';
+      break;
+    case '2d':
+      timeRangeMinutes = 2880;
+      samplingInterval = '30 MINUTE';
+      break;
+    case '5d':
+      timeRangeMinutes = 7200;
+      samplingInterval = '1 HOUR';
+      break;
+    case '1w':
+      timeRangeMinutes = 10080;
+      samplingInterval = '2 HOUR';
+      break;
+    case '2w':
+      timeRangeMinutes = 20160;
+      samplingInterval = '4 HOUR';
+      break;
+    case '30d':
+      timeRangeMinutes = 43200;
+      samplingInterval = '6 HOUR';
+      break;
+    default:
+      timeRangeMinutes = 60;
+      samplingInterval = '1 MINUTE';
+  }
+  
+  const offset = (page - 1) * pageSize;
+  
+  // Set timezone for this session to ensure consistent time handling
+  await pool.promise().query(`SET time_zone = '+03:00'`);
+  
+  // First, get the time range of available data for this node and base station
   const timeRangeQuery = `
     SELECT 
-      MAX(time) as latest_time,
-      MIN(time) as earliest_time
+      CONVERT_TZ(MIN(time), @@session.time_zone, '+03:00') as earliest_time,
+      CONVERT_TZ(MAX(time), @@session.time_zone, '+03:00') as latest_time
     FROM node_status_table
     WHERE NodeName = ? AND NodeBaseStationName = ?
   `;
 
+  console.log('Fetching time range for:', { nodeName, baseStation });
   const [[timeRange]] = await pool.promise().query(timeRangeQuery, [nodeName, baseStation]);
-  console.log('Available time range in database:', {
+  
+  console.log('Available time range in database (EAT):', {
     earliest: timeRange.earliest_time,
-    latest: timeRange.latest_time
+    latest: timeRange.latest_time,
+    now: new Date().toISOString()
+  });
+
+  // If no data is found, return empty result
+  if (!timeRange.earliest_time || !timeRange.latest_time) {
+    console.log('No data found for the specified node and base station');
+    return {
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize,
+      totalPages: 0
+    };
+  }
+
+  // Calculate time range based on the filter
+  const endTime = new Date(timeRange.latest_time);
+  const startTime = new Date(endTime.getTime() - (timeRangeMinutes * 60 * 1000));
+  
+  console.log('Calculated query time range:', {
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString(),
+    timeRangeMinutes,
+    timeRangeMs: endTime - startTime
+  });
+
+  // Calculate optimal number of data points and time step
+  const dataPointCount = calculateDataPoints(timeRangeMinutes);
+  const timeStep = Math.max(1, Math.ceil(timeRangeMinutes / (dataPointCount / 2)));
+  
+  console.log('Sampling configuration:', {
+    dataPointCount,
+    timeStepMinutes: timeStep,
+    estimatedPoints: Math.ceil(timeRangeMinutes / timeStep)
   });
 
   const query = `
-    WITH RECURSIVE
-    time_range AS (
+    WITH time_buckets AS (
       SELECT 
-        MAX(time) as end_time,
-        DATE_SUB(MAX(time), INTERVAL ? MINUTE) as start_time
+        -- Convert to EAT timezone and round to nearest time step
+        DATE_FORMAT(
+          CONVERT_TZ(
+            FROM_UNIXTIME(
+              FLOOR(UNIX_TIMESTAMP(time) / (${timeStep} * 60)) * (${timeStep} * 60)
+            ),
+            @@session.time_zone,
+            '+03:00'
+          ),
+          '%Y-%m-%d %H:%i:00'
+        ) as bucket_start,
+        ROUND(AVG(Analog1Value), 2) as forwardPower,
+        ROUND(AVG(Analog2Value), 2) as reflectedPower,
+        ROUND(AVG(Analog3Value), 2) as vswr,
+        ROUND(AVG(Analog4Value), 2) as returnLoss,
+        ROUND(AVG(Analog5Value), 2) as temperature,
+        ROUND(AVG(Analog6Value), 2) as voltage,
+        ROUND(AVG(Analog7Value), 2) as current,
+        ROUND(AVG(Analog8Value), 2) as power,
+        COUNT(*) as sample_count
       FROM node_status_table
-      WHERE NodeName = ? AND NodeBaseStationName = ?
-    ),
-    sampled_data AS (
-      SELECT 
-        DATE_FORMAT(time, '%Y-%m-%d %H:%i:00') as sample_time,
-        AVG(Analog1Value) as forwardPower,
-        AVG(Analog2Value) as reflectedPower,
-        AVG(Analog3Value) as vswr,
-        AVG(Analog4Value) as returnLoss,
-        AVG(Analog5Value) as temperature,
-        AVG(Analog6Value) as voltage,
-        AVG(Analog7Value) as current,
-        AVG(Analog8Value) as power
-      FROM node_status_table, time_range
-      WHERE NodeName = ? 
+      WHERE NodeName = ?
         AND NodeBaseStationName = ?
-        AND time >= (SELECT start_time FROM time_range)
-        AND time <= (SELECT end_time FROM time_range)
-      GROUP BY DATE_FORMAT(time, '%Y-%m-%d %H:%i:00')
-      ORDER BY sample_time DESC
+        AND time BETWEEN ? AND ?
+      GROUP BY bucket_start
+      HAVING sample_count > 0
+      ORDER BY bucket_start DESC
       LIMIT ? OFFSET ?
     )
-    SELECT * FROM sampled_data
+    SELECT 
+      bucket_start as sample_time,
+      forwardPower,
+      reflectedPower,
+      vswr,
+      returnLoss,
+      temperature,
+      voltage,
+      current,
+      power
+    FROM time_buckets
+    ORDER BY sample_time ASC  // Return in chronological order for the chart
   `;
 
+  // More accurate count query that matches the main query's time bucketing
   const countQuery = `
-    WITH time_range AS (
-      SELECT 
-        MAX(time) as end_time,
-        DATE_SUB(MAX(time), INTERVAL ? MINUTE) as start_time
+    SELECT COUNT(*) as total FROM (
+      SELECT 1
       FROM node_status_table
-      WHERE NodeName = ? AND NodeBaseStationName = ?
-    )
-    SELECT COUNT(DISTINCT DATE_FORMAT(time, '%Y-%m-%d %H:%i:00')) as total
-    FROM node_status_table
-    WHERE NodeName = ? 
-      AND NodeBaseStationName = ?
-      AND time >= (SELECT start_time FROM time_range)
-      AND time <= (SELECT end_time FROM time_range)
+      WHERE NodeName = ?
+        AND NodeBaseStationName = ?
+        AND time BETWEEN ? AND ?
+      GROUP BY FLOOR(UNIX_TIMESTAMP(time) / (${timeStep} * 60))
+    ) as time_buckets
   `;
+
+  console.log('Executing queries with params:', {
+    timeRangeMinutes,
+    nodeName,
+    baseStation,
+    pageSize,
+    offset,
+    timeStep,
+    startTime: startTime.toISOString(),
+    endTime: endTime.toISOString()
+  });
+  
+  // Log the first few characters of the query for debugging
+  console.log('Query preview:', query.substring(0, 200) + '...');
+
+  // Calculate the actual time range we're querying
+  const actualEndTime = new Date(timeRange.latest_time);
+  const actualStartTime = new Date(actualEndTime.getTime() - (Math.min(timeRangeMinutes * 60 * 1000, maxTimeRangeMs)));
+  
+  console.log('Query parameters:', {
+    startTime: actualStartTime,
+    endTime: actualEndTime,
+    timeStep: timeStep + ' minutes',
+    pageSize,
+    offset
+  });
+
+  // Execute the queries with proper parameter binding
+  const queryParams = [
+    nodeName,
+    baseStation,
+    actualStartTime,
+    actualEndTime,
+    pageSize,
+    offset
+  ];
+
+  const countParams = [
+    nodeName,
+    baseStation,
+    actualStartTime,
+    actualEndTime
+  ];
+
+  console.log('Executing query with params:', queryParams);
+  console.log('Executing count query with params:', countParams);
 
   const [[{ total }], data] = await Promise.all([
-    pool.promise().query(countQuery, [minutesToSubtract, nodeName, baseStation, nodeName, baseStation]),
-    pool.promise().query(query, [minutesToSubtract, nodeName, baseStation, nodeName, baseStation, pageSize, offset])
+    pool.promise().query(countQuery, countParams),
+    pool.promise().query(query, queryParams)
   ]);
   
   // Debug time range of returned data
   if (data[0].length > 0) {
     const returnedData = data[0];
     console.log('Returned data time range:', {
-      start: returnedData[returnedData.length - 1].time,
-      end: returnedData[0].time,
-      requestedMinutes: minutesToSubtract,
-      recordCount: total
+      start: returnedData[returnedData.length - 1]?.sample_time || 'N/A',
+      end: returnedData[0]?.sample_time || 'N/A',
+      requestedMinutes: timeRangeMinutes,
+      recordCount: total,
+      dataPoints: returnedData.length
     });
+    
+    // Log first and last few data points for debugging
+    console.log('First data point:', returnedData[0]);
+    if (returnedData.length > 1) {
+      console.log('Last data point:', returnedData[returnedData.length - 1]);
+    }
   }
 
   return {
@@ -227,37 +368,130 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
   };
 };
 
+// Telemetry data endpoint
 app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
+  const { nodeName, baseStation } = req.params;
+  const { timeFilter = '1h', page = 1, pageSize = 200 } = req.query; // Increased default pageSize
+  
+  const requestId = Math.random().toString(36).substring(2, 9);
+  const startTime = Date.now();
+  
+  // Create a cache key based on the request parameters
+  const cacheKey = `telemetry:${nodeName}:${baseStation}:${timeFilter}:${page}:${pageSize}`;
+  const ttl = getCacheTTL(timeFilter);
+  
+  // Log request details
+  console.log(`[${requestId}] [START] Telemetry request`, {
+    nodeName,
+    baseStation,
+    timeFilter,
+    page,
+    pageSize,
+    cacheKey,
+    ttl,
+    timestamp: new Date().toISOString(),
+    url: req.originalUrl
+  });
+  
+  // Try to get cached data first
   try {
-    const { nodeName, baseStation } = req.params;
-    const { timeFilter, page = 1 } = req.query;
-    const pageSize = 100;
-
-    // Input validation
-    if (!timeFilter || !isValidTimeFilter(timeFilter)) {
-      return res.status(400).json({ error: 'Invalid time filter' });
-    }
-
-    // Create cache key
-    const cacheKey = `telemetry:${nodeName}:${baseStation}:${timeFilter}:${page}`;
     const cachedData = cache.get(cacheKey);
-
     if (cachedData) {
+      const duration = Date.now() - startTime;
+      console.log(`[${requestId}] [CACHE HIT] Served from cache in ${duration}ms`, {
+        recordsReturned: cachedData.data?.length || 0,
+        cacheKey
+      });
+      
+      res.set({
+        'X-Response-Time': `${duration}ms`,
+        'X-Cache': 'HIT',
+        'X-Request-Id': requestId
+      });
+      
       return res.json(cachedData);
     }
-
-    const result = await getTelemetryData(pool, nodeName, baseStation, timeFilter, parseInt(page), pageSize);
+  } catch (cacheError) {
+    console.warn(`[${requestId}] Cache check failed:`, cacheError);
+    // Continue with fresh data if cache check fails
+  }
+  
+  // Validate time filter
+  if (!isValidTimeFilter(timeFilter)) {
+    const errorMsg = `Invalid time filter: ${timeFilter}`;
+    console.error(`[${requestId}] [ERROR] ${errorMsg}`);
+    return res.status(400).json({ 
+      error: `Invalid time filter. Must be one of: 5m, 10m, 30m, 1h, 2h, 6h, 1d, 2d, 5d, 1w, 2w, 30d`,
+      requestId,
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  try {
+    // Execute the query
+    const queryStart = Date.now();
+    const data = await getTelemetryData(pool, nodeName, baseStation, timeFilter, parseInt(page), parseInt(pageSize));
+    const queryDuration = Date.now() - queryStart;
     
-    // Cache the result with dynamic TTL
-    const ttl = getCacheTTL(timeFilter);
-    cache.set(cacheKey, result, ttl);
-    res.json(result);
+    const totalDuration = Date.now() - startTime;
+    
+    // Log successful response
+    console.log(`[${requestId}] [SUCCESS] Query executed in ${queryDuration}ms`, {
+      recordsReturned: data.data?.length || 0,
+      totalRecords: data.total || 0,
+      timeRange: timeFilter,
+      queryDuration,
+      totalDuration,
+      page,
+      pageSize,
+      totalPages: data.totalPages || 1
+    });
+    
+    // Only cache successful responses with data
+    if (data.data && data.data.length > 0) {
+      try {
+        cache.set(cacheKey, data, ttl);
+        console.log(`[${requestId}] [CACHE] Stored response in cache for ${ttl} seconds`);
+      } catch (cacheError) {
+        console.warn(`[${requestId}] [CACHE ERROR] Failed to cache response:`, cacheError);
+      }
+    }
+    
+    // Add response headers
+    res.set({
+      'X-Response-Time': `${totalDuration}ms`,
+      'X-Query-Time': `${queryDuration}ms`,
+      'X-Cache': 'MISS',
+      'X-Request-Id': requestId,
+      'X-Total-Records': data.total || 0,
+      'X-Page': page,
+      'X-Page-Size': pageSize,
+      'X-Total-Pages': data.totalPages || 1
+    });
+    
+    res.json(data);
+    
   } catch (error) {
-    console.error('Error fetching telemetry data:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    const errorDuration = Date.now() - startTime;
+    const errorId = `err_${Math.random().toString(36).substring(2, 8)}`;
+    
+    console.error(`[${requestId}] [ERROR] Request failed after ${errorDuration}ms`, {
+      error: error.message,
+      errorId,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+      params: { nodeName, baseStation, timeFilter, page, pageSize }
+    });
+    
+    res.status(500).json({ 
+      error: 'Failed to fetch telemetry data',
+      errorId,
+      requestId,
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    });
   }
 });
 
+// Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
