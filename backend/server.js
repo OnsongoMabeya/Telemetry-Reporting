@@ -105,6 +105,9 @@ app.get('/api/basestations/:nodeName', async (req, res) => {
   }
 });
 
+// Maximum time range in milliseconds (30 days)
+const maxTimeRangeMs = 30 * 24 * 60 * 60 * 1000;
+
 // Helper function to calculate optimal number of data points based on time range
 const calculateDataPoints = (minutes) => {
   if (minutes <= 15) return 60;        // High resolution for very short ranges
@@ -275,7 +278,7 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
       current,
       power
     FROM time_buckets
-    ORDER BY sample_time ASC  // Return in chronological order for the chart
+    ORDER BY sample_time ASC  -- Return in chronological order for the chart
   `;
 
   // More accurate count query that matches the main query's time bucketing
@@ -304,6 +307,9 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
   // Log the first few characters of the query for debugging
   console.log('Query preview:', query.substring(0, 200) + '...');
 
+  // Define max time range (30 days in milliseconds)
+  const maxTimeRangeMs = 30 * 24 * 60 * 60 * 1000;
+  
   // Calculate the actual time range we're querying
   const actualEndTime = new Date(timeRange.latest_time);
   const actualStartTime = new Date(actualEndTime.getTime() - (Math.min(timeRangeMinutes * 60 * 1000, maxTimeRangeMs)));
@@ -431,36 +437,24 @@ app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
     // Execute the query
     const queryStart = Date.now();
     const data = await getTelemetryData(pool, nodeName, baseStation, timeFilter, parseInt(page), parseInt(pageSize));
-    const queryDuration = Date.now() - queryStart;
     
-    const totalDuration = Date.now() - startTime;
+    const duration = Date.now() - startTime;
     
     // Log successful response
-    console.log(`[${requestId}] [SUCCESS] Query executed in ${queryDuration}ms`, {
+    console.log(`[${requestId}] [SUCCESS] Query executed in ${duration}ms`, {
       recordsReturned: data.data?.length || 0,
       totalRecords: data.total || 0,
       timeRange: timeFilter,
-      queryDuration,
-      totalDuration,
+      queryDuration: duration,
       page,
       pageSize,
       totalPages: data.totalPages || 1
     });
     
-    // Only cache successful responses with data
-    if (data.data && data.data.length > 0) {
-      try {
-        cache.set(cacheKey, data, ttl);
-        console.log(`[${requestId}] [CACHE] Stored response in cache for ${ttl} seconds`);
-      } catch (cacheError) {
-        console.warn(`[${requestId}] [CACHE ERROR] Failed to cache response:`, cacheError);
-      }
-    }
-    
     // Add response headers
     res.set({
-      'X-Response-Time': `${totalDuration}ms`,
-      'X-Query-Time': `${queryDuration}ms`,
+      'X-Response-Time': `${duration}ms`,
+      'X-Query-Time': `${duration}ms`,
       'X-Cache': 'MISS',
       'X-Request-Id': requestId,
       'X-Total-Records': data.total || 0,
@@ -469,7 +463,7 @@ app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
       'X-Total-Pages': data.totalPages || 1
     });
     
-    res.json(data);
+    return res.json(data);
     
   } catch (error) {
     const errorDuration = Date.now() - startTime;
@@ -482,11 +476,12 @@ app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
       params: { nodeName, baseStation, timeFilter, page, pageSize }
     });
     
-    res.status(500).json({ 
+    return res.status(500).json({ 
       error: 'Failed to fetch telemetry data',
       errorId,
       requestId,
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      timestamp: new Date().toISOString()
     });
   }
 });
