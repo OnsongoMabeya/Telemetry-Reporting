@@ -35,10 +35,21 @@ const getTimeRangeLabel = (timeRange) => {
     '1w': 'Last 1 week',
   };
 
-  return timeRangeLabels[timeRange];
+  return timeRange ? (timeRangeLabels[timeRange] || timeRange) : 'None selected';
 };
 
 const ReportConfigModal = ({ open, onClose, onGenerate, currentNode, currentTimeRange }) => {
+  // Debug logs
+  React.useEffect(() => {
+    if (open) {
+      console.log('ReportConfigModal opened with props:', {
+        currentNode,
+        currentTimeRange,
+        hasCurrentNode: !!currentNode,
+        hasCurrentTimeRange: !!currentTimeRange
+      });
+    }
+  }, [open, currentNode, currentTimeRange]);
 
   const handleGenerate = () => {
     if (currentNode && currentTimeRange) {

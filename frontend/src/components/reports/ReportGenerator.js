@@ -6,7 +6,7 @@ import { generateHTMLReport } from './HTMLReport';
 import { generatePDFReport } from './PDFReport';
 import { API_BASE_URL } from '../../config/api';
 
-const ReportGenerator = ({ nodes, onError }) => {
+const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -105,9 +105,13 @@ const ReportGenerator = ({ nodes, onError }) => {
       )}
       <ReportConfigModal
         open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        nodes={nodes}
+        onClose={() => {
+          console.log('Closing modal');
+          setIsModalOpen(false);
+        }}
         onGenerate={handleGenerateReport}
+        currentNode={currentNode}
+        currentTimeRange={currentTimeRange}
       />
     </Box>
   );

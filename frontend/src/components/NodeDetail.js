@@ -699,7 +699,9 @@ const NodeDetail = () => {
           </Typography>
           <ReportGenerator 
             nodes={nodes} 
-            onError={(error) => setError(error.message)} 
+            onError={(error) => setError(error.message)}
+            currentNode={selectedNode}
+            currentTimeRange={timeFilter}
           />
           {/* Debug info */}
           {process.env.NODE_ENV === 'development' && (
