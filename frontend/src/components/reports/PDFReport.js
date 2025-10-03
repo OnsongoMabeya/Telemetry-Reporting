@@ -5,6 +5,30 @@ import * as d3 from 'd3';
 import './PDFReport.css';
 import { API_BASE_URL } from '../../config/api';
 
+// Helper function to get consistent colors for metrics
+const getGraphColor = (dataKey) => {
+  switch (dataKey) {
+    case 'forwardPower':
+      return '#4CAF50'; // Green
+    case 'reflectedPower':
+      return '#F44336'; // Red
+    case 'vswr':
+      return '#2196F3'; // Blue
+    case 'returnLoss':
+      return '#FF9800'; // Orange
+    case 'temperature':
+      return '#E91E63'; // Pink
+    case 'voltage':
+      return '#9C27B0'; // Purple
+    case 'current':
+      return '#795548'; // Brown
+    case 'power':
+      return '#607D8B'; // Blue Grey
+    default:
+      return '#000000'; // Black
+  }
+};
+
 const METRIC_KEYS = {
   'Forward Power': 'forwardPower',
   'Reflected Power': 'reflectedPower',
@@ -269,84 +293,241 @@ const analyzeMetricData = (data, metric) => {
   };
 };
 
+const formatXAxisLabel = (date, data) => {
+  if (!data || data.length < 2) {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Africa/Nairobi',
+      hour12: false
+    }).format(date);
+  }
+
+  const timeRange = new Date(data[data.length - 1].x) - new Date(data[0].x);
+  const oneDay = 24 * 60 * 60 * 1000;
+  
+  if (timeRange <= 2 * 60 * 60 * 1000) {
+    // Less than 2 hours: show hours:minutes:seconds
+    return new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZone: 'Africa/Nairobi',
+      hour12: false
+    }).format(date);
+  } else if (timeRange <= oneDay) {
+    // Less than 1 day: show hours:minutes
+    return new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Africa/Nairobi',
+      hour12: false
+    }).format(date);
+  } else if (timeRange <= 7 * oneDay) {
+    // Less than 1 week: show date and time
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Africa/Nairobi',
+      hour12: false
+    }).format(date);
+  } else {
+    // More than 1 week: show date only
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'Africa/Nairobi'
+    }).format(date);
+  }
+};
+
 const drawGraphOnCanvas = (ctx, data, metric, width, height) => {
   if (!data || data.length === 0) {
-    console.warn(`No data points for ${metric}`);
+    console.warn(`No data points for ${metric.title}`);
     return;
   }
 
-  // Calculate min/max values for scaling
-  const values = data.map(point => point.y);
-  const minValue = Math.min(...values);
-  const maxValue = Math.max(...values);
-  const valuePadding = (maxValue - minValue) * 0.1;
+  // Calculate min/max values with smart padding
+  const values = data.map(point => point.y).filter(y => y !== null && !isNaN(y));
+  if (values.length === 0) return;
+  
+  let minValue = Math.min(...values);
+  let maxValue = Math.max(...values);
+  
+  // Handle case where all values are the same
+  if (minValue === maxValue) {
+    if (minValue === 0) {
+      maxValue = 1; // Default range for zero values
+    } else {
+      const padding = Math.max(0.1, Math.abs(minValue * 0.1));
+      minValue -= padding;
+      maxValue += padding;
+    }
+  } else {
+    // Add dynamic padding
+    const range = maxValue - minValue;
+    const padding = range * 0.1; // 10% padding
+    minValue -= padding;
+    maxValue += padding;
+    
+    // Ensure we don't go below zero for metrics that can't be negative
+    if (['vswr', 'returnLoss', 'forwardPower', 'reflectedPower'].includes(metric.name)) {
+      minValue = Math.max(0, minValue);
+    }
+  }
 
-  // Calculate time range
+  // Calculate time range with buffer
   const timestamps = data.map(point => point.x);
   const minTime = Math.min(...timestamps);
   const maxTime = Math.max(...timestamps);
+  const timeBuffer = (maxTime - minTime) * 0.05; // 5% buffer on each side
 
-  // Set up scaling functions
+  // Set up scaling functions with margins
+  const margin = { top: 10, right: 30, left: 70, bottom: 40 };
+  const innerWidth = width - margin.left - margin.right;
+  const innerHeight = height - margin.top - margin.bottom;
+
   const scaleX = d3.scaleTime()
-    .domain([new Date(minTime), new Date(maxTime)])
-    .range([50, width - 20]);
+    .domain([new Date(minTime - timeBuffer), new Date(maxTime + timeBuffer)])
+    .range([0, innerWidth]);
 
   const scaleY = d3.scaleLinear()
-    .domain([minValue - valuePadding, maxValue + valuePadding])
-    .range([height - 30, 20]);
+    .domain([minValue, maxValue])
+    .range([innerHeight, 0]);
 
   // Clear canvas
   ctx.clearRect(0, 0, width, height);
+  ctx.save();
+  ctx.translate(margin.left, margin.top);
 
-  // Draw axes
-  ctx.beginPath();
-  ctx.strokeStyle = '#000';
+  // Draw grid lines
+  ctx.strokeStyle = '#f0f0f0';
   ctx.lineWidth = 1;
-
-  // Y-axis
-  ctx.moveTo(50, 20);
-  ctx.lineTo(50, height - 30);
-
-  // X-axis
-  ctx.moveTo(50, height - 30);
-  ctx.lineTo(width - 20, height - 30);
-  ctx.stroke();
-
-  // Draw data points and lines
-  ctx.beginPath();
-  ctx.strokeStyle = metric.color || '#2196f3';
-  ctx.lineWidth = 2;
-
-  data.forEach((point, i) => {
-    const x = scaleX(new Date(point.x));
-    const y = scaleY(point.y);
-
-    if (i === 0) {
-      ctx.moveTo(x, y);
-    } else {
-      ctx.lineTo(x, y);
-    }
-  });
-
-  ctx.stroke();
-
-  // Add labels
-  ctx.fillStyle = '#000';
-  ctx.font = '12px Arial';
-
-  // Y-axis labels
+  
+  // Horizontal grid lines (aligned with Y-axis ticks)
   const yTicks = scaleY.ticks(5);
   yTicks.forEach(tick => {
     const y = scaleY(tick);
-    ctx.fillText(`${tick.toFixed(1)}${metric.unit}`, 5, y + 4);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(innerWidth, y);
+    ctx.stroke();
   });
-
-  // X-axis labels
+  
+  // Vertical grid lines (aligned with X-axis ticks)
   const xTicks = scaleX.ticks(5);
   xTicks.forEach(tick => {
     const x = scaleX(tick);
-    ctx.fillText(tick.toLocaleTimeString(), x - 20, height - 5);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, innerHeight);
+    ctx.stroke();
   });
+
+  // Draw axis lines
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 1;
+  
+  // X-axis
+  ctx.beginPath();
+  ctx.moveTo(0, innerHeight);
+  ctx.lineTo(innerWidth, innerHeight);
+  ctx.stroke();
+  
+  // Y-axis
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(0, innerHeight);
+  ctx.stroke();
+
+  // Draw data line with smooth curve
+  ctx.beginPath();
+  ctx.strokeStyle = metric.color || getGraphColor(metric.name) || '#4361EE';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  // Use d3.line with curve for smooth line
+  const line = d3.line()
+    .x(d => scaleX(new Date(d.x)))
+    .y(d => scaleY(d.y))
+    .curve(d3.curveMonotoneX);
+
+  // Filter out any null/undefined points
+  const validData = data.filter(d => d.y !== null && !isNaN(d.y));
+  
+  // Draw the line
+  const path = new Path2D(line(validData));
+  ctx.stroke(path);
+
+  // Format Y-axis values similar to the dashboard
+  const formatYValue = (value) => {
+    if (value === null || value === undefined) return 'N/A';
+    
+    // For very small numbers, use scientific notation
+    if (Math.abs(value) > 0 && Math.abs(value) < 0.01) {
+      return value.toExponential(2);
+    }
+    
+    // For numbers with many decimal places, limit to 4
+    const strValue = value.toString();
+    if (strValue.includes('.') && strValue.split('.')[1].length > 4) {
+      return value.toFixed(4);
+    }
+    
+    // For whole numbers, don't show decimal places
+    if (Number.isInteger(value)) {
+      return value.toString();
+    }
+    
+    // For other numbers, show up to 2 decimal places
+    return value.toFixed(2);
+  };
+
+  // Add Y-axis labels
+  ctx.font = '11px monospace';
+  ctx.fillStyle = '#666';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  
+  yTicks.forEach(tick => {
+    const y = scaleY(tick);
+    ctx.fillText(formatYValue(tick), -10, y);
+  });
+
+  // Add X-axis labels
+  ctx.font = '12px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  
+  xTicks.forEach(tick => {
+    const x = scaleX(tick);
+    const label = formatXAxisLabel(tick, data);
+    ctx.fillText(label, x, innerHeight + 5);
+  });
+
+  // Add Y-axis title (metric name and unit)
+  if (metric.title && metric.unit) {
+    ctx.save();
+    ctx.font = '12px Arial';
+    ctx.fillStyle = '#666';
+    ctx.textAlign = 'center';
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(`${metric.title} (${metric.unit})`, -innerHeight / 2, -margin.left + 20);
+    ctx.restore();
+  }
+
+  // Add subtle shadow to the line for depth
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+  ctx.shadowBlur = 4;
+  ctx.shadowOffsetY = 2;
+  ctx.stroke(path);
+  ctx.shadowColor = 'transparent';
+
+  ctx.restore();
 };
 
 const PDFReport = {
