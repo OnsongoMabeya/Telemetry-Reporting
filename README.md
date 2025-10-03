@@ -75,31 +75,47 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 4. **Environment Variables**
 
-   `backend/.env`:
+### Backend (`.env`)
 
-   ```env
-   # Database Configuration
-   DB_HOST=localhost
-   DB_USER=your_username
-   DB_PASSWORD=your_secure_password
-   DB_NAME=horiserverlive
-   DB_PORT=3306
-   
-   # Server Configuration
-   PORT=5000
-   NODE_ENV=development
-   CACHE_TTL=300  # 5 minutes cache TTL
-   ```
+```env
+# Database Configuration
+DB_HOST=localhost
+DB_USER=your_username
+DB_PASSWORD=your_secure_password
+DB_NAME=horiserverlive
+DB_PORT=3306
 
-   `frontend/.env`:
+# Server Configuration
+PORT=5000
+NODE_ENV=development
 
-   ```env
-   PORT=3010
-   REACT_APP_API_URL=http://localhost:5000
-   REACT_APP_DEFAULT_TIME_RANGE=1h
-   ```
+# Caching
+CACHE_TTL=300  # Default cache TTL in seconds
 
-## 🚦 Running the Application
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=60000  # 1 minute
+RATE_LIMIT_MAX=100          # Max requests per window per IP
+
+# Logging
+LOG_LEVEL=info  # error, warn, info, debug
+```
+
+### Frontend (`.env`)
+
+```env
+# Application
+PORT=3010
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_DEFAULT_TIME_RANGE=1h
+REACT_APP_THEME=light  # light or dark
+REACT_APP_ANALYTICS=false  # Enable/disable analytics
+
+# Feature Flags
+REACT_APP_FEATURE_REPORTS=true
+REACT_APP_FEATURE_ALERTS=true
+```
+
+## 🚀 Running the Application
 
 1. **Start the backend server**
 
@@ -121,19 +137,22 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 ## 📊 Data Sampling Intervals
 
-The system automatically adjusts data sampling based on the selected time range:
+The system automatically adjusts data sampling based on the selected time range to optimize performance and user experience:
 
-| Time Range | Sample Interval | Data Points | Best For |
-|------------|-----------------|-------------|----------|
-| 5m - 10m   | 10 seconds      | 30-60       | Real-time monitoring |
-| 30m        | 30 seconds      | 60          | Short-term analysis |
-| 1h         | 1 minute        | 60          | Hourly trends |
-| 2h         | 2 minutes       | 60          | Multi-hour monitoring |
-| 6h         | 5 minutes       | 72          | Half-day analysis |
-| 1d         | 15 minutes      | 96          | Daily overview |
-| 2d         | 30 minutes      | 96          | Two-day trends |
-| 5d         | 1 hour          | 120         | Weekly analysis |
-| 1w         | 2 hours         | 84          | Weekly summary |
+| Time Range | Sample Interval | Data Points | Cache TTL  | Best For |
+|------------|-----------------|-------------|------------|----------|
+| 5m         | 10 seconds      | 30          | 30s        | Real-time monitoring |
+| 10m        | 10 seconds      | 60          | 30s        | Short-term analysis |
+| 30m        | 30 seconds      | 60          | 2m         | Quick diagnostics |
+| 1h         | 1 minute        | 60          | 5m         | Hourly trends |
+| 2h         | 2 minutes       | 60          | 5m         | Multi-hour monitoring |
+| 6h         | 5 minutes       | 72          | 10m        | Half-day analysis |
+| 1d         | 15 minutes      | 96          | 15m        | Daily overview |
+| 2d         | 30 minutes      | 96          | 30m        | Two-day trends |
+| 5d         | 1 hour          | 120         | 1h         | Weekly analysis |
+| 1w         | 2 hours         | 84          | 2h         | Weekly summary |
+| 2w         | 4 hours         | 84          | 4h         | Bi-weekly review |
+| 30d        | 1 day           | 30          | 12h        | Monthly reporting |
 
 ## 🤝 Contributing
 
@@ -153,18 +172,42 @@ For questions or support, please contact the development team at [your-email@exa
 
 ## Available Scripts
 
-- `npm run dev`: Start both frontend and backend servers
-- `npm run start-frontend`: Start only the frontend server
-- `npm run start-backend`: Start only the backend server
+- `npm install`: Install all dependencies (root, frontend, and backend)
+- `npm start`: Start both frontend and backend servers in development mode
+- `npm run build`: Build the frontend for production
+- `npm run test`: Run tests for both frontend and backend
+- `npm run lint`: Lint both frontend and backend code
+- `npm run format`: Format code using Prettier
 
 ## Repository Structure
 
-```tree
-   BSI-telemetry-reporting/
-   ├── frontend/          # React frontend application
-   ├── backend/           # Node.js backend server
-   ├── package.json       # Root package.json for running both servers
-   └── README.md          # This file
+```text
+BSI-telemetry-reporting/
+├── frontend/              # React frontend application
+│   ├── public/            # Static files
+│   ├── src/               # Source files
+│   │   ├── assets/        # Images and other static assets
+│   │   ├── components/    # React components
+│   │   │   ├── reports/   # Report generation components
+│   │   │   └── ...       # Other components
+│   │   ├── config/        # Configuration files
+│   │   ├── App.js         # Main application component
+│   │   └── index.js       # Application entry point
+│   ├── .env.example      # Example environment variables
+│   ├── package.json      # Frontend dependencies
+│   └── README.md         # Frontend documentation
+│
+├── backend/              # Node.js/Express backend server
+│   ├── middleware/       # Express middleware
+│   │   └── auth.js       # Authentication middleware
+│   ├── .env.example     # Example environment variables
+│   ├── server.js        # Main server file
+│   ├── package.json     # Backend dependencies
+│   └── README.md        # Backend documentation
+│
+├── .gitignore           # Git ignore file
+├── package.json         # Root package.json
+└── README.md            # This file
 ```
 
 ## Contributing

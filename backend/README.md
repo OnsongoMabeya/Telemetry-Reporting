@@ -5,15 +5,17 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
 ## 🚀 Features
 
 - **RESTful API** with comprehensive endpoint documentation
-- **Smart Data Sampling** based on time range for optimal performance
+- **Smart Data Sampling** based on time range for optimal performance (5m to 30d)
 - **MySQL Integration** with connection pooling and query optimization
-- **Caching Layer** for improved response times
-- **Robust Error Handling** with detailed logging
+- **In-memory Caching** with node-cache for improved response times
+- **Robust Error Handling** with detailed logging and error boundaries
 - **Environment-based Configuration** for different deployment scenarios
-- **CORS Support** for secure cross-origin requests
-- **Data Validation** for all API endpoints
-- **Rate Limiting** to prevent abuse
-- **Request Logging** for debugging and monitoring
+- **CORS Support** with configurable origins
+- **Request Validation** for all API endpoints
+- **Rate Limiting** to prevent abuse (100 requests per minute per IP)
+- **Request Logging** with configurable log levels
+- **Pagination Support** for large datasets
+- **Time-based Data Aggregation** for efficient data retrieval
 
 ## 🛠️ Setup & Installation
 
@@ -79,6 +81,12 @@ All API endpoints are prefixed with `/api`
 
 Currently, the API is open. For production, implement authentication middleware.
 
+### Rate Limiting
+
+- 100 requests per minute per IP address
+- Returns HTTP 429 (Too Many Requests) when limit is exceeded
+- Includes `Retry-After` header indicating when to retry
+
 ### Endpoints
 
 #### Get All Nodes
@@ -87,7 +95,9 @@ Currently, the API is open. For production, implement authentication middleware.
 GET /api/nodes
 ```
 
-### Response (All Nodes)
+#### Nodes List Response
+
+**Status:** 200 OK
 
 ```json
 [
@@ -103,11 +113,13 @@ GET /api/nodes
 GET /api/basestations/:nodeName
 ```
 
-### Parameters (Base Stations)
+#### Parameters
 
 - `nodeName` (string, required): Name of the node
 
-### Response (Base Stations)
+#### Response
+
+**Status:** 200 OK
 
 ```json
 [
@@ -116,21 +128,27 @@ GET /api/basestations/:nodeName
 ]
 ```
 
+#### Base Stations Error Responses
+
+- `404 Not Found`: If node doesn't exist
+- `500 Internal Server Error`: For server-side errors
+
 #### Get Telemetry Data
 
 ```http
 GET /api/telemetry/:nodeName/:baseStation
 ```
 
-### Parameters (Telemetry Data)
+#### Telemetry Parameters
 
 - `nodeName` (string, required): Name of the node
 - `baseStation` (string, required): Name of the base station
-- `timeFilter` (string, optional): Time range filter (5m, 10m, 30m, 1h, 2h, 6h, 1d, 2d, 5d, 1w)
+- `timeFilter` (string, optional): Time range filter (5m, 10m, 30m, 1h, 2h, 6h, 1d, 2d, 5d, 1w, 2w, 30d)
 - `startTime` (string, optional): Custom start time (ISO 8601 format)
 - `endTime` (string, optional): Custom end time (ISO 8601 format)
-- `page` (number, optional): Page number for pagination (default: 1)
-- `pageSize` (number, optional): Number of items per page (default: 200, max: 1000)
+- `page` (number, optional): Page number (default: 1)
+- `pageSize` (number, optional): Items per page (default: 200, max: 1000)
+- `metrics` (string, optional): Comma-separated list of metrics to return (e.g., "forwardPower,reflectedPower")
 
 ### Response (Telemetry Data)
 
@@ -158,19 +176,28 @@ GET /api/telemetry/:nodeName/:baseStation
 
 ## 🔄 Data Sampling Strategy
 
-The backend implements intelligent data sampling based on the requested time range:
+The backend implements intelligent data sampling based on the requested time range to optimize performance and data relevance:
 
-| Time Range | Sample Interval | Data Points | Purpose |
-|------------|----------------|-------------|---------|
-| 5m - 10m   | 10 seconds     | 30-60       | High-resolution real-time monitoring |
-| 30m        | 30 seconds     | 60          | Short-term trend analysis |
-| 1h         | 1 minute       | 60          | Hourly performance |
-| 2h         | 2 minutes      | 60          | Multi-hour monitoring |
-| 6h         | 5 minutes      | 72          | Half-day analysis |
-| 1d         | 15 minutes     | 96          | Daily overview |
-| 2d         | 30 minutes     | 96          | Two-day trends |
-| 5d         | 1 hour         | 120         | Weekly analysis |
-| 1w         | 2 hours        | 84          | Weekly summary |
+| Time Range | Sample Interval | Data Points | Cache TTL  | Best For |
+|------------|-----------------|-------------|------------|----------|
+| 5m         | 10 seconds      | 30          | 30s        | Real-time monitoring |
+| 10m        | 10 seconds      | 60          | 30s        | Short-term analysis |
+| 30m        | 30 seconds      | 60          | 2m         | Quick diagnostics |
+| 1h         | 1 minute        | 60          | 5m         | Hourly trends |
+| 2h         | 2 minutes       | 60          | 5m         | Multi-hour monitoring |
+| 6h         | 5 minutes       | 72          | 10m        | Half-day analysis |
+| 1d         | 15 minutes      | 96          | 15m        | Daily overview |
+| 2d         | 30 minutes      | 96          | 30m        | Two-day trends |
+| 5d         | 1 hour          | 120         | 1h         | Weekly analysis |
+| 1w         | 2 hours         | 84          | 2h         | Weekly summary |
+| 2w         | 4 hours         | 84          | 4h         | Bi-weekly review |
+| 30d        | 1 day           | 30          | 12h        | Monthly reporting |
+
+### Cache Strategy
+
+- Data is cached based on the time range and query parameters
+- Cache TTL increases with longer time ranges
+- Cache is automatically invalidated when new data is received
 
 ## 🗃️ Database Schema
 
@@ -178,18 +205,31 @@ The application uses the following key tables:
 
 ### `node_status_table`
 
-- `id` (int): Primary key
-- `NodeName` (varchar): Name of the node
-- `NodeBaseStationName` (varchar): Name of the base station
-- `time` (datetime): Timestamp of the reading
-- `Analog1Value` (float): Forward Power
-- `Analog2Value` (float): Reflected Power
-- `Analog3Value` (float): VSWR
-- `Analog4Value` (float): Return Loss
-- `Analog5Value` (float): Temperature
-- `Analog6Value` (float): Voltage
-- `Analog7Value` (float): Current
-- `Analog8Value` (float): Power
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `NodeName` | varchar(255) | Name of the node |
+| `NodeBaseStationName` | varchar(255) | Name of the base station |
+| `time` | datetime | Timestamp of the reading |
+| `Analog1Value` | float | Forward Power (W) |
+| `Analog2Value` | float | Reflected Power (W) |
+| `Analog3Value` | float | VSWR (Voltage Standing Wave Ratio) |
+| `Analog4Value` | float | Return Loss (dB) |
+| `Analog5Value` | float | Temperature (°C) |
+| `Analog6Value` | float | Voltage (V) |
+| `Analog7Value` | float | Current (A) |
+| `Analog8Value` | float | Power (W) |
+
+### Indexes
+
+- Primary Key: `id`
+- Composite Index: `(NodeName, NodeBaseStationName, time)` for fast time-series queries
+
+### Performance Considerations
+
+- Table is optimized for time-series data
+- Data older than 90 days is automatically archived
+- Regular maintenance jobs optimize table performance
 
 ## 🚦 Error Handling
 
