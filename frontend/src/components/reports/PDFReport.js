@@ -635,11 +635,17 @@ const PDFReport = {
     // Reset text color
     pdf.setTextColor(THEME_COLORS.text.primary);
     
-    // Create canvas for graphs
+    // Create canvas for graphs with better aspect ratio
     const canvas = document.createElement('canvas');
-    canvas.width = 800;
-    canvas.height = 150; // Further reduced height for more compact graphs
+    // Use a wider canvas to prevent x-axis compression
+    canvas.width = 1000;  // Increased from 800
+    canvas.height = 250;  // Increased from 150 for better y-axis scaling
     const ctx = canvas.getContext('2d');
+    
+    // Set higher quality rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.webkitImageSmoothingEnabled = true;
+    ctx.mozImageSmoothingEnabled = true;
 
     // Process each metric
     for (const metric of Object.keys(METRIC_KEYS)) {
@@ -688,11 +694,36 @@ const PDFReport = {
         
         currentY += 10;
 
-        // Add graph with proper sizing
-        const graphWidth = contentWidth - 30;
-        const graphHeight = 100;
-        pdf.addImage(imgData, 'PNG', marginX + 15, currentY, graphWidth, graphHeight);
-        currentY += graphHeight + 15;
+        // Add graph with proper aspect ratio
+        const maxGraphWidth = contentWidth - 30;
+        const maxGraphHeight = 150;
+        
+        // Calculate dimensions to maintain aspect ratio
+        const aspectRatio = canvas.width / canvas.height;
+        let graphWidth = maxGraphWidth;
+        let graphHeight = graphWidth / aspectRatio;
+        
+        // If height exceeds max, adjust both dimensions
+        if (graphHeight > maxGraphHeight) {
+          graphHeight = maxGraphHeight;
+          graphWidth = graphHeight * aspectRatio;
+        }
+        
+        // Center the graph
+        const graphX = marginX + (contentWidth - graphWidth) / 2;
+        
+        // Add the image with high quality settings
+        pdf.addImage({
+          imageData: imgData,
+          x: graphX,
+          y: currentY,
+          width: graphWidth,
+          height: graphHeight,
+          compression: 'NONE',
+          alias: 'graph_' + metric.replace(/\s+/g, '_')
+        });
+        
+        currentY += graphHeight + 20;
 
         // Add analysis section with proper spacing
         if (currentY + 100 > pageHeight - marginY) {

@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Navbar from './components/Navbar';
 import NodeDetail from './components/NodeDetail';
+import RootElement from './components/RootElement';
 
 const theme = createTheme({
   palette: {
@@ -20,10 +21,12 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div className="App">
-        <Navbar />
-        <NodeDetail />
-      </div>
+      <RootElement>
+        <div className="App">
+          <Navbar />
+          <NodeDetail />
+        </div>
+      </RootElement>
     </ThemeProvider>
   );
 }
