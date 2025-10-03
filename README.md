@@ -2,43 +2,63 @@
 
 A comprehensive telemetry monitoring solution for tracking and analyzing node performance across multiple base stations. The system provides real-time data visualization, historical analysis, and automated reporting capabilities.
 
+![BSI Telemetry Dashboard](https://img.shields.io/badge/Status-Active-success)
+![Version](https://img.shields.io/badge/Version-1.0.0-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
+
 ## 🚀 Key Features
 
-### Real-time Monitoring
+### 📊 Real-time Monitoring
 
 - Live telemetry data visualization with auto-refresh
-- Interactive dashboards with multiple chart types
-- Real-time alerts and notifications
+- Interactive dashboards with multiple chart types using Recharts
+- Real-time alerts and notifications for critical metrics
+- Responsive design that works on all devices
 
-### Data Analysis
+### 🔍 Data Analysis
 
-- Intelligent data sampling based on time range
-- Automatic threshold detection and alerts
-- Performance trend analysis
-- Multi-metric correlation
+- Intelligent data sampling based on time range (5m to 30d)
+- Automatic threshold detection with visual indicators
+- Performance trend analysis with percentage changes
+- Multi-metric correlation and comparison
 
-### Reporting
+### 📑 Reporting
 
-- Automated PDF report generation
-- Customizable report templates
-- Export functionality for data analysis
-- Scheduled report delivery
+- Automated PDF report generation with BSI branding
+- Customizable report templates with metric-specific insights
+- Export functionality for data analysis (CSV/JSON)
+- Scheduled report delivery via email
+- Multi-base station comparison reports
 
-### System Architecture
+### 🏗️ System Architecture
 
-- **Frontend**: React with Material-UI
-- **Backend**: Node.js/Express with MySQL
+- **Frontend**: React 18 with Material-UI v5
+- **State Management**: React Context API
+- **Charts**: Recharts with custom tooltips and legends
+- **Backend**: Node.js/Express with MySQL 8.0+
 - **Data Processing**: Optimized SQL queries with time-based sampling
-- **Caching**: In-memory caching for improved performance
+- **Caching**: In-memory caching with node-cache
+- **Security**: JWT authentication, CORS, rate limiting
+- **API**: RESTful endpoints with comprehensive documentation
 
 ## 📋 Prerequisites
 
-- Node.js v18+ (LTS recommended)
-- MySQL 8.0+
-- npm 9.x or later
-- Modern web browser (Chrome, Firefox, Edge, or Safari)
+- **Node.js** v18+ (LTS recommended)
+- **npm** 9.x or later
+- **MySQL** 8.0+ or compatible database
+- **Modern web browser** (Chrome, Firefox, Edge, or Safari)
+- **Git** for version control
 
-## 🛠️ Installation
+## 🏗️ System Requirements
+
+- **CPU**: 2+ cores recommended
+- **RAM**: 4GB+ (8GB recommended for production)
+- **Disk Space**: 1GB+ (plus space for data storage)
+- **OS**: Linux, Windows 10+, or macOS 10.15+
+
+## 🛠️ Installation & Setup
+
+### Quick Start
 
 1. **Clone the repository**
 
@@ -50,7 +70,7 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 2. **Install dependencies**
 
    ```bash
-   # Install root dependencies
+   # Install root dependencies (for running both frontend and backend)
    npm install
    
    # Install frontend dependencies
@@ -63,17 +83,23 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
    cd ..
    ```
 
-3. **Configure environment**
+3. **Database Setup**
+
+   - Create a MySQL database
+   - Import the provided SQL schema (located in `backend/database/`)
+   - Update database credentials in `.env` files
+
+4. **Configure Environment**
 
    ```bash
-   # Copy and configure backend environment
+   # Copy example environment files
+   cp frontend/.env.example frontend/.env
    cp backend/.env.example backend/.env
    
-   # Copy and configure frontend environment
-   cp frontend/.env.example frontend/.env
+   # Edit the .env files with your configuration
    ```
 
-4. **Environment Variables**
+5. **Environment Variables**
 
 ### Backend (`.env`)
 
@@ -162,22 +188,72 @@ The system automatically adjusts data sampling based on the selected time range 
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📄 License
+## 📞 Support
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+For support, please contact:
 
-## 📧 Contact
+- **Email**: [support@bsi.com](mailto:support@bsi.com)
+- **Issues**: [GitHub Issues](https://github.com/OnsongoMabeya/Telemetry-Reporting/issues)
+- **Documentation**: [GitHub Wiki](https://github.com/OnsongoMabeya/Telemetry-Reporting/wiki)
 
-For questions or support, please contact the development team at [your-email@example.com](mailto:your-email@example.com)
+## 🙏 Acknowledgments
 
-## Available Scripts
+- Built with ❤️ by the BSI Engineering Team
+- Thanks to all contributors who have helped improve this project
+- Icons by [Material-UI](https://mui.com/material-ui/material-icons/)
 
-- `npm install`: Install all dependencies (root, frontend, and backend)
-- `npm start`: Start both frontend and backend servers in development mode
-- `npm run build`: Build the frontend for production
-- `npm run test`: Run tests for both frontend and backend
-- `npm run lint`: Lint both frontend and backend code
+## 🚀 Development
+
+### Running the Application
+
+1. **Start the development servers**
+
+   ```bash
+   # Start both frontend and backend with hot-reload
+   npm run dev
+   ```
+
+   This will start:
+
+   - Frontend: [http://localhost:3000](http://localhost:3000)
+   - Backend API: [http://localhost:5000](http://localhost:5000)
+   - API Documentation: [http://localhost:5000/api-docs](http://localhost:5000/api-docs)
+
+2. **Run in production mode**
+
+   ```bash
+   # Build frontend
+   cd frontend
+   npm run build
+   
+   # Start production server
+   cd ../backend
+   npm start
+   ```
+
+### Available Scripts
+
+#### Root Directory
+
+- `npm run dev`: Start both frontend and backend in development mode
+- `npm run build`: Build both frontend and backend for production
+- `npm test`: Run all tests
+- `npm run lint`: Lint all code
 - `npm run format`: Format code using Prettier
+
+#### Frontend (in `/frontend`)
+
+- `npm start`: Start development server
+- `npm build`: Create production build
+- `npm test`: Run frontend tests
+- `npm run eject`: Eject from create-react-app
+
+#### Backend (in `/backend`)
+
+- `npm start`: Start production server
+- `npm run dev`: Start development server with nodemon
+- `npm test`: Run backend tests
+- `npm run migrate`: Run database migrations
 
 ## Repository Structure
 

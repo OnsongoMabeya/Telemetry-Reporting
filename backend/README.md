@@ -1,25 +1,51 @@
 # BSI Telemetry Reports - Backend
 
-Node.js/Express backend server for the BSI Telemetry Reports application. Handles database operations, data processing, and provides REST API endpoints for the frontend.
+[![Node.js](https://img.shields.io/badge/Node.js-18.x-brightgreen)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-4.x-lightgrey)](https://expressjs.com/)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-blue)](https://www.mysql.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🚀 Features
+Node.js/Express backend server for the BSI Telemetry Reports application. This service handles all data processing, database operations, and provides a RESTful API for the frontend application.
 
-- **RESTful API** with comprehensive endpoint documentation
-- **Smart Data Sampling** based on time range for optimal performance (5m to 30d)
-- **MySQL Integration** with connection pooling and query optimization
-- **In-memory Caching** with node-cache for improved response times
-- **Robust Error Handling** with detailed logging and error boundaries
-- **Environment-based Configuration** for different deployment scenarios
-- **CORS Support** with configurable origins
-- **Request Validation** for all API endpoints
-- **Rate Limiting** to prevent abuse (100 requests per minute per IP)
-- **Request Logging** with configurable log levels
-- **Pagination Support** for large datasets
-- **Time-based Data Aggregation** for efficient data retrieval
+## 🌟 Features
 
-## 🛠️ Setup & Installation
+### Core Functionality
 
-1. **Clone the repository** (if not already done)
+- **RESTful API** - Comprehensive endpoints for all frontend data needs
+- **Real-time Data Processing** - Efficient handling of telemetry data streams
+- **Data Aggregation** - Smart data sampling and aggregation for optimal performance
+
+### Performance & Reliability
+
+- **Connection Pooling** - Efficient MySQL connection management
+- **In-memory Caching** - Node-cache implementation for frequently accessed data
+- **Rate Limiting** - Protection against abuse (100 requests/minute per IP)
+- **Request Validation** - Comprehensive input validation for all endpoints
+
+### Developer Experience
+
+- **Detailed Logging** - Configurable log levels and formats
+- **Environment-based Config** - Easy configuration for different environments
+- **API Documentation** - Comprehensive endpoint documentation
+- **Error Handling** - Structured error responses and logging
+
+### Data Management
+
+- **Time-based Sampling** - Intelligent data sampling based on time range (5m to 30d)
+- **Pagination** - Efficient handling of large datasets
+- **Data Export** - Support for data export in multiple formats
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18.x or later
+- MySQL 8.0 or later
+- npm 9.x or later
+
+### Installation
+
+1. **Clone the repository**
 
    ```bash
    git clone https://github.com/OnsongoMabeya/Telemetry-Reporting.git
@@ -32,46 +58,51 @@ Node.js/Express backend server for the BSI Telemetry Reports application. Handle
    npm install
    ```
 
-3. **Configure environment**
+3. **Set up environment variables**
 
    ```bash
    cp .env.example .env
    ```
 
-4. **Update environment variables** in `.env`:
+   Update the `.env` file with your configuration:
 
    ```env
-   # Database Configuration
-   DB_HOST=localhost          # Database host (local or remote IP)
-   DB_USER=dbuser            # Database username
-   DB_PASSWORD=securepass     # Database password
-   DB_NAME=horiserverlive    # Database name
-   DB_PORT=3306              # MySQL port
-   
    # Server Configuration
-   PORT=5000                 # Backend API port
-   NODE_ENV=development      # Environment (development/production)
-   CACHE_TTL=300             # Cache time-to-live in seconds
+   PORT=5000
+   NODE_ENV=development
+   
+   # Database Configuration
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_USER=dbuser
+   DB_PASSWORD=securepass
+   DB_NAME=horiserverlive
+   
+   # Cache Configuration
+   CACHE_ENABLED=true
+   CACHE_TTL=300  # 5 minutes
+   
+   # Rate Limiting
+   RATE_LIMIT_ENABLED=true
+   RATE_LIMIT_WINDOW_MS=900000  # 15 minutes
+   RATE_LIMIT_MAX=100
    
    # Logging
-   LOG_LEVEL=info            # Log level (error, warn, info, debug)
-   
-   # Security
-   RATE_LIMIT_WINDOW=15      # Rate limit window in minutes
-   RATE_LIMIT_MAX=100        # Max requests per window per IP
+   LOG_LEVEL=info
+   LOG_FORMAT=combined
    ```
 
-5. **Start the server**
+### Available Scripts
 
-   ```bash
-   # Development mode with hot-reload
-   npm run dev
-   
-   # Production mode
-   npm start
-   ```
+- `npm start` - Start the server in production mode
+- `npm run dev` - Start the server in development mode with hot-reload
+- `npm test` - Run tests
+- `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
+- `npm run migrate` - Run database migrations
+- `npm run seed` - Seed the database with sample data
 
-## 📚 API Documentation
+## 📚 API Reference
 
 ### Base URL
 
@@ -79,20 +110,112 @@ All API endpoints are prefixed with `/api`
 
 ### Authentication
 
-Currently, the API is open. For production, implement authentication middleware.
+> **Note**: Currently, the API is open. For production, implement proper authentication middleware.
 
 ### Rate Limiting
 
-- 100 requests per minute per IP address
-- Returns HTTP 429 (Too Many Requests) when limit is exceeded
-- Includes `Retry-After` header indicating when to retry
+- **Limit**: 100 requests per 15 minutes per IP address
+- **Response**: HTTP 429 (Too Many Requests) when limit is exceeded
+- **Headers**:
+  - `X-RateLimit-Limit`: Maximum number of requests allowed
+  - `X-RateLimit-Remaining`: Remaining number of requests
+  - `Retry-After`: Time in seconds until the rate limit resets
+
+### Error Responses
+
+All error responses follow this format:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human-readable error message",
+    "details": {}
+  }
+}
+```
 
 ### Endpoints
 
-#### Get All Nodes
+#### Nodes
+
+##### Get All Nodes
 
 ```http
 GET /api/nodes
+```
+
+**Description**: Retrieve a list of all nodes with their basic information.
+
+**Query Parameters**:
+
+- `limit` (number, optional): Maximum number of nodes to return (default: 100)
+- `offset` (number, optional): Number of nodes to skip (for pagination, default: 0)
+- `status` (string, optional): Filter by node status (online/offline)
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "nodeId": "node1",
+      "name": "Main Server",
+      "status": "online",
+      "lastSeen": "2023-06-15T10:30:00Z",
+      "location": "Nairobi"
+    }
+  ],
+  "pagination": {
+    "total": 1,
+    "limit": 100,
+    "offset": 0
+  }
+}
+```
+
+#### Node Metrics
+
+##### Get Node Metrics
+
+```http
+GET /api/nodes/:nodeId/metrics
+```
+
+**Description**: Retrieve metrics for a specific node.
+
+**Query Parameters**:
+
+- `start` (string, required): Start time in ISO 8601 format
+- `end` (string, required): End time in ISO 8601 format
+- `interval` (string, optional): Data aggregation interval (e.g., '1h', '1d')
+- `metrics` (string, optional): Comma-separated list of metrics to retrieve
+
+**Response**:
+
+```json
+{
+  "success": true,
+  "data": {
+    "nodeId": "node1",
+    "metrics": {
+      "cpu": [
+        {
+          "timestamp": "2023-06-15T10:00:00Z",
+          "value": 45.2
+        }
+      ],
+      "memory": [
+        {
+          "timestamp": "2023-06-15T10:00:00Z",
+          "value": 67.8
+        }
+      ]
+    }
+  }
+}
 ```
 
 #### Nodes List Response
@@ -283,40 +406,6 @@ For production deployment, consider:
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](../LICENSE) file for details.
-
-- NodeBaseStationName
-- time
-- Analog1Value through Analog8Value (representing different metrics)
-
-## Setup
-
-1. Install dependencies:
-
-   ```bash
-      npm install
-   ```
-
-2. Configure environment variables:
-   Create a `.env` file with:
-
-   ```env
-      DB_HOST=localhost
-      DB_USER=your_username
-      DB_PASSWORD=your_password
-      DB_NAME=horiserverlive
-      DB_PORT=3306
-      PORT=5000
-   ```
-
-3. Start the server:
-
-   ```bash
-      npm start
-   ```
 
 ## Dependencies
 

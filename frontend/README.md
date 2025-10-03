@@ -1,78 +1,118 @@
 # BSI Telemetry Reports - Frontend
 
-React frontend application for the BSI Telemetry Reports project. Built with Material UI and Recharts for data visualization.
+![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react)
+![Material-UI](https://img.shields.io/badge/Material--UI-5.x-0081CB?logo=mui)
+![Recharts](https://img.shields.io/badge/Recharts-2.x-FF6384?logo=recharts)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-## Features
+React frontend application for the BSI Telemetry Reports project. Built with Material UI and Recharts for data visualization. This application provides real-time monitoring, data analysis, and reporting capabilities for telemetry data across multiple base stations.
+
+## ✨ Features
+
+### 📊 Dashboard
 
 - Modern, responsive Material UI design with 2x4 grid layout
-- Smart data analysis with percentage changes and trends
-- Time-range aware data visualization
-- Interactive graphs with tooltips
-- Automatic threshold detection
-- Dynamic data sampling based on time range
-- Real-time updates with auto-refresh
-- Mobile-first responsive design
+- Real-time data visualization with auto-refresh
+- Time-range selection (5m to 30d) with smart data sampling
+- Interactive tooltips and legends
+- Dark/light theme support
 
-## PDF Report Features
+### 📈 Data Visualization
+
+- Line charts for time-series data
+- Custom tooltips with detailed metrics
+- Zoom and pan functionality
+- Multi-metric comparison
+- Threshold indicators and alerts
+
+### 📑 Reporting
+
+- Generate PDF reports with BSI branding
+- Custom report templates
+- Export data in multiple formats (CSV, JSON)
+- Scheduled report generation
+
+### 🔧 Technical Features
+
+- Built with React 18 and Material-UI v5
+- State management with React Context API
+- Responsive design for all screen sizes
+- Optimized performance with memoization
+- Comprehensive error handling
+
+## 🖨️ PDF Report Features
+
+### Layout & Design
 
 - Professional layout with BSI branding
+- Responsive design for both screen and print
+- Consistent color scheme and typography
+- Custom header and footer
+
+### Data Presentation
+
 - Metric-by-metric analysis
-- Clear data visualization
-- Status indicators for issues
-- Automatic data sampling
-- Multi-base station support
-  - Color-coded metric graphs
-  - Detailed trend analysis
-  - Status indicators and warnings
-  - Metric-specific recommendations
-  - Statistical summaries
-  - Timestamped file names for better organization
-  - Grid layout for HTML reports
-  - Optimized graph rendering for both formats
+- Clear, high-resolution data visualization
+- Status indicators and warning badges
+- Statistical summaries and key metrics
 
-## Component Structure
+### Technical Implementation
 
-```tree
-    src/
-    ├── components/
-    │   ├── Navbar.js          # Application header
-    │   ├── NodeList.js        # Home page with list of nodes
-    │   ├── NodeDetail.js      # Detailed view with graphs
-    │   └── reports/
-    │       ├── PDFReport.js   # PDF report generation
-    │       ├── HTMLReport.js  # HTML report generation
-    │       └── PDFReport.css  # PDF styling
-    ├── App.js                 # Main application component
-    └── index.js               # Application entry point
-```
+- Automatic data sampling based on time range
+- Optimized graph rendering for PDF export
+- Support for multiple base stations in single report
+- Color-coded metrics for easy identification
+- Timestamped file names for organization
 
-## Environment Setup
+## 🏗️ Project Structure
 
-1. Copy the example environment file:
+```text
+src/
+├── assets/                  # Static assets (images, fonts)
+├── components/              # Reusable components
+│   ├── common/              # Shared components
+│   ├── dashboard/           # Dashboard components
+│   ├── reports/             # Report generation
+│   │   ├── PDFReport.js     # PDF report generation
+│   │   ├── ReportGenerator/ # Report generation components
+│   │   └── templates/       # Report templates
+│   └── ui/                  # UI components
+├── config/                  # Configuration files
+├── context/                 # React context providers
+├── hooks/                   # Custom React hooks
+│   ├── Dashboard.js         # Main dashboard
+│   ├── Reports.js           # Reports page
+│   └── Settings.js          # Application settings
+├── services/                # API services
+├── styles/                  # Global styles
+├── utils/                   # Utility functions
+{{ ... }}
+### Available Scripts
 
-   ```bash
-   cp .env.example .env
-   ```
+- `npm start`: Start development server with hot-reload
+- `npm test`: Run tests in watch mode
+- `npm run build`: Create production build
+- `npm run lint`: Run ESLint
+- `npm run format`: Format code with Prettier
+- `npm run analyze`: Analyze bundle size
 
-2. Update the `.env` file with your settings:
+## Dependencies
 
-   ```env
-   PORT=3010                       # Frontend port (default: 3010)
-   REACT_APP_API_URL=http://localhost:5000  # Backend API URL
-   ```
+### Core
+- React 18
+- React Router 6
+- Material-UI 5
+- Recharts 2.7
+- Axios
+- date-fns
 
-## Node.js Version Note
+### Development
+- ESLint
+- Prettier
+- Jest
+- React Testing Library
 
-If using Node.js v22+, you'll need to set the `NODE_OPTIONS=--openssl-legacy-provider`. You can:
-
-- Install cross-env: `npm install --save-dev cross-env`
-- Or run directly: `$env:NODE_OPTIONS="--openssl-legacy-provider" ; npm start`
-
-## Available Scripts
-
-### `npm start`
-
-Runs the app in development mode at [http://localhost:3010](http://localhost:3010).
+## Contributing
 
 ### `npm run build`
 
