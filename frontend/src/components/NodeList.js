@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Box, Card, CardContent, Typography, CardActionArea, CircularProgress, Alert } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Container, 
+  Box, 
+  Card, 
+  CardContent, 
+  Typography, 
+  CardActionArea, 
+  CircularProgress, 
+  Alert,
+  Grid
+} from '@mui/material';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 const NodeList = () => {
   const [nodes, setNodes] = useState([]);
@@ -8,78 +20,206 @@ const NodeList = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchNodes = async () => {
-      try {
-        setLoading(true);
-        const response = await axios.get('http://localhost:5000/api/nodes');
-        if (mounted) {
-          setNodes(response.data);
-          setError(null);
+  const fetchNodes = async () => {
+    console.log('Fetching nodes...');
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await axios.get(`${API_BASE_URL}/api/nodes`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         }
-      } catch (error) {
-        if (mounted) {
-          setError('Error fetching nodes. Please try again later.');
-          console.error('Error fetching nodes:', error);
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+      });
+      
+      console.log('Nodes response:', response.data);
+      
+      if (response.data && Array.isArray(response.data)) {
+        setNodes(response.data);
+      } else {
+        console.warn('Unexpected response format:', response.data);
+        setNodes([]);
       }
+    } catch (error) {
+      const errorMessage = error.response 
+        ? `Error: ${error.response.status} - ${error.response.data?.message || 'Unknown error'}`
+        : `Error: ${error.message}`;
+      
+      console.error('Error fetching nodes:', {
+        error,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    const loadNodes = async () => {
+      await fetchNodes();
     };
-
-    fetchNodes();
-
+    
+    if (isMounted) {
+      loadNodes();
+    }
+    
+    // Set up auto-refresh every 30 seconds
+    const refreshInterval = setInterval(() => {
+      if (isMounted) {
+        console.log('Refreshing nodes...');
+        fetchNodes();
+      }
+    }, 30000);
+    
     return () => {
-      mounted = false;
+      isMounted = false;
+      clearInterval(refreshInterval);
     };
   }, []);
 
-  return (
-    <Container sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Telemetry Nodes
-      </Typography>
-      
-      {loading && (
-        <Box display="flex" justifyContent="center" my={4}>
-          <CircularProgress />
-        </Box>
-      )}
+  const handleNodeClick = (nodeName) => {
+    // URL encode the node name to handle special characters
+    const encodedNodeName = encodeURIComponent(nodeName);
+    navigate(`/node/${encodedNodeName}`);
+  };
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+  const handleRefresh = () => {
+    fetchNodes();
+  };
+
+  return (
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        mb: 4,
+        flexWrap: 'wrap',
+        gap: 2
+      }}>
+        <Typography variant="h4" component="h1">
+          Telemetry Nodes
+        </Typography>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          onClick={handleRefresh}
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={20} /> : null}
+        >
+          {loading ? 'Refreshing...' : 'Refresh Nodes'}
+        </Button>
+      </Box>
+      
+      {loading && nodes.length === 0 ? (
+        <Box display="flex" justifyContent="center" my={8}>
+          <CircularProgress size={60} />
+        </Box>
+      ) : error ? (
+        <Alert 
+          severity="error" 
+          sx={{ mb: 3 }}
+          action={
+            <Button color="inherit" size="small" onClick={handleRefresh}>
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Alert>
-      )}
-
-      {!loading && !error && (
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: {
-              xs: '1fr',
-              sm: 'repeat(2, 1fr)',
-              md: 'repeat(3, 1fr)'
-            },
-            gap: 3
-          }}
-        >
+      ) : nodes.length === 0 ? (
+        <Paper elevation={0} sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" color="textSecondary" gutterBottom>
+            No nodes found
+          </Typography>
+          <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>
+            There are no nodes available to display.
+          </Typography>
+          <Button 
+            variant="outlined" 
+            color="primary" 
+            onClick={handleRefresh}
+          >
+            Check Again
+          </Button>
+        </Paper>
+      ) : (
+        <Grid container spacing={3}>
           {nodes.map((node) => (
-            <Card key={node.NodeName}>
-              <CardActionArea onClick={() => navigate(`/node/${node.NodeName}`)}>
-                <CardContent>
-                  <Typography variant="h6" component="div">
-                    {node.NodeName}
-                  </Typography>
-                </CardContent>
-              </CardActionArea>
-            </Card>
+            <Grid item xs={12} sm={6} md={4} lg={3} key={node.id}>
+              <Card 
+                elevation={2}
+                sx={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: 3,
+                  },
+                }}
+              >
+                <CardActionArea 
+                  onClick={() => handleNodeClick(node.name)}
+                  sx={{ 
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    p: 2,
+                  }}
+                >
+                  <CardContent sx={{ width: '100%' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Box 
+                        sx={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: '50%',
+                          bgcolor: 'success.main',
+                          mr: 1,
+                        }}
+                      />
+                      <Typography 
+                        variant="subtitle1" 
+                        component="div"
+                        sx={{
+                          fontWeight: 'medium',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          width: '100%'
+                        }}
+                      >
+                        {node.name}
+                      </Typography>
+                    </Box>
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      Click to view details and telemetry data
+                    </Typography>
+                  </CardContent>
+                </CardActionArea>
+              </Card>
+            </Grid>
           ))}
-        </Box>
+        </Grid>
       )}
     </Container>
   );
