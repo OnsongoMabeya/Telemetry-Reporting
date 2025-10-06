@@ -514,20 +514,49 @@ const NodeDetail = () => {
   const [selectedBaseStation, setSelectedBaseStation] = useState(null);
   const [error, setError] = useState(null);
 
+  // Axios instance with default config
+  const api = axios.create({
+    baseURL: API_BASE_URL,
+    headers: {
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+      'Expires': '0',
+      'Content-Type': 'application/json'
+    }
+  });
+
   // Fetch available nodes
   useEffect(() => {
     const fetchNodes = async () => {
+      console.log('Fetching nodes...');
+      setError(null);
+      
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/nodes`);
-        setNodes(response.data);
-        if (response.data.length > 0) {
-          setSelectedNode(response.data[0].id); // Use id instead of NodeName
+        const response = await api.get('/api/nodes');
+        console.log('Nodes response:', response.data);
+        
+        if (response.data && Array.isArray(response.data)) {
+          setNodes(response.data);
+          if (response.data.length > 0) {
+            setSelectedNode(response.data[0].id);
+            console.log('Selected initial node:', response.data[0].id);
+          } else {
+            setError('No nodes available. Please check the backend service.');
+          }
+        } else {
+          console.error('Unexpected response format:', response.data);
+          throw new Error('Invalid response format from server');
         }
       } catch (err) {
-        console.error('Error fetching nodes:', err);
-        setError('Failed to fetch nodes. Please try again later.');
+        console.error('Error fetching nodes:', {
+          error: err,
+          response: err.response?.data,
+          status: err.response?.status
+        });
+        setError(`Failed to fetch nodes: ${err.message || 'Network error'}`);
       }
     };
+    
     fetchNodes();
   }, []);
 
@@ -546,41 +575,49 @@ const NodeDetail = () => {
     { value: '30d', label: 'Last 30 days' }
   ];
 
+  // Fetch base stations when a node is selected
   useEffect(() => {
     const fetchBaseStations = async () => {
       if (!selectedNode) {
         console.log('No node selected, skipping base station fetch');
+        setBaseStations([]);
+        setSelectedBaseStation(null);
         return;
       }
 
-      console.log('Fetching base stations for node:', selectedNode);
+      console.log(`Fetching base stations for node: ${selectedNode}`);
+      setError(null);
+      
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/basestations/${selectedNode}`);
+        const response = await api.get(`/api/basestations/${selectedNode}`);
         console.log('Base stations API response:', response.data);
 
         if (!Array.isArray(response.data)) {
-          console.error('Expected array of base stations, got:', typeof response.data);
+          console.error('Expected array of base stations, got:', response.data);
           throw new Error('Invalid base stations data format');
         }
 
-        // The response.data is already in the correct format from the backend
         const formattedStations = response.data;
-        console.log('Base stations:', formattedStations);
-
-        if (formattedStations.length === 0) {
-          console.warn(`No base stations found for node ${selectedNode}`);
-          setError(`No base stations available for node: ${selectedNode}`);
-        }
+        console.log(`Found ${formattedStations.length} base stations:`, formattedStations);
 
         setBaseStations(formattedStations);
+        
         if (formattedStations.length > 0) {
           setSelectedBaseStation(formattedStations[0].id);
         } else {
+          console.warn(`No base stations found for node: ${selectedNode}`);
           setSelectedBaseStation(null);
+          setError(`No base stations available for node: ${selectedNode}`);
         }
       } catch (err) {
-        console.error('Error fetching base stations:', err);
-        setError(`Failed to fetch base stations for node: ${selectedNode}. ${err.message}`);
+        console.error('Error fetching base stations:', {
+          error: err,
+          response: err.response?.data,
+          status: err.response?.status,
+          node: selectedNode
+        });
+        
+        setError(`Failed to fetch base stations: ${err.message || 'Network error'}`);
         setBaseStations([]);
         setSelectedBaseStation(null);
       }
@@ -590,15 +627,27 @@ const NodeDetail = () => {
   }, [selectedNode]);
 
   const fetchTelemetryData = useCallback(async () => {
-    if (!selectedBaseStation || !timeFilter || !selectedNode) return;
+    if (!selectedBaseStation || !timeFilter || !selectedNode) {
+      console.log('Missing required parameters for telemetry data fetch:', {
+        selectedNode,
+        selectedBaseStation,
+        timeFilter
+      });
+      return;
+    }
 
-    console.log(`Fetching data for time filter: ${timeFilter}`);
+    console.log(`Fetching telemetry data for node=${selectedNode}, baseStation=${selectedBaseStation}, timeFilter=${timeFilter}`);
     setIsLoading(true);
+    setError(null);
+    
     try {
       const startTime = Date.now();
-      const response = await axios.get(`${API_BASE_URL}/api/telemetry/${selectedNode}/${selectedBaseStation}`, {
-        params: { timeFilter },
-        timeout: 30000 // Increased timeout for larger time ranges
+      const response = await api.get(`/api/telemetry/${selectedNode}/${selectedBaseStation}`, {
+        params: { 
+          timeFilter,
+          _t: new Date().getTime() // Cache buster
+        },
+        timeout: 30000 // 30 second timeout
       });
       
       console.log(`API response received in ${Date.now() - startTime}ms`);

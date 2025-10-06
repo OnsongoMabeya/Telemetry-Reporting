@@ -26,8 +26,17 @@ const isValidTimeFilter = (timeFilter) => {
 
 const app = express();
 
+// CORS Configuration
+const corsOptions = {
+  origin: ['http://localhost:3010', 'http://localhost:5000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Enable preflight for all routes
 app.use(express.json());
 
 // Rate limiting middleware
