@@ -78,12 +78,14 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
    - npm 9.x or later
 
 2. **Clone the repository**
+
    ```bash
    git clone https://github.com/OnsongoMabeya/Telemetry-Reporting.git
    cd BSI-telemetry-reporting
    ```
 
 3. **Install dependencies**
+
    ```bash
    # Install root dependencies (for running both frontend and backend)
    npm install
@@ -103,23 +105,16 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
    - Import the database schema (check `backend/database/` for SQL files)
    - Update database credentials in the backend `.env` file
 
-3. **Database Setup**
-
-   - Create a MySQL database
-   - Import the provided SQL schema (located in `backend/database/`)
-   - Update database credentials in `.env` files
-
-4. **Configure Environment**
+5. **Configure Environment**
 
    ```bash
    # Copy example environment files
-   cp frontend/.env.example frontend/.env
    cp backend/.env.example backend/.env
    
    # Edit the .env files with your configuration
    ```
 
-5. **Environment Variables**
+6. **Environment Variables**
 
 ### Backend (`.env`)
 
@@ -213,18 +208,21 @@ We welcome contributions! Please follow these steps:
 ### Development Workflow
 
 1. **Frontend Development**
+
    ```bash
    cd frontend
    npm start  # Runs on http://localhost:3010
    ```
 
 2. **Backend Development**
+
    ```bash
    cd backend
    npm start  # Runs on http://localhost:5000
    ```
 
 3. **Running Both** (from project root)
+
    ```bash
    npm run dev  # Runs both frontend and backend concurrently
    ```
@@ -232,18 +230,21 @@ We welcome contributions! Please follow these steps:
 ### Testing
 
 - Run frontend tests:
+
   ```bash
   cd frontend
   npm test
   ```
 
 - Run backend tests:
+
   ```bash
   cd backend
   npm test
   ```
 
 ### Code Style
+
 - We use ESLint and Prettier for code formatting
 - Follow the existing code style
 - Write meaningful commit messages
@@ -267,9 +268,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [Recharts](https://recharts.org/) - Charting library
 - [Express](https://expressjs.com/) - Web framework for Node.js
 - [MySQL](https://www.mysql.com/) - Database management system
-
-## 🙏 Acknowledgments
-
 - Built with ❤️ by the BSI Engineering Team
 - Thanks to all contributors who have helped improve this project
 - Icons by [Material-UI](https://mui.com/material-ui/material-icons/)
