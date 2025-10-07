@@ -5,6 +5,9 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 ![BSI Telemetry Dashboard](https://img.shields.io/badge/Status-Active-success)
 ![Version](https://img.shields.io/badge/Version-1.0.0-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
+![Node.js](https://img.shields.io/badge/Node.js-18.x-339933?logo=node.js)
+![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql)
 
 ## 🚀 Key Features
 
@@ -32,14 +35,23 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 ### 🏗️ System Architecture
 
-- **Frontend**: React 18 with Material-UI v5
-- **State Management**: React Context API
-- **Charts**: Recharts with custom tooltips and legends
-- **Backend**: Node.js/Express with MySQL 8.0+
-- **Data Processing**: Optimized SQL queries with time-based sampling
-- **Caching**: In-memory caching with node-cache
-- **Security**: JWT authentication, CORS, rate limiting
-- **API**: RESTful endpoints with comprehensive documentation
+- **Frontend**: React 19.1.0 with Material-UI v7.1.0
+  - State Management: React Context API
+  - Data Visualization: Recharts 2.15.3 with D3.js 7.9.0
+  - PDF Generation: jsPDF 3.0.1 with html2canvas 1.4.1
+  - HTTP Client: Axios 1.9.0
+  - Routing: React Router 7.6.0
+
+- **Backend**: Node.js/Express 5.1.0
+  - Database: MySQL 8.0+
+  - Caching: node-cache 5.1.2
+  - Rate Limiting: express-rate-limit 7.5.0
+  - CORS: cors 2.8.5
+
+- **Development Tools**:
+  - Concurrent execution of frontend and backend
+  - Environment configuration with dotenv
+  - Cross-platform environment variable support
 
 ## 📋 Prerequisites
 
@@ -60,15 +72,18 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 ### Quick Start
 
-1. **Clone the repository**
+1. **Prerequisites**
+   - Node.js 18.x (LTS)
+   - MySQL 8.0+
+   - npm 9.x or later
 
+2. **Clone the repository**
    ```bash
    git clone https://github.com/OnsongoMabeya/Telemetry-Reporting.git
    cd BSI-telemetry-reporting
    ```
 
-2. **Install dependencies**
-
+3. **Install dependencies**
    ```bash
    # Install root dependencies (for running both frontend and backend)
    npm install
@@ -82,6 +97,11 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
    npm install
    cd ..
    ```
+
+4. **Set up the database**
+   - Create a new MySQL database
+   - Import the database schema (check `backend/database/` for SQL files)
+   - Update database credentials in the backend `.env` file
 
 3. **Database Setup**
 
@@ -182,11 +202,52 @@ The system automatically adjusts data sampling based on the selected time range 
 
 ## 🤝 Contributing
 
+We welcome contributions! Please follow these steps:
+
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+### Development Workflow
+
+1. **Frontend Development**
+   ```bash
+   cd frontend
+   npm start  # Runs on http://localhost:3010
+   ```
+
+2. **Backend Development**
+   ```bash
+   cd backend
+   npm start  # Runs on http://localhost:5000
+   ```
+
+3. **Running Both** (from project root)
+   ```bash
+   npm run dev  # Runs both frontend and backend concurrently
+   ```
+
+### Testing
+
+- Run frontend tests:
+  ```bash
+  cd frontend
+  npm test
+  ```
+
+- Run backend tests:
+  ```bash
+  cd backend
+  npm test
+  ```
+
+### Code Style
+- We use ESLint and Prettier for code formatting
+- Follow the existing code style
+- Write meaningful commit messages
+- Include tests for new features
 
 ## 📞 Support
 
@@ -195,6 +256,17 @@ For support, please contact:
 - **Email**: [support@bsi.com](mailto:support@bsi.com)
 - **Issues**: [GitHub Issues](https://github.com/OnsongoMabeya/Telemetry-Reporting/issues)
 - **Documentation**: [GitHub Wiki](https://github.com/OnsongoMabeya/Telemetry-Reporting/wiki)
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [Material-UI](https://mui.com/) - React UI component library
+- [Recharts](https://recharts.org/) - Charting library
+- [Express](https://expressjs.com/) - Web framework for Node.js
+- [MySQL](https://www.mysql.com/) - Database management system
 
 ## 🙏 Acknowledgments
 
