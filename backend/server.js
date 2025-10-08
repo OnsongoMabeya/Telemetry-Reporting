@@ -26,17 +26,48 @@ const isValidTimeFilter = (timeFilter) => {
 
 const app = express();
 
-// CORS Configuration
-const corsOptions = {
-  origin: ['http://localhost:3010', 'http://localhost:5000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-};
-
-// Middleware
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Enable preflight for all routes
+// Enable CORS for all routes
+app.use((req, res, next) => {
+  // Allow all origins in development
+  const allowedOrigins = [
+    'http://localhost:3010', 
+    'http://localhost:3000',
+    'http://192.168.1.73:3010',
+    'http://192.168.1.73:3000'
+  ];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
+  
+  // Allow all methods
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  
+  // Allow all headers the client might send
+  res.header('Access-Control-Allow-Headers', [
+    'Origin',
+    'X-Requested-With',
+    'Content-Type',
+    'Accept',
+    'Authorization',
+    'Cache-Control',
+    'Pragma',
+    'Expires',
+    'If-Modified-Since',
+    'X-HTTP-Method-Override'
+  ].join(', '));
+  
+  // Allow credentials
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    // Return 204 No Content for preflight requests
+    return res.status(204).end();
+  }
+  
+  next();
+});
 app.use(express.json());
 
 // Rate limiting middleware
