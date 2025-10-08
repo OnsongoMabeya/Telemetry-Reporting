@@ -8,8 +8,26 @@ import { API_BASE_URL } from '../../config/api';
 
 const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+
+  const showSnackbar = (message, severity = 'success') => {
+    setSnackbar({
+      open: true,
+      message,
+      severity
+    });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
 
   const handleGenerateReport = useCallback(async (config) => {
     setIsGenerating(true);
@@ -25,10 +43,8 @@ const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
         throw new Error('No base stations found for this node');
       }
 
-      // The base stations are already in the correct format from the backend
       const nodeBaseStations = response.data;
       console.log('Base stations:', nodeBaseStations);
-
       console.log('Formatted node base stations:', nodeBaseStations);
 
       if (nodeBaseStations.length === 0) {
@@ -44,17 +60,61 @@ const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
         console.log('Generating HTML report with base stations:', nodeBaseStations);
         await generateHTMLReport(config, nodeBaseStations);
       }
-      setProgress(90);
+      
+      showSnackbar('Report generated successfully!');
       setProgress(100);
       setIsModalOpen(false);
     } catch (error) {
       console.error('Error generating report:', error);
-      onError(error.message || 'Failed to generate report');
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to generate report';
+      onError(errorMessage);
+      showSnackbar(errorMessage, 'error');
     } finally {
       setIsGenerating(false);
       setProgress(0);
     }
   }, [onError]);
+
+  const handleSendEmail = useCallback(async (config) => {
+    setIsSending(true);
+    try {
+      // First generate the report to get the file
+      const reportBlob = await generateReportBlob(config);
+      
+      // Prepare form data
+      const formData = new FormData();
+      formData.append('file', reportBlob, `report_${config.node}_${new Date().toISOString().split('T')[0]}.pdf`);
+      formData.append('recipients', config.recipients.join(','));
+      formData.append('subject', `Telemetry Report - ${config.node} (${config.timeRange})`);
+      formData.append('message', config.message || 'Please find the attached telemetry report.');
+      
+      // Send email with attachment
+      const response = await axios.post(`${API_BASE_URL}/api/send-report`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      showSnackbar('Report sent successfully!');
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Error sending email:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to send email';
+      showSnackbar(errorMessage, 'error');
+    } finally {
+      setIsSending(false);
+    }
+  }, []);
+  
+  const generateReportBlob = async (config) => {
+    // Fetch base stations for the selected node
+    const response = await axios.get(`${API_BASE_URL}/api/basestations/${config.node}`);
+    const nodeBaseStations = response.data;
+    
+    // Generate PDF report and return as blob
+    const pdfDoc = await generatePDFReport(config, nodeBaseStations, true);
+    return pdfDoc;
+  };
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -99,17 +159,17 @@ const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
             />
           </Box>
           <Box sx={{ typography: 'caption', color: 'text.secondary' }}>
-            {progress < 100 ? 'Generating report...' : 'Finalizing...'}
           </Box>
         </Box>
       )}
       <ReportConfigModal
         open={isModalOpen}
-        onClose={() => {
-          console.log('Closing modal');
-          setIsModalOpen(false);
-        }}
+        onClose={() => setIsModalOpen(false)}
         onGenerate={handleGenerateReport}
+        onSendEmail={handleSendEmail}
+        isSending={isSending}
+        isGenerating={isGenerating}
+        progress={progress}
         currentNode={currentNode}
         currentTimeRange={currentTimeRange}
       />

@@ -794,7 +794,7 @@ const PDFReport = {
   }
 };
 
-export const generatePDFReport = async (config, baseStations = []) => {
+export const generatePDFReport = async (config, baseStations = [], returnBlob = false) => {
   try {
     if (!baseStations || baseStations.length === 0) {
       throw new Error('No base stations available for this node');
@@ -833,12 +833,21 @@ export const generatePDFReport = async (config, baseStations = []) => {
     }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    pdf.save(`${config.node}_telemetry_report_${timestamp}.pdf`);
-
-    return {
-      success: true,
-      message: 'PDF report generated successfully'
-    };
+    const filename = `${config.node}_telemetry_report_${timestamp}.pdf`;
+    
+    if (returnBlob) {
+      // Return the PDF as a blob
+      const blob = pdf.output('blob');
+      return blob;
+    } else {
+      // Save the PDF directly
+      pdf.save(filename);
+      return {
+        success: true,
+        message: 'PDF report generated successfully',
+        filename
+      };
+    }
   } catch (error) {
     console.error('Error generating PDF report:', error);
     return {

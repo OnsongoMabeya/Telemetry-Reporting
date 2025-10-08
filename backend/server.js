@@ -2,7 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2');
 const NodeCache = require('node-cache');
+const path = require('path');
 require('dotenv').config();
+
+// Import routes
+const emailRoutes = require('./routes/email');
 
 // Helper function to get cache TTL based on time filter
 const getCacheTTL = (timeFilter) => {
@@ -102,6 +106,13 @@ pool.getConnection((err, connection) => {
   console.log('Successfully connected to database');
   connection.release();
 });
+
+// File upload limit
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Email routes
+app.use('/api', emailRoutes);
 
 // Routes
 app.get('/api/nodes', async (req, res) => {
