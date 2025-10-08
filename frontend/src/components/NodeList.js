@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Container, 
   Box, 
   Card, 
   CardContent, 
@@ -9,8 +8,15 @@ import {
   CardActionArea, 
   CircularProgress, 
   Alert,
-  Grid
+  IconButton,
+  useTheme,
+  useMediaQuery,
+  Button,
+  Grid,
+  Paper
 } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import { PageContainer, SectionContainer } from './layout/PageContainer';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 
@@ -93,31 +99,43 @@ const NodeList = () => {
     fetchNodes();
   };
 
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        mb: 4,
-        flexWrap: 'wrap',
-        gap: 2
-      }}>
-        <Typography variant="h4" component="h1">
-          Telemetry Nodes
-        </Typography>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          onClick={handleRefresh}
-          disabled={loading}
-          startIcon={loading ? <CircularProgress size={20} /> : null}
-        >
-          {loading ? 'Refreshing...' : 'Refresh Nodes'}
-        </Button>
-      </Box>
-      
-      {loading && nodes.length === 0 ? (
+    <PageContainer maxWidth="xl">
+      <SectionContainer>
+        <Box sx={{ 
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2,
+          mb: 4
+        }}>
+          <Typography variant={isMobile ? 'h5' : 'h4'} component="h1" sx={{ 
+            textAlign: { xs: 'center', sm: 'left' },
+            mb: { xs: 1, sm: 0 }
+          }}>
+            Available Nodes
+          </Typography>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={handleRefresh}
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={20} /> : <RefreshIcon />}
+            sx={{
+              alignSelf: { xs: 'stretch', sm: 'center' },
+              width: { xs: '100%', sm: 'auto' },
+              maxWidth: { sm: '300px' }
+            }}
+          >
+            {loading ? 'Refreshing...' : 'Refresh Nodes'}
+          </Button>
+        </Box>
+
+        {loading && nodes.length === 0 ? (
         <Box display="flex" justifyContent="center" my={8}>
           <CircularProgress size={60} />
         </Box>
@@ -126,102 +144,116 @@ const NodeList = () => {
           severity="error" 
           sx={{ mb: 3 }}
           action={
-            <Button color="inherit" size="small" onClick={handleRefresh}>
-              Retry
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
-      ) : nodes.length === 0 ? (
-        <Paper elevation={0} sx={{ p: 4, textAlign: 'center' }}>
-          <Typography variant="h6" color="textSecondary" gutterBottom>
-            No nodes found
-          </Typography>
-          <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>
-            There are no nodes available to display.
-          </Typography>
-          <Button 
-            variant="outlined" 
-            color="primary" 
-            onClick={handleRefresh}
+            <IconButton 
+              onClick={handleRefresh}
+              color="primary"
+              aria-label="refresh nodes"
+              sx={{
+                alignSelf: { xs: 'center', sm: 'flex-end' },
+                backgroundColor: theme.palette.background.paper,
+                '&:hover': {
+                  backgroundColor: theme.palette.action.hover,
+                }
+              }}
+            >
+              <RefreshIcon />
+              {!isMobile && <Box component="span" ml={1}>Refresh</Box>}
+            </IconButton>}
           >
-            Check Again
-          </Button>
-        </Paper>
-      ) : (
-        <Grid container spacing={3}>
-          {nodes.map((node) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={node.id}>
-              <Card 
-                elevation={2}
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: 3,
-                  },
-                }}
-              >
-                <CardActionArea 
-                  onClick={() => handleNodeClick(node.name)}
+            {error}
+          </Alert>
+        ) : nodes.length === 0 ? (
+          <Paper elevation={0} sx={{ p: 4, textAlign: 'center' }}>
+            <Typography variant="h6" color="textSecondary" gutterBottom>
+              No nodes found
+            </Typography>
+            <Typography variant="body1" color="textSecondary" sx={{ mb: 2 }}>
+              There are no nodes available to display.
+            </Typography>
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              onClick={handleRefresh}
+            >
+              Check Again
+            </Button>
+          </Paper>
+        ) : (
+          <Grid container spacing={{ xs: 2, md: 3 }}>
+            {nodes.map((node) => (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={node.name} sx={{ display: 'flex' }}>
+                <Card 
+                  elevation={2}
                   sx={{ 
-                    height: '100%',
+                    minHeight: 120,
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: 'flex-start',
-                    p: 2,
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: 3,
+                    },
+                    height: '100%',
+                    width: '100%'
                   }}
                 >
-                  <CardContent sx={{ width: '100%' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Box 
-                        sx={{
-                          width: 12,
-                          height: 12,
-                          borderRadius: '50%',
-                          bgcolor: 'success.main',
-                          mr: 1,
-                        }}
-                      />
+                  <CardActionArea 
+                    onClick={() => handleNodeClick(node.name)}
+                    sx={{ 
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'flex-start',
+                      p: 2,
+                    }}
+                  >
+                    <CardContent sx={{ width: '100%' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Box 
+                          sx={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            bgcolor: 'success.main',
+                            mr: 1,
+                          }}
+                        />
+                        <Typography 
+                          variant="subtitle1" 
+                          component="div"
+                          sx={{
+                            fontWeight: 'medium',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            width: '100%'
+                          }}
+                        >
+                          {node.name}
+                        </Typography>
+                      </Box>
                       <Typography 
-                        variant="subtitle1" 
-                        component="div"
+                        variant="body2" 
+                        color="text.secondary"
                         sx={{
-                          fontWeight: 'medium',
-                          whiteSpace: 'nowrap',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          width: '100%'
                         }}
                       >
-                        {node.name}
+                        Click to view details and telemetry data
                       </Typography>
-                    </Box>
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary"
-                      sx={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      Click to view details and telemetry data
-                    </Typography>
-                  </CardContent>
-                </CardActionArea>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-    </Container>
+                    </CardContent>
+                  </CardActionArea>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        )}
+      </SectionContainer>
+    </PageContainer>
   );
 };
 

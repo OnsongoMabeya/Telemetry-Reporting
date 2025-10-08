@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Paper, CircularProgress, Alert } from '@mui/material';
+import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Paper, CircularProgress, Alert, useTheme, useMediaQuery } from '@mui/material';
 import ReportGenerator from './reports/ReportGenerator';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
@@ -739,11 +739,28 @@ const NodeDetail = () => {
     return () => clearInterval(intervalId);
   }, [fetchTelemetryData, timeFilter]);
 
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   return (
     <ErrorBoundary>
       <Container sx={{ py: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" gutterBottom>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 2,
+          mb: 3 
+        }}>
+          <Typography 
+            variant={isMobile ? 'h5' : 'h4'} 
+            gutterBottom
+            sx={{ 
+              textAlign: { xs: 'center', sm: 'left' },
+              mb: { xs: 1, sm: 0 }
+            }}
+          >
             Telemetry Dashboard
           </Typography>
           <ReportGenerator 
@@ -760,8 +777,21 @@ const NodeDetail = () => {
             </div>
           )}
         </Box>
-        <Box sx={{ display: 'flex', gap: 2, mb: 4 }}>
-          <FormControl sx={{ minWidth: 200 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2, 
+          mb: 4,
+          '& .MuiFormControl-root': {
+            width: '100%',
+            maxWidth: '100%',
+            mb: { xs: 1, sm: 0 }
+          },
+          '& .MuiInputBase-root': {
+            width: '100%'
+          }
+        }}>
+          <FormControl>
             <InputLabel>Node</InputLabel>
             <Select
               value={selectedNode || ''}
@@ -775,7 +805,7 @@ const NodeDetail = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl sx={{ minWidth: 200 }}>
+          <FormControl>
             <InputLabel>Base Station</InputLabel>
             <Select
               value={selectedBaseStation || ''}
@@ -789,7 +819,7 @@ const NodeDetail = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl sx={{ minWidth: 200 }}>
+          <FormControl>
             <InputLabel>Time Range</InputLabel>
             <Select
               value={timeFilter}
