@@ -11,11 +11,22 @@ Node.js/Express backend server for the BSI Telemetry Reports application. This s
 
 ### Network & CORS Configuration
 
-The backend is pre-configured to handle requests from multiple origins out of the box:
+The backend is configured to handle requests from specific origins defined in the environment variables for security.
 
-- **Development**: `http://localhost:3010`
-- **Network Access**: `http://[YOUR_IP]:3010` (any IP address)
-- **Additional origins** can be added in `server.js` by updating the `allowedOrigins` array
+#### Setup
+
+1. Copy `.env.example` to `.env` if you haven't already:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit the `.env` file and update the `ALLOWED_ORIGINS` variable with your frontend URLs:
+
+   ```plaintext
+   # Example:
+   ALLOWED_ORIGINS=http://localhost:3010,http://localhost:3000,http://your-ip:3010
+   ```
 
 #### CORS Configuration
 
@@ -36,7 +47,11 @@ The backend is pre-configured to handle requests from multiple origins out of th
 - **Preflight Cache**: 24 hours
 - **Max Age**: 86400 seconds
 
-To modify CORS settings, update the CORS configuration in `server.js`. The configuration is located at the top of the file for easy access.
+#### Development Tips
+
+- For development, you can allow all origins by setting `ALLOWED_ORIGINS=*` in your `.env` file
+- Always restart your server after changing environment variables
+- Never commit your `.env` file to version control
 
 ### Core Functionality
 
