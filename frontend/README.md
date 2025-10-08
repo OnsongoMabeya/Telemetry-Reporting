@@ -7,6 +7,20 @@
 
 React frontend application for the BSI Telemetry Reports project. Built with Material UI and Recharts for data visualization. This application provides real-time monitoring, data analysis, and reporting capabilities for telemetry data across multiple base stations.
 
+## 🌐 Network & API Configuration
+
+The frontend automatically detects the current hostname and configures API endpoints accordingly:
+
+- **Development Mode**:
+  - Frontend: `http://localhost:3010`
+  - API: `http://localhost:5000`
+
+- **Network Access**:
+  - Frontend: `http://[YOUR_IP]:3010`
+  - API: `http://[YOUR_IP]:5000`
+
+The API base URL is dynamically determined based on the current hostname. No configuration changes are needed when switching between localhost and network access.
+
 ## ✨ Features
 
 ### 📊 Dashboard

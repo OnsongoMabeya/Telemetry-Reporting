@@ -9,6 +9,16 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 ![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql)
 
+## 🌐 Network Access
+
+The application can be accessed from multiple interfaces:
+
+- **Local Development**: `http://localhost:3010`
+- **Network Access**: `http://[YOUR_IP_ADDRESS]:3010` (replace with your machine's IP)
+- **Backend API**: `http://[YOUR_IP_ADDRESS]:5000` (automatically configured)
+
+The frontend will automatically detect the hostname and adjust API endpoints accordingly. No configuration changes are needed when switching between localhost and network access.
+
 ## 🚀 Key Features
 
 ### 📊 Real-time Monitoring

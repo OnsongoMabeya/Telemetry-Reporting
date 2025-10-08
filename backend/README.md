@@ -9,6 +9,30 @@ Node.js/Express backend server for the BSI Telemetry Reports application. This s
 
 ## 🌟 Features
 
+### Network & CORS Configuration
+
+The backend is configured to handle requests from multiple origins:
+
+- **Development**: `http://localhost:3010`
+- **Network Access**: `http://[YOUR_IP]:3010`
+- **Additional origins** can be added in `server.js` by updating the `allowedOrigins` array
+
+#### CORS Configuration
+
+- **Allowed Methods**: GET, POST, PUT, DELETE, OPTIONS
+- **Allowed Headers**:
+  - Authorization
+  - Content-Type
+  - Accept
+  - Cache-Control
+  - Pragma
+  - Expires
+  - If-Modified-Since
+  - X-HTTP-Method-Override
+- **Credentials**: Enabled (cookies, HTTP authentication)
+
+To modify CORS settings, update the CORS configuration in `server.js`.
+
 ### Core Functionality
 
 - **RESTful API** - Comprehensive endpoints for all frontend data needs
