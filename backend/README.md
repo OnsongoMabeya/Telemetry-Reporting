@@ -11,15 +11,17 @@ Node.js/Express backend server for the BSI Telemetry Reports application. This s
 
 ### Network & CORS Configuration
 
-The backend is configured to handle requests from multiple origins:
+The backend is pre-configured to handle requests from multiple origins out of the box:
 
 - **Development**: `http://localhost:3010`
-- **Network Access**: `http://[YOUR_IP]:3010`
+- **Network Access**: `http://[YOUR_IP]:3010` (any IP address)
 - **Additional origins** can be added in `server.js` by updating the `allowedOrigins` array
 
 #### CORS Configuration
 
-- **Allowed Methods**: GET, POST, PUT, DELETE, OPTIONS
+- **Allowed Methods**:
+  - GET, POST, PUT, DELETE, OPTIONS
+  - PATCH for partial updates
 - **Allowed Headers**:
   - Authorization
   - Content-Type
@@ -29,15 +31,32 @@ The backend is configured to handle requests from multiple origins:
   - Expires
   - If-Modified-Since
   - X-HTTP-Method-Override
+  - X-Requested-With
 - **Credentials**: Enabled (cookies, HTTP authentication)
+- **Preflight Cache**: 24 hours
+- **Max Age**: 86400 seconds
 
-To modify CORS settings, update the CORS configuration in `server.js`.
+To modify CORS settings, update the CORS configuration in `server.js`. The configuration is located at the top of the file for easy access.
 
 ### Core Functionality
 
 - **RESTful API** - Comprehensive endpoints for all frontend data needs
-- **Real-time Data Processing** - Efficient handling of telemetry data streams
-- **Data Aggregation** - Smart data sampling and aggregation for optimal performance
+  - Node management (CRUD operations)
+  - Telemetry data retrieval with filtering
+  - Report generation endpoints
+  - System health and status endpoints
+
+- **Real-time Data Processing**
+  - Efficient handling of high-frequency telemetry data
+  - WebSocket support for real-time updates (coming soon)
+  - Data validation and sanitization
+  - Request rate limiting (100 requests/minute per IP)
+
+- **Data Management**
+  - Smart data sampling and aggregation
+  - Historical data retention policies
+  - Data export functionality (CSV/JSON)
+  - Automatic data cleanup and optimization
 
 ### Performance & Reliability
 

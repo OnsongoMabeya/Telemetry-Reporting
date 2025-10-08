@@ -9,35 +9,69 @@ React frontend application for the BSI Telemetry Reports project. Built with Mat
 
 ## 🌐 Network & API Configuration
 
-The frontend automatically detects the current hostname and configures API endpoints accordingly:
+The frontend is designed for flexible deployment with automatic hostname detection:
 
-- **Development Mode**:
-  - Frontend: `http://localhost:3010`
-  - API: `http://localhost:5000`
+### Development Environment
 
-- **Network Access**:
-  - Frontend: `http://[YOUR_IP]:3010`
-  - API: `http://[YOUR_IP]:5000`
+- **Frontend**: `http://localhost:3010`
+- **API**: `http://localhost:5000`
 
-The API base URL is dynamically determined based on the current hostname. No configuration changes are needed when switching between localhost and network access.
+### Network Access
+
+- **Frontend**: `http://[YOUR_IP]:3010` (any network-accessible IP)
+- **API**: `http://[YOUR_IP]:5000`
+
+### Key Features
+
+- **Automatic API Detection**: Dynamically determines the correct API endpoint based on the current hostname
+- **Zero Configuration**: No manual changes needed when switching between environments
+- **CORS Ready**: Pre-configured for secure cross-origin requests
+- **Environment Variables**: Customizable through `.env` files for different environments
 
 ## ✨ Features
 
 ### 📊 Dashboard
 
-- Modern, responsive Material UI design with 2x4 grid layout
-- Real-time data visualization with auto-refresh
-- Time-range selection (5m to 30d) with smart data sampling
-- Interactive tooltips and legends
-- Dark/light theme support
+- **Responsive Layout**: Adapts to all screen sizes (mobile, tablet, desktop)
+- **Real-time Monitoring**: Auto-refreshing data visualizations
+- **Time Range Selection**:
+  - Quick select: 5m, 15m, 30m, 1h, 6h, 12h, 1d, 7d, 30d
+  - Custom date/time range picker
+  - Smart data sampling for optimal performance
+- **Interactive Features**:
+  - Hover tooltips with detailed metrics
+  - Clickable legends to toggle data series
+  - Zoom and pan functionality
+  - Export chart as image
+- **Theme Support**:
+  - Light/dark mode with system preference detection
+  - High contrast mode for accessibility
+  - Customizable color schemes
 
 ### 📈 Data Visualization
 
-- Line charts for time-series data
-- Custom tooltips with detailed metrics
-- Zoom and pan functionality
-- Multi-metric comparison
-- Threshold indicators and alerts
+#### Chart Types
+
+- **Time Series Line Charts**: For trend analysis
+- **Area Charts**: For cumulative metrics
+- **Bar/Column Charts**: For comparison
+- **Gauge Charts**: For threshold monitoring
+- **Heatmaps**: For data density visualization
+
+#### Interactive Features
+
+- **Zoom & Pan**: Navigate through time-series data
+- **Brush & Select**: Focus on specific time ranges
+- **Crosshairs**: Precise data point inspection
+- **Threshold Lines**: Visual indicators for critical values
+- **Annotations**: Add context to important events
+
+#### Performance Optimizations
+
+- Virtualized rendering for large datasets
+- Data sampling for improved performance
+- Smooth animations (60fps)
+- Memory-efficient data handling
 
 ### 📑 Reporting
 

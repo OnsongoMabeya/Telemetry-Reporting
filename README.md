@@ -11,22 +11,29 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 ## 🌐 Network Access
 
-The application can be accessed from multiple interfaces:
+The application is designed for flexible deployment and can be accessed from multiple interfaces:
 
 - **Local Development**: `http://localhost:3010`
-- **Network Access**: `http://[YOUR_IP_ADDRESS]:3010` (replace with your machine's IP)
+- **Network Access**: `http://[YOUR_IP_ADDRESS]:3010` (works with any network-accessible IP)
 - **Backend API**: `http://[YOUR_IP_ADDRESS]:5000` (automatically configured)
 
-The frontend will automatically detect the hostname and adjust API endpoints accordingly. No configuration changes are needed when switching between localhost and network access.
+The frontend automatically detects the hostname and configures API endpoints accordingly. This means you can access the application from any device on the same network without manual configuration changes.
+
+### Automatic Network Detection
+
+- Dynamic API endpoint configuration based on hostname
+- Seamless switching between localhost and network access
+- CORS pre-configured for common development scenarios
 
 ## 🚀 Key Features
 
 ### 📊 Real-time Monitoring
 
-- Live telemetry data visualization with auto-refresh
+- Live telemetry data visualization with configurable auto-refresh intervals
 - Interactive dashboards with multiple chart types using Recharts
 - Real-time alerts and notifications for critical metrics
-- Responsive design that works on all devices
+- Fully responsive design optimized for all devices (mobile, tablet, desktop)
+- Smooth animations and transitions for better user experience
 
 ### 🔍 Data Analysis
 
@@ -34,14 +41,17 @@ The frontend will automatically detect the hostname and adjust API endpoints acc
 - Automatic threshold detection with visual indicators
 - Performance trend analysis with percentage changes
 - Multi-metric correlation and comparison
+- Historical data analysis with customizable time ranges
+- Export functionality for further analysis
 
 ### 📑 Reporting
 
 - Automated PDF report generation with BSI branding
 - Customizable report templates with metric-specific insights
 - Export functionality for data analysis (CSV/JSON)
-- Scheduled report delivery via email
+- Scheduled report delivery via email (coming soon)
 - Multi-base station comparison reports
+- Report scheduling and automation
 
 ### 🏗️ System Architecture
 
