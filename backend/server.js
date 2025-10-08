@@ -26,15 +26,15 @@ const isValidTimeFilter = (timeFilter) => {
 
 const app = express();
 
+// Load environment variables
+require('dotenv').config();
+
 // Enable CORS for all routes
 app.use((req, res, next) => {
-  // Allow all origins in development
-  const allowedOrigins = [
-    'http://localhost:3010', 
-    'http://localhost:3000',
-    'http://192.168.1.73:3010',
-    'http://192.168.1.73:3000'
-  ];
+  // Get allowed origins from environment variable
+  const allowedOrigins = process.env.ALLOWED_ORIGINS ? 
+    process.env.ALLOWED_ORIGINS.split(',') : [];
+    
   const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
