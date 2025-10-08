@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import axios from 'axios';
-import { Button, Box } from '@mui/material';
+import { Button, Box, Snackbar, Alert } from '@mui/material';
 import ReportConfigModal from './ReportConfigModal';
 import { generateHTMLReport } from './HTMLReport';
 import { generatePDFReport } from './PDFReport';
@@ -173,6 +173,20 @@ const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
         currentNode={currentNode}
         currentTimeRange={currentTimeRange}
       />
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={snackbar.severity} 
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
