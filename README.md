@@ -19,13 +19,11 @@ The application is designed for flexible deployment and can be accessed from mul
 
 The frontend automatically detects the hostname and configures API endpoints accordingly. This means you can access the application from any device on the same network without manual configuration changes.
 
-### Automatic Network Detection
-
 - Dynamic API endpoint configuration based on hostname
 - Seamless switching between localhost and network access
 - CORS pre-configured for common development scenarios
 
-## 🚀 Key Features
+## 🌟 Features
 
 ### 📊 Real-time Monitoring
 
@@ -34,6 +32,8 @@ The frontend automatically detects the hostname and configures API endpoints acc
 - Real-time alerts and notifications for critical metrics
 - Fully responsive design optimized for all devices (mobile, tablet, desktop)
 - Smooth animations and transitions for better user experience
+- Comprehensive accessibility improvements with proper ARIA labels, keyboard navigation, and screen reader support
+- Enhanced error handling with user-friendly feedback and recovery options
 
 ### 🔍 Data Analysis
 
@@ -43,30 +43,40 @@ The frontend automatically detects the hostname and configures API endpoints acc
 - Multi-metric correlation and comparison
 - Historical data analysis with customizable time ranges
 - Export functionality for further analysis
+- Email report generation with customizable templates
+- Support for multiple export formats (PDF, CSV, Excel)
 
-### 📑 Reporting
+### 📑 Reporting & Notifications
 
 - Automated PDF report generation with BSI branding
 - Customizable report templates with metric-specific insights
-- Export functionality for data analysis (CSV/JSON)
-- Scheduled report delivery via email (coming soon)
+- Export functionality in multiple formats (PDF, CSV, JSON, Excel)
+- Scheduled report delivery via email with customizable templates
 - Multi-base station comparison reports
 - Report scheduling and automation
+- Email notifications for system events and alerts
+- Success/error notifications for all user actions
 
 ### 🏗️ System Architecture
 
 - **Frontend**: React 19.1.0 with Material-UI v7.1.0
-  - State Management: React Context API
+  - State Management: React Context API with useReducer
   - Data Visualization: Recharts 2.15.3 with D3.js 7.9.0
   - PDF Generation: jsPDF 3.0.1 with html2canvas 1.4.1
-  - HTTP Client: Axios 1.9.0
-  - Routing: React Router 7.6.0
+  - HTTP Client: Axios 1.9.0 with interceptors for error handling
+  - Routing: React Router 7.6.0 with lazy loading
+  - Form Handling: React Hook Form with Yup validation
+  - Notifications: Custom Snackbar implementation with Material-UI
+  - Accessibility: ARIA attributes, keyboard navigation, and focus management
 
 - **Backend**: Node.js/Express 5.1.0
-  - Database: MySQL 8.0+
-  - Caching: node-cache 5.1.2
-  - Rate Limiting: express-rate-limit 7.5.0
-  - CORS: cors 2.8.5
+  - Database: MySQL 8.0+ with connection pooling
+  - Caching: node-cache 5.1.2 with TTL-based invalidation
+  - Rate Limiting: express-rate-limit 7.5.0 with Redis support (optional)
+  - CORS: cors 2.8.5 with dynamic origin configuration
+  - Email: Nodemailer 7.0.9 with SMTP support
+  - Logging: Winston with file and console transports
+  - Security: Helmet middleware, request validation, and input sanitization
 
 - **Development Tools**:
   - Concurrent execution of frontend and backend
@@ -176,25 +186,117 @@ REACT_APP_FEATURE_REPORTS=true
 REACT_APP_FEATURE_ALERTS=true
 ```
 
-## 🚀 Running the Application
+## 🚀 Getting Started
 
-1. **Start the backend server**
+### Prerequisites
+
+- Node.js 18.x (LTS) or later
+- MySQL 8.0+ server
+- SMTP server (for email functionality)
+
+### Installation Steps
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/OnsongoMabeya/Telemetry-Reporting.git
+   cd BSI-telemetry-reporting
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   # Install root dependencies (for running both frontend and backend)
+   npm install
+   
+   # Install frontend dependencies
+   cd frontend
+   npm install
+   
+   # Install backend dependencies
+   cd ../backend
+   npm install
+   cd ..
+   ```
+
+3. **Set up environment variables**
+
+   ```bash
+   # Copy example environment files
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   
+   # Edit the .env files with your configuration
+   # See the Configuration section below for details
+   ```
+
+4. **Start the backend server**
 
    ```bash
    cd backend
    npm start
    ```
 
-2. **Start the frontend development server**
+5. **Start the frontend development server** (in a new terminal)
 
    ```bash
    cd frontend
    npm start
    ```
 
-3. **Access the application**
+6. **Access the application**
    - Frontend: [http://localhost:3010](http://localhost:3010)
-   - API Documentation: [http://localhost:5000/api-docs](http://localhost:5000/api-docs) (if Swagger is configured)
+   - Backend API: [http://localhost:5000](http://localhost:5000)
+   - API Documentation: [http://localhost:5000/api-docs](http://localhost:5000/api-docs)
+
+### Backend Configuration
+
+```env
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_NAME=horiserverlive
+
+# Email Configuration (for report delivery)
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false  # true for 465, false for other ports
+SMTP_USER=your-email@example.com
+SMTP_PASS=your-email-password
+EMAIL_FROM="BSI Telemetry <noreply@bsitelemetry.com>"
+
+# CORS Configuration
+ALLOWED_ORIGINS=http://localhost:3010,http://localhost:3000
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000  # 15 minutes
+RATE_LIMIT_MAX=100
+
+# Cache Settings
+CACHE_TTL=300  # 5 minutes
+```
+
+### Frontend Configuration
+
+```env
+# Application
+PORT=3010
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_DEFAULT_TIME_RANGE=1h
+REACT_APP_THEME=light  # light or dark
+REACT_APP_ANALYTICS=false  # Enable/disable analytics
+
+# Feature Flags
+REACT_APP_FEATURE_REPORTS=true
+REACT_APP_FEATURE_ALERTS=true
+REACT_APP_FEATURE_EMAIL=true
+```
 
 ## 📊 Data Sampling Intervals
 

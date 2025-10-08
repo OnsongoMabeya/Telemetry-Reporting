@@ -1,11 +1,11 @@
 # BSI Telemetry Reports - Backend
 
 [![Node.js](https://img.shields.io/badge/Node.js-18.x-brightgreen)](https://nodejs.org/)
-[![Express](https://img.shields.io/badge/Express-4.x-lightgrey)](https://expressjs.com/)
+[![Express](https://img.shields.io/badge/Express-5.x-lightgrey)](https://expressjs.com/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-blue)](https://www.mysql.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Node.js/Express backend server for the BSI Telemetry Reports application. This service handles all data processing, database operations, and provides a RESTful API for the frontend application.
+Node.js/Express backend server for the BSI Telemetry Reports application. This service handles all data processing, database operations, and provides a RESTful API for the frontend application. The backend now includes enhanced features like email report generation, improved error handling, and better data processing capabilities.
 
 ## 🌟 Features
 
@@ -58,8 +58,9 @@ The backend is configured to handle requests from specific origins defined in th
 - **RESTful API** - Comprehensive endpoints for all frontend data needs
   - Node management (CRUD operations)
   - Telemetry data retrieval with filtering
-  - Report generation endpoints
+  - Report generation endpoints with email delivery
   - System health and status endpoints
+  - Email report generation with customizable templates
 
 - **Real-time Data Processing**
   - Efficient handling of high-frequency telemetry data
@@ -75,10 +76,12 @@ The backend is configured to handle requests from specific origins defined in th
 
 ### Performance & Reliability
 
-- **Connection Pooling** - Efficient MySQL connection management
-- **In-memory Caching** - Node-cache implementation for frequently accessed data
+- **Connection Pooling** - Efficient MySQL connection management with connection reuse
+- **In-memory Caching** - Node-cache implementation for frequently accessed data with configurable TTL
 - **Rate Limiting** - Protection against abuse (100 requests/minute per IP)
 - **Request Validation** - Comprehensive input validation for all endpoints
+- **Error Handling** - Enhanced error handling with detailed error messages and logging
+- **Email Queue** - Background processing for email delivery to prevent blocking the main thread
 
 ### Developer Experience
 
@@ -159,6 +162,8 @@ The backend is configured to handle requests from specific origins defined in th
 - `npm run format` - Format code with Prettier
 - `npm run migrate` - Run database migrations
 - `npm run seed` - Seed the database with sample data
+- `npm run send-test-email` - Send a test email (configure SMTP settings first)
+- `npm run check-connections` - Check database and email server connections
 
 ## 📚 API Reference
 
@@ -189,10 +194,51 @@ All error responses follow this format:
   "error": {
     "code": "ERROR_CODE",
     "message": "Human-readable error message",
-    "details": {}
+    "details": {},
+    "timestamp": "2023-11-15T12:00:00Z"
   }
 }
+
+The backend now supports generating and sending reports via email. The system uses Nodemailer for email delivery with support for both SMTP and other email services.
+
+#### Configuration
+
+Add these to your `.env` file:
+```env
+# Email Configuration
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false  # true for 465, false for other ports
+SMTP_USER=your-email@example.com
+SMTP_PASS=your-email-password
+EMAIL_FROM="BSI Telemetry <noreply@bsitelemetry.com>"
+EMAIL_REPLY_TO=support@bsitelemetry.com
 ```
+
+#### API Endpoints
+
+- `POST /api/reports/email` - Generate and email a report
+
+```json
+{
+  "nodeId": "node-123",
+  "timeRange": "24h",
+  "format": "pdf",
+  "recipients": ["user@example.com"],
+  "subject": "Daily Telemetry Report",
+  "message": "Please find attached the daily telemetry report.",
+  "includeSummary": true,
+  "includeCharts": true
+}
+```
+
+#### Security Considerations
+
+- All email endpoints require authentication
+- Rate limiting is applied to prevent abuse
+{{ ... }}
+- Email addresses are validated before sending
+- Sensitive data is never logged in email logs
 
 ### Endpoints
 
