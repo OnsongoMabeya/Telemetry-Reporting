@@ -425,6 +425,33 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
   };
 };
 
+// Get all available nodes
+app.get('/api/nodes', async (req, res) => {
+  try {
+    const pool = mysql.createPool({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      port: process.env.DB_PORT || 3306,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0
+    });
+
+    const [rows] = await pool.promise().query('SELECT DISTINCT node_name as id, node_name as name FROM telemetry_data ORDER BY node_name');
+    
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'No nodes found' });
+    }
+
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching nodes:', error);
+    res.status(500).json({ error: 'Failed to fetch nodes', details: error.message });
+  }
+});
+
 // Telemetry data endpoint
 app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
   const { nodeName, baseStation } = req.params;
