@@ -1,13 +1,113 @@
 # BSI Telemetry Reports - Backend
 
-[![Node.js](https://img.shields.io/badge/Node.js-18.x-brightgreen)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-22.x-brightgreen)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express-5.x-lightgrey)](https://expressjs.com/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-blue)](https://www.mysql.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/OnsongoMabeya/Telemetry-Reporting/ci.yml?branch=main)](https://github.com/OnsongoMabeya/Telemetry-Reporting/actions)
+[![Coverage Status](https://coveralls.io/repos/github/OnsongoMabeya/Telemetry-Reporting/badge.svg?branch=main)](https://coveralls.io/github/OnsongoMabeya/Telemetry-Reporting?branch=main)
 
 Node.js/Express backend server for the BSI Telemetry Reports application. This service handles all data processing, database operations, and provides a RESTful API for the frontend application. The backend now includes enhanced features like email report generation, improved error handling, and better data processing capabilities.
 
 ## 🌟 Features
+
+- **RESTful API** with JWT authentication
+- **Real-time data processing** with WebSocket support
+- **Email report generation** with customizable templates
+- **Caching** with node-cache for improved performance
+- **Rate limiting** to prevent abuse
+- **Comprehensive error handling** with custom error middleware
+- **Request validation** using express-validator
+- **Logging** with Winston
+- **API documentation** with Swagger/OpenAPI
+- **Unit and integration tests** with Jest
+- **Docker support** for easy deployment
+- **Environment-based configuration**
+- **Database migrations** with Knex.js
+- **Scheduled tasks** for report generation
+- **Health check endpoints**
+- **Request/Response logging**
+- **Security headers** with Helmet
+- **CORS** with dynamic origin configuration
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 22.x (LTS recommended)
+- MySQL 8.0 or higher
+- npm 10.x or higher
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/OnsongoMabeya/Telemetry-Reporting.git
+   cd Telemetry-Reporting/backend
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+4. **Start the server**
+   ```bash
+   # Development
+   npm run dev
+   
+   # Production
+   npm start
+   ```
+
+The server will be available at `http://localhost:5000` by default.
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file in the backend directory with the following variables:
+
+```env
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_NAME=horiserverdatalive
+
+# JWT Configuration
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRES_IN=24h
+
+# Email Configuration
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-email@example.com
+SMTP_PASS=your-email-password
+EMAIL_FROM="BSI Telemetry <noreply@bsitelemetry.com>"
+
+# CORS Configuration
+ALLOWED_ORIGINS=http://localhost:3010,http://localhost:3000
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000  # 15 minutes
+RATE_LIMIT_MAX=100
+
+# Cache Settings
+CACHE_TTL=300  # 5 minutes
+```
 
 ### Network & CORS Configuration
 
@@ -47,7 +147,115 @@ The backend is configured to handle requests from specific origins defined in th
 - **Preflight Cache**: 24 hours
 - **Max Age**: 86400 seconds
 
-#### Development Tips
+## 📚 API Documentation
+
+API documentation is available at `/api-docs` when running in development mode. The documentation is generated using Swagger/OpenAPI.
+
+To view the API documentation:
+
+1. Start the server in development mode:
+   ```bash
+   npm run dev
+   ```
+
+2. Open your browser and navigate to:
+   ```
+   http://localhost:5000/api-docs
+   ```
+
+## 🧪 Testing
+
+Run tests with the following commands:
+
+```bash
+# Run all tests
+npm test
+
+# Run unit tests
+npm run test:unit
+
+# Run integration tests
+npm run test:integration
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+## 🐳 Docker
+
+To run the application in a Docker container:
+
+1. Build the Docker image:
+   ```bash
+   docker build -t bsi-telemetry-backend .
+   ```
+
+2. Run the container:
+   ```bash
+   docker run -p 5000:5000 --env-file .env bsi-telemetry-backend
+   ```
+
+## 🔄 Database Migrations
+
+Database migrations are managed using Knex.js. To run migrations:
+
+```bash
+# Run pending migrations
+npm run migrate:latest
+
+# Rollback the latest migration
+npm run migrate:rollback
+
+# Create a new migration
+npm run migrate:make migration_name
+```
+
+## 📦 Scripts
+
+- `npm start` - Start the production server
+- `npm run dev` - Start the development server with nodemon
+- `npm test` - Run all tests
+- `npm run test:unit` - Run unit tests
+- `npm run test:integration` - Run integration tests
+- `npm run test:coverage` - Run tests with coverage
+- `npm run lint` - Lint the code
+- `npm run format` - Format the code
+- `npm run migrate:*` - Database migration commands
+- `npm run seed` - Seed the database with test data
+- `npm run docs:generate` - Generate API documentation
+- `npm run docker:build` - Build Docker image
+- `npm run docker:run` - Run Docker container
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📞 Support
+
+For support, please contact:
+
+- **Email**: [support@bsi.com](mailto:support@bsi.com)
+- **Issues**: [GitHub Issues](https://github.com/OnsongoMabeya/Telemetry-Reporting/issues)
+- **Documentation**: [GitHub Wiki](https://github.com/OnsongoMabeya/Telemetry-Reporting/wiki)
+
+## 🙏 Acknowledgments
+
+- [Express](https://expressjs.com/) - Web framework for Node.js
+- [Knex.js](https://knexjs.org/) - SQL query builder
+- [Jest](https://jestjs.io/) - Testing framework
+- [Docker](https://www.docker.com/) - Container platform
+- [Swagger](https://swagger.io/) - API documentation
+- Built with ❤️ by the BSI Engineering Team
+
+## Development Tips
 
 - For development, you can allow all origins by setting `ALLOWED_ORIGINS=*` in your `.env` file
 - Always restart your server after changing environment variables

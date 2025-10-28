@@ -3,9 +3,9 @@
 A comprehensive telemetry monitoring solution for tracking and analyzing node performance across multiple base stations. The system provides real-time data visualization, historical analysis, and automated reporting capabilities.
 
 ![BSI Telemetry Dashboard](https://img.shields.io/badge/Status-Active-success)
-![Version](https://img.shields.io/badge/Version-1.0.0-blue)
+![Version](https://img.shields.io/badge/Version-1.0.1-blue)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Node.js](https://img.shields.io/badge/Node.js-18.x-339933?logo=node.js)
+![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js)
 ![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql)
 
@@ -182,72 +182,47 @@ REACT_APP_THEME=light  # light or dark
 REACT_APP_ANALYTICS=false  # Enable/disable analytics
 
 # Feature Flags
-REACT_APP_FEATURE_REPORTS=true
-REACT_APP_FEATURE_ALERTS=true
-```
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js 18.x (LTS) or later
-- MySQL 8.0+ server
-- SMTP server (for email functionality)
-
-### Installation Steps
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/OnsongoMabeya/Telemetry-Reporting.git
-   cd BSI-telemetry-reporting
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   # Install root dependencies (for running both frontend and backend)
+   cd backend
    npm install
    
    # Install frontend dependencies
-   cd frontend
+   cd ../frontend
    npm install
    
-   # Install backend dependencies
-   cd ../backend
-   npm install
-   cd ..
+   # Install cross-env globally if not already installed
+   npm install -g cross-env
    ```
 
-3. **Set up environment variables**
+4. **Set up environment variables**
+   - Backend:
+     ```bash
+     cd backend
+     copy .env.example .env
+     # Edit .env with your database credentials
+     ```
+   - Frontend:
+     ```bash
+     cd frontend
+     copy .env.example .env
+     # Update API_URL if needed
+     ```
 
+5. **Start the application**
    ```bash
-   # Copy example environment files
-   cp backend/.env.example backend/.env
-   cp frontend/.env.example frontend/.env
+   # From the project root
+   npm run dev
    
-   # Edit the .env files with your configuration
-   # See the Configuration section below for details
-   ```
-
-4. **Start the backend server**
-
-   ```bash
-   cd backend
-   npm start
-   ```
-
-5. **Start the frontend development server** (in a new terminal)
-
-   ```bash
-   cd frontend
-   npm start
+   # Or start services individually:
+   # Backend:
+   # cd backend && npm start
+   
+   # Frontend (in a new terminal):
+   # cd frontend && npm start
    ```
 
 6. **Access the application**
-   - Frontend: [http://localhost:3010](http://localhost:3010)
-   - Backend API: [http://localhost:5000](http://localhost:5000)
-   - API Documentation: [http://localhost:5000/api-docs](http://localhost:5000/api-docs)
+   - Frontend: http://localhost:3010
+   - Backend API: http://localhost:5000
 
 ### Backend Configuration
 
@@ -329,48 +304,66 @@ We welcome contributions! Please follow these steps:
 
 ### Development Workflow
 
-1. **Frontend Development**
+1. **Before starting**
+   - Ensure all tests pass
+   - Update documentation if needed
 
+2. **Coding standards**
+   - Follow existing code style
+   - Write meaningful commit messages
+   - Add tests for new features
+
+3. **Testing**
    ```bash
-   cd frontend
-   npm start  # Runs on http://localhost:3010
-   ```
-
-2. **Backend Development**
-
-   ```bash
+   # Run backend tests
    cd backend
-   npm start  # Runs on http://localhost:5000
+   npm test
+   
+   # Run frontend tests
+   cd ../frontend
+   npm test
    ```
 
-3. **Running Both** (from project root)
+### Repository Structure
 
-   ```bash
-   npm run dev  # Runs both frontend and backend concurrently
-   ```
+```text
+bsi-telemetry/
+├── backend/           # Backend server (Node.js/Express)
+│   ├── config/       # Configuration files
+│   ├── controllers/  # Route controllers
+│   ├── models/       # Database models
+│   ├── routes/       # API routes
+│   ├── services/     # Business logic
+│   ├── .env          # Environment variables
+│   └── server.js     # Main server file
+├── frontend/         # Frontend React application
+│   ├── public/       # Static files
+│   ├── src/          # React components and logic
+│   └── .env          # Frontend environment variables
+├── .gitignore        # Git ignore file
+└── README.md         # This file
+```
 
-### Testing
+### Common Issues & Solutions
 
-- Run frontend tests:
+#### 1. React Scripts Not Found
+If you encounter `'react-scripts' is not recognized`, try:
+```bash
+cd frontend
+npm install react-scripts@latest
+```
 
-  ```bash
-  cd frontend
-  npm test
-  ```
+#### 2. Node.js Version Mismatch
+This project requires Node.js v22.x. If you have multiple versions, use nvm (Node Version Manager) to switch:
+```bash
+nvm install 22
+nvm use 22
+```
 
-- Run backend tests:
-
-  ```bash
-  cd backend
-  npm test
-  ```
-
-### Code Style
-
-- We use ESLint and Prettier for code formatting
-- Follow the existing code style
-- Write meaningful commit messages
-- Include tests for new features
+#### 3. Database Connection Issues
+- Verify MySQL is running
+- Check `.env` database credentials
+- Ensure the database exists and is accessible
 
 ## 📞 Support
 
@@ -407,7 +400,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
    This will start:
 
-   - Frontend: [http://localhost:3000](http://localhost:3000)
+   - Frontend: [http://localhost:3010](http://localhost:3010)
    - Backend API: [http://localhost:5000](http://localhost:5000)
    - API Documentation: [http://localhost:5000/api-docs](http://localhost:5000/api-docs)
 
