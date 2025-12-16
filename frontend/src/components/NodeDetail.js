@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Paper, CircularProgress, Alert, useTheme, useMediaQuery } from '@mui/material';
 import ReportGenerator from './reports/ReportGenerator';
+import KenyaMap from './KenyaMap';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
@@ -839,95 +840,111 @@ const NodeDetail = () => {
             {error}
           </Alert>
         )}
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-        {/* First Row */}
-        <Box>
-          <TelemetryGraph
-            data={telemetryData}
-            title="Forward Power"
-            dataKey="forwardPower"
-            unit="W"
-            isLoading={isLoading}
-            timeFilter={timeFilter}
-          />
-        </Box>
-        <Box>
-          <TelemetryGraph
-            data={telemetryData}
-            title="Reflected Power"
-            dataKey="reflectedPower"
-            unit="W"
-            isLoading={isLoading}
-            timeFilter={timeFilter}
-          />
-        </Box>
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: { xs: '1fr', sm: '400px 1fr 1fr' }, 
+          gap: 2,
+          mb: 2 
+        }}>
+          {/* Kenya Map - Left Side */}
+          <Box sx={{ 
+            gridRow: { xs: 'auto', sm: 'span 4' },
+            height: { xs: '400px', sm: '600px' }
+          }}>
+            <Paper elevation={3} sx={{ height: '100%', overflow: 'hidden' }}>
+              <KenyaMap />
+            </Paper>
+          </Box>
+          
+          {/* Graphs - Right Side */}
+          {/* First Row */}
+          <Box>
+            <TelemetryGraph
+              data={telemetryData}
+              title="Forward Power"
+              dataKey="forwardPower"
+              unit="W"
+              isLoading={isLoading}
+              timeFilter={timeFilter}
+            />
+          </Box>
+          <Box>
+            <TelemetryGraph
+              data={telemetryData}
+              title="Reflected Power"
+              dataKey="reflectedPower"
+              unit="W"
+              isLoading={isLoading}
+              timeFilter={timeFilter}
+            />
+          </Box>
 
-        {/* Second Row */}
-        <Box>
-          <TelemetryGraph
-            data={telemetryData}
-            title="VSWR"
-            dataKey="vswr"
-            unit=""
-            isLoading={isLoading}
-            timeFilter={timeFilter}
-          />
-        </Box>
-        <Box>
-          <TelemetryGraph
-            data={telemetryData}
-            title="Return Loss"
-            dataKey="returnLoss"
-            unit="dB"
-            isLoading={isLoading}
-            timeFilter={timeFilter}
-          />
-        </Box>
+          {/* Second Row */}
+          <Box>
+            <TelemetryGraph
+              data={telemetryData}
+              title="VSWR"
+              dataKey="vswr"
+              unit=""
+              isLoading={isLoading}
+              timeFilter={timeFilter}
+            />
+          </Box>
+          <Box>
+            <TelemetryGraph
+              data={telemetryData}
+              title="Return Loss"
+              dataKey="returnLoss"
+              unit="dB"
+              isLoading={isLoading}
+              timeFilter={timeFilter}
+            />
+          </Box>
 
-        {/* Third Row */}
-        <Box>
-          <TelemetryGraph
-            data={telemetryData}
-            title="Temperature"
-            dataKey="temperature"
-            unit="°C"
-            isLoading={isLoading}
-            timeFilter={timeFilter}
-          />
-        </Box>
-        <Box>
-          <TelemetryGraph
-            data={telemetryData}
-            title="Voltage"
-            dataKey="voltage"
-            unit="V"
-            isLoading={isLoading}
-            timeFilter={timeFilter}
-          />
-        </Box>
+          {/* Third Row */}
+          <Box>
+            <TelemetryGraph
+              data={telemetryData}
+              title="Temperature"
+              dataKey="temperature"
+              unit="°C"
+              isLoading={isLoading}
+              timeFilter={timeFilter}
+            />
+          </Box>
+          <Box>
+            <TelemetryGraph
+              data={telemetryData}
+              title="Voltage"
+              dataKey="voltage"
+              unit="V"
+              isLoading={isLoading}
+              timeFilter={timeFilter}
+            />
+          </Box>
 
-        {/* Fourth Row */}
-        <Box>
-          <TelemetryGraph
-            data={telemetryData}
-            title="Current"
-            dataKey="current"
-            unit="A"
-            isLoading={isLoading}
-            timeFilter={timeFilter}
-          />
+          {/* Fourth Row */}
+          <Box>
+            <TelemetryGraph
+              data={telemetryData}
+              title="Current"
+              dataKey="current"
+              unit="A"
+              isLoading={isLoading}
+              timeFilter={timeFilter}
+            />
+          </Box>
+          <Box>
+            <TelemetryGraph
+              data={telemetryData}
+              title="Power"
+              dataKey="power"
+              unit="W"
+              isLoading={isLoading}
+              timeFilter={timeFilter}
+            />
+          </Box>
         </Box>
-        <Box>
-          <TelemetryGraph
-            data={telemetryData}
-            title="Power"
-            dataKey="power"
-            unit="W"
-            isLoading={isLoading}
-            timeFilter={timeFilter}
-          />
-        </Box>
-      </Box>
     </Container>
     </ErrorBoundary>
   );

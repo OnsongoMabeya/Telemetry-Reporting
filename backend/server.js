@@ -564,6 +564,85 @@ app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
   }
 });
 
+// Base stations with coordinates for Kenya map
+app.get('/api/basestations-map', async (req, res) => {
+  try {
+    // Get all unique base station names
+    const [rows] = await pool.promise().query(
+      'SELECT DISTINCT NodeBaseStationName FROM node_status_table WHERE NodeBaseStationName IS NOT NULL AND NodeBaseStationName != "" ORDER BY NodeBaseStationName'
+    );
+    
+    // Kenya base station coordinates mapping
+    const kenyaBaseStations = {
+      'Nairobi': { lat: -1.2921, lng: 36.8219, status: 'online' },
+      'Mombasa': { lat: -4.0435, lng: 39.6682, status: 'online' },
+      'Kisumu': { lat: -0.0917, lng: 34.7679, status: 'online' },
+      'Nakuru': { lat: -0.3031, lng: 36.0695, status: 'online' },
+      'Eldoret': { lat: 0.5143, lng: 35.2698, status: 'online' },
+      'Kitale': { lat: 1.0149, lng: 35.0013, status: 'online' },
+      'Garissa': { lat: -0.4528, lng: 39.6460, status: 'offline' },
+      'Kakamega': { lat: 0.2842, lng: 34.7519, status: 'online' },
+      'Nyeri': { lat: -0.4243, lng: 36.9568, status: 'online' },
+      'Meru': { lat: 0.0470, lng: 37.6555, status: 'online' },
+      'Thika': { lat: -1.0361, lng: 37.0695, status: 'online' },
+      'Malindi': { lat: -3.2192, lng: 40.1164, status: 'online' },
+      'Lamu': { lat: -2.2715, lng: 40.9020, status: 'offline' },
+      'Busia': { lat: 0.4608, lng: 34.1114, status: 'online' },
+      'Machakos': { lat: -1.5178, lng: 37.2628, status: 'online' },
+      'Kericho': { lat: -0.3675, lng: 35.2850, status: 'online' },
+      'Narok': { lat: -1.0785, lng: 35.8619, status: 'online' },
+      'Bungoma': { lat: 0.5635, lng: 34.5605, status: 'online' },
+      'Moyale': { lat: 3.5216, lng: 39.0546, status: 'offline' },
+      'Marsabit': { lat: 2.3287, lng: 37.9909, status: 'offline' },
+      'Isiolo': { lat: 0.3549, lng: 37.5821, status: 'online' },
+      'Wajir': { lat: 1.7471, lng: 40.0575, status: 'offline' },
+      'Mandera': { lat: 3.9377, lng: 41.8569, status: 'offline' },
+      'Garba Tula': { lat: 0.8333, lng: 38.9333, status: 'offline' },
+      'Lodwar': { lat: 3.1186, lng: 35.6201, status: 'offline' },
+      'Lokichoggio': { lat: 4.2045, lng: 34.3547, status: 'offline' },
+      'Kapenguria': { lat: 1.2388, lng: 35.1167, status: 'online' },
+      'Kapsowar': { lat: 1.0833, lng: 35.6500, status: 'online' },
+      'Iten': { lat: 0.9500, lng: 35.4167, status: 'online' },
+      'Kabarnet': { lat: 0.4929, lng: 35.7355, status: 'online' },
+      'Marigat': { lat: 0.4667, lng: 36.0333, status: 'online' },
+      'Lodwar': { lat: 3.1186, lng: 35.6201, status: 'offline' }
+    };
+    
+    // Map database stations to coordinates
+    const baseStations = rows.map(row => {
+      const stationName = row.NodeBaseStationName;
+      const coords = kenyaBaseStations[stationName];
+      
+      if (coords) {
+        return {
+          id: stationName,
+          name: stationName,
+          lat: coords.lat,
+          lng: coords.lng,
+          status: coords.status
+        };
+      } else {
+        // For stations not in our mapping, assign approximate coordinates
+        return {
+          id: stationName,
+          name: stationName,
+          lat: -1.2921 + (Math.random() - 0.5) * 4, // Random around Nairobi
+          lng: 36.8219 + (Math.random() - 0.5) * 4,
+          status: 'unknown'
+        };
+      }
+    });
+    
+    res.json(baseStations);
+  } catch (error) {
+    console.error('Error fetching base stations for map:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    });
+  }
+});
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
