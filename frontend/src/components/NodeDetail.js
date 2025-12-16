@@ -852,7 +852,7 @@ const NodeDetail = () => {
             height: { xs: '400px', sm: '600px' }
           }}>
             <Paper elevation={3} sx={{ height: '100%', overflow: 'hidden' }}>
-              <KenyaMap />
+              <KenyaMap selectedNode={selectedNode} />
             </Paper>
           </Box>
           

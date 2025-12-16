@@ -41,7 +41,7 @@ const MapBounds = ({ markers }) => {
   return null;
 };
 
-const KenyaMap = () => {
+const KenyaMap = ({ selectedNode }) => {
   const [baseStations, setBaseStations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -50,8 +50,13 @@ const KenyaMap = () => {
   const fetchBaseStations = async () => {
     try {
       setLoading(true);
-      console.log('Fetching base stations from:', `${API_BASE_URL}/api/basestations-map`);
-      const response = await axios.get(`${API_BASE_URL}/api/basestations-map`);
+      // Build URL with optional node filter
+      const url = selectedNode 
+        ? `${API_BASE_URL}/api/basestations-map?nodeName=${encodeURIComponent(selectedNode)}`
+        : `${API_BASE_URL}/api/basestations-map`;
+      
+      console.log('Fetching base stations from:', url);
+      const response = await axios.get(url);
       console.log('Base stations response:', response.data);
       setBaseStations(response.data);
       setError(null);
@@ -69,7 +74,7 @@ const KenyaMap = () => {
     // Refresh data every 5 minutes for real-time updates
     const interval = setInterval(fetchBaseStations, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedNode]); // Re-fetch when selectedNode changes
 
   const getStatusColor = (status) => {
     switch (status) {

@@ -567,10 +567,20 @@ app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
 // Base stations with coordinates for Kenya map
 app.get('/api/basestations-map', async (req, res) => {
   try {
-    // Get all unique base station names
-    const [rows] = await pool.promise().query(
-      'SELECT DISTINCT NodeBaseStationName FROM node_status_table WHERE NodeBaseStationName IS NOT NULL AND NodeBaseStationName != "" ORDER BY NodeBaseStationName'
-    );
+    const { nodeName } = req.query;
+    
+    // Get base station names - filter by node if provided
+    let query = 'SELECT DISTINCT NodeBaseStationName FROM node_status_table WHERE NodeBaseStationName IS NOT NULL AND NodeBaseStationName != ""';
+    let queryParams = [];
+    
+    if (nodeName) {
+      query += ' AND NodeName = ?';
+      queryParams.push(nodeName);
+    }
+    
+    query += ' ORDER BY NodeBaseStationName';
+    
+    const [rows] = await pool.promise().query(query, queryParams);
     
     // Kenya base station coordinates mapping
     const kenyaBaseStations = {
