@@ -448,6 +448,8 @@ src/
 - Responsive design integrated with dashboard layout
 - BSI branding and styling consistency
 - Auto-fitting map bounds to show all stations
+- **Node Filtering**: Accepts `selectedNode` prop to filter base stations by selected node
+- **Dynamic Updates**: Re-fetches data when node selection changes
 
 ### NodeList
 

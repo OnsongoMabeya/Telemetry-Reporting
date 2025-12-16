@@ -554,10 +554,14 @@ GET /api/nodes/:nodeId/metrics
 #### Get Base Stations with Coordinates
 
 ```http
-GET /api/basestations-map
+GET /api/basestations-map?nodeName=Aviation%20FM
 ```
 
-**Description**: Retrieve all base stations with their geographic coordinates and real-time status for Kenya map visualization.
+**Description**: Retrieve all base stations with their geographic coordinates and real-time status for Kenya map visualization. Supports optional node filtering to show only base stations belonging to a specific node.
+
+**Parameters**:
+
+- `nodeName` (optional, string): Filter base stations by node name
 
 **Response**:
 

@@ -110,14 +110,19 @@ The system includes an interactive map of Kenya showing all base stations with t
 - **Real-time Updates**: Auto-refresh every 5 minutes
 - **Responsive Layout**: Integrated with telemetry dashboard
 - **Accurate Coordinates**: Proper geographic positioning across Kenya
+- **Node Filtering**: Filter base stations by node name for focused visualization
 
 ### API Endpoint
 
 ```http
-GET /api/basestations-map
+GET /api/basestations-map?nodeName=Aviation%20FM
 ```
 
-**Description**: Retrieve all base stations with their geographic coordinates and real-time status for Kenya map visualization.
+**Description**: Retrieve all base stations with their geographic coordinates and real-time status for Kenya map visualization. Supports optional node filtering to show only base stations belonging to a specific node.
+
+**Parameters**:
+
+- `nodeName` (optional, string): Filter base stations by node name
 
 **Response Format**:
 
