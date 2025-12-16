@@ -605,13 +605,42 @@ app.get('/api/basestations-map', async (req, res) => {
       'Iten': { lat: 0.9500, lng: 35.4167, status: 'online' },
       'Kabarnet': { lat: 0.4929, lng: 35.7355, status: 'online' },
       'Marigat': { lat: 0.4667, lng: 36.0333, status: 'online' },
-      'Lodwar': { lat: 3.1186, lng: 35.6201, status: 'offline' }
+      // Add uppercase versions to match database entries
+      'NAIROBI': { lat: -1.2921, lng: 36.8219, status: 'online' },
+      'MOMBASA': { lat: -4.0435, lng: 39.6682, status: 'online' },
+      'KISUMU': { lat: -0.0917, lng: 34.7679, status: 'online' },
+      'NAKURU': { lat: -0.3031, lng: 36.0695, status: 'online' },
+      'ELDORET': { lat: 0.5143, lng: 35.2698, status: 'online' },
+      'KITALE': { lat: 1.0149, lng: 35.0013, status: 'online' },
+      'GARISSA': { lat: -0.4528, lng: 39.6460, status: 'offline' },
+      'KAKAMEGA': { lat: 0.2842, lng: 34.7519, status: 'online' },
+      'NYERI': { lat: -0.4243, lng: 36.9568, status: 'online' },
+      'MERU': { lat: 0.0470, lng: 37.6555, status: 'online' },
+      'THIKA': { lat: -1.0361, lng: 37.0695, status: 'online' },
+      'MALINDI': { lat: -3.2192, lng: 40.1164, status: 'online' },
+      'LAMU': { lat: -2.2715, lng: 40.9020, status: 'offline' },
+      'BUSIA': { lat: 0.4608, lng: 34.1114, status: 'online' },
+      'MACHAKOS': { lat: -1.5178, lng: 37.2628, status: 'online' },
+      'KERICHO': { lat: -0.3675, lng: 35.2850, status: 'online' },
+      'NAROK': { lat: -1.0785, lng: 35.8619, status: 'online' },
+      'BUNGOMA': { lat: 0.5635, lng: 34.5605, status: 'online' },
+      'MOYALE': { lat: 3.5216, lng: 39.0546, status: 'offline' },
+      'MARSABIT': { lat: 2.3287, lng: 37.9909, status: 'offline' },
+      'ISIOLO': { lat: 0.3549, lng: 37.5821, status: 'online' },
+      'WAJIR': { lat: 1.7471, lng: 40.0575, status: 'offline' },
+      'MANDERA': { lat: 3.9377, lng: 41.8569, status: 'offline' },
+      'LIMURU': { lat: -1.2634, lng: 36.8033, status: 'online' },
+      'WEBUYE': { lat: 0.6069, lng: 34.7399, status: 'online' },
+      'MAZERAS': { lat: -3.6739, lng: 39.4927, status: 'online' }
     };
     
     // Map database stations to coordinates
     const baseStations = rows.map(row => {
       const stationName = row.NodeBaseStationName;
-      const coords = kenyaBaseStations[stationName];
+      // Try to find coordinates using case-insensitive matching
+      const coords = kenyaBaseStations[stationName] || 
+                   kenyaBaseStations[stationName.toLowerCase()] ||
+                   kenyaBaseStations[stationName.charAt(0).toUpperCase() + stationName.slice(1).toLowerCase()];
       
       if (coords) {
         return {
@@ -623,6 +652,7 @@ app.get('/api/basestations-map', async (req, res) => {
         };
       } else {
         // For stations not in our mapping, assign approximate coordinates
+        console.log(`Station not found in mapping: ${stationName}, using random coordinates`);
         return {
           id: stationName,
           name: stationName,
