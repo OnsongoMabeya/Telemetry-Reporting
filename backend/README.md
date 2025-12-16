@@ -29,6 +29,7 @@ Node.js/Express backend server for the BSI Telemetry Reports application. This s
 - **Request/Response logging**
 - **Security headers** with Helmet
 - **CORS** with dynamic origin configuration
+- **Geographic mapping** with Kenya base station coordinates
 
 ## 🚀 Getting Started
 
@@ -41,23 +42,27 @@ Node.js/Express backend server for the BSI Telemetry Reports application. This s
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/OnsongoMabeya/Telemetry-Reporting.git
    cd Telemetry-Reporting/backend
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
 
 4. **Start the server**
+
    ```bash
    # Development
    npm run dev
@@ -154,12 +159,14 @@ API documentation is available at `/api-docs` when running in development mode. 
 To view the API documentation:
 
 1. Start the server in development mode:
+
    ```bash
    npm run dev
    ```
 
 2. Open your browser and navigate to:
-   ```
+
+   ```link
    http://localhost:5000/api-docs
    ```
 
@@ -186,11 +193,13 @@ npm run test:coverage
 To run the application in a Docker container:
 
 1. Build the Docker image:
+
    ```bash
    docker build -t bsi-telemetry-backend .
    ```
 
 2. Run the container:
+
    ```bash
    docker run -p 5000:5000 --env-file .env bsi-telemetry-backend
    ```
@@ -304,15 +313,15 @@ For support, please contact:
 - **Pagination** - Efficient handling of large datasets
 - **Data Export** - Support for data export in multiple formats
 
-## 🚀 Getting Started
+## 🚀 Getting Startedd
 
-### Prerequisites
+### Prerequisitess
 
 - Node.js 18.x or later
 - MySQL 8.0 or later
 - npm 9.x or later
 
-### Installation
+### Installationn
 
 1. **Clone the repository**
 
@@ -542,6 +551,28 @@ GET /api/nodes/:nodeId/metrics
 ]
 ```
 
+#### Get Base Stations with Coordinates
+
+```http
+GET /api/basestations-map
+```
+
+**Description**: Retrieve all base stations with their geographic coordinates and real-time status for Kenya map visualization.
+
+**Response**:
+
+```json
+[
+  {
+    "id": "ELDORET",
+    "name": "ELDORET",
+    "lat": 0.5143,
+    "lng": 35.2698,
+    "status": "online"
+  }
+]
+```
+
 #### Get Base Stations for a Node
 
 ```http
@@ -643,9 +674,9 @@ The application uses the following key tables:
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | int | Primary key |
-| `NodeName` | varchar(255) | Name of the node |
-| `NodeBaseStationName` | varchar(255) | Name of the base station |
-| `time` | datetime | Timestamp of the reading |
+| `NodeName` | varchar(255) | Name of node |
+| `NodeBaseStationName` | varchar(255) | Name of base station |
+| `time` | datetime | Timestamp of reading |
 | `Analog1Value` | float | Forward Power (W) |
 | `Analog2Value` | float | Reflected Power (W) |
 | `Analog3Value` | float | VSWR (Voltage Standing Wave Ratio) |
@@ -654,6 +685,28 @@ The application uses the following key tables:
 | `Analog6Value` | float | Voltage (V) |
 | `Analog7Value` | float | Current (A) |
 | `Analog8Value` | float | Power (W) |
+
+### Kenya Base Station Coordinates
+
+The system includes accurate coordinates for major Kenya locations:
+
+| Station | Latitude | Longitude | Status |
+|---------|----------|-----------|--------|
+| Nairobi | -1.2921 | 36.8219 | Online |
+| Mombasa | -4.0435 | 39.6682 | Online |
+| Kisumu | -0.0917 | 34.7679 | Online |
+| Eldoret | 0.5143 | 35.2698 | Online |
+| Nakuru | -0.3031 | 36.0695 | Online |
+| Kitale | 1.0149 | 35.0013 | Online |
+| Garissa | -0.4528 | 39.6460 | Offline |
+| Kakamega | 0.2842 | 34.7519 | Online |
+| Nyeri | -0.4243 | 36.9568 | Online |
+| Meru | 0.0470 | 37.6555 | Online |
+| Thika | -1.0361 | 37.0695 | Online |
+| Malindi | -3.2192 | 40.1164 | Online |
+| Limuru | -1.2634 | 36.8033 | Online |
+| Webuye | 0.6069 | 34.7399 | Online |
+| Mazeras | -3.6739 | 39.4927 | Online |
 
 ### Indexes
 
@@ -693,7 +746,7 @@ The API returns appropriate HTTP status codes and error messages in JSON format:
 - Rate limiting to prevent abuse
 - Environment-based configuration for sensitive data
 
-## 🧪 Testing
+## 🧪 Testingg
 
 Run tests with:
 
@@ -711,7 +764,7 @@ For production deployment, consider:
 4. Implementing proper authentication/authorization
 5. Configuring proper logging and monitoring
 
-## 🤝 Contributing
+## 🤝 Contributingg
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)

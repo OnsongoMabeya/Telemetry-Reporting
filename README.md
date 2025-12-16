@@ -25,6 +25,17 @@ The frontend automatically detects the hostname and configures API endpoints acc
 
 ## 🌟 Features
 
+### 🗺️ Geographic Visualization
+
+- **Interactive Kenya Map**: Real-time base station monitoring with Leaflet
+  - OpenStreetMap tiles with zoom and pan controls
+  - Color-coded markers for station status (online/offline/unknown)
+  - Interactive popups with station details and coordinates
+  - Auto-refresh every 5 minutes for real-time updates
+  - Responsive design for mobile and desktop viewing
+  - BSI-branded header with station counts and status
+  - Map bounds auto-fit to show all stations clearly
+
 ### 📊 Real-time Monitoring
 
 - Live telemetry data visualization with configurable auto-refresh intervals
@@ -68,6 +79,8 @@ The frontend automatically detects the hostname and configures API endpoints acc
   - Form Handling: React Hook Form with Yup validation
   - Notifications: Custom Snackbar implementation with Material-UI
   - Accessibility: ARIA attributes, keyboard navigation, and focus management
+  - **Geographic Mapping**: Leaflet 1.9.4 with React-Leaflet 4.2.1
+  - **Map Features**: OpenStreetMap tiles, custom markers, clustering support
 
 - **Backend**: Node.js/Express 5.1.0
   - Database: MySQL 8.0+ with connection pooling
@@ -83,6 +96,53 @@ The frontend automatically detects the hostname and configures API endpoints acc
   - Environment configuration with dotenv
   - Cross-platform environment variable support
 
+## 🗺️ Kenya Map Integration
+
+The system includes an interactive map of Kenya showing all base stations with their real-time status:
+
+### Map Features
+
+- **Base Station Markers**: Color-coded by status
+  - 🟢 Green: Online stations
+  - 🔴 Red: Offline stations  
+  - 🟠 Orange: Unknown status
+- **Interactive Popups**: Click markers for station details
+- **Real-time Updates**: Auto-refresh every 5 minutes
+- **Responsive Layout**: Integrated with telemetry dashboard
+- **Accurate Coordinates**: Proper geographic positioning across Kenya
+
+### API Endpoint
+
+```http
+GET /api/basestations-map
+```
+
+**Description**: Retrieve all base stations with their geographic coordinates and real-time status for Kenya map visualization.
+
+**Response Format**:
+
+```json
+[
+  {
+    "id": "ELDORET",
+    "name": "ELDORET",
+    "lat": 0.5143,
+    "lng": 35.2698,
+    "status": "online"
+  }
+]
+```
+
+### Supported Stations
+
+The map includes coordinates for major Kenya locations:
+
+1. Nairobi, Mombasa, Kisumu, Nakuru, Eldoret
+2. Kitale, Garissa, Kakamega, Nyeri, Meru, Thika
+3. Malindi, Lamu, Busia, Machakos, Kericho, Narok
+4. Bungoma, Moyale, Marsabit, Isiolo, Wajir, Mandera
+5. And many more regional stations
+
 ## 📋 Prerequisites
 
 - **Node.js** v18+ (LTS recommended)
@@ -90,6 +150,7 @@ The frontend automatically detects the hostname and configures API endpoints acc
 - **MySQL** 8.0+ or compatible database
 - **Modern web browser** (Chrome, Firefox, Edge, or Safari)
 - **Git** for version control
+- **Internet connection** for map tiles and real-time data
 
 ## 🏗️ System Requirements
 
@@ -174,14 +235,14 @@ LOG_LEVEL=info  # error, warn, info, debug
 ### Frontend (`.env`)
 
 ```env
-# Application
-PORT=3010
-REACT_APP_API_URL=http://localhost:5000
-REACT_APP_DEFAULT_TIME_RANGE=1h
-REACT_APP_THEME=light  # light or dark
-REACT_APP_ANALYTICS=false  # Enable/disable analytics
+   # Application
+   PORT=3010
+   REACT_APP_API_URL=http://localhost:5000
+   REACT_APP_DEFAULT_TIME_RANGE=1h
+   REACT_APP_THEME=light  # light or dark
+   REACT_APP_ANALYTICS=false  # Enable/disable analytics
 
-# Feature Flags
+   # Feature Flags
    cd backend
    npm install
    
@@ -193,21 +254,25 @@ REACT_APP_ANALYTICS=false  # Enable/disable analytics
    npm install -g cross-env
    ```
 
-4. **Set up environment variables**
+1. **Set up environment variables**
    - Backend:
+
      ```bash
      cd backend
      copy .env.example .env
      # Edit .env with your database credentials
      ```
+
    - Frontend:
+
      ```bash
      cd frontend
      copy .env.example .env
      # Update API_URL if needed
      ```
 
-5. **Start the application**
+2. **Start the application**
+
    ```bash
    # From the project root
    npm run dev
@@ -220,9 +285,10 @@ REACT_APP_ANALYTICS=false  # Enable/disable analytics
    # cd frontend && npm start
    ```
 
-6. **Access the application**
-   - Frontend: http://localhost:3010
-   - Backend API: http://localhost:5000
+3. **Access the application**
+
+   - Frontend: [http://localhost:3010](http://localhost:3010)
+   - Backend API: [http://localhost:5000](http://localhost:5000)
 
 ### Backend Configuration
 
@@ -314,6 +380,7 @@ We welcome contributions! Please follow these steps:
    - Add tests for new features
 
 3. **Testing**
+
    ```bash
    # Run backend tests
    cd backend
@@ -347,20 +414,25 @@ bsi-telemetry/
 ### Common Issues & Solutions
 
 #### 1. React Scripts Not Found
+
 If you encounter `'react-scripts' is not recognized`, try:
+
 ```bash
 cd frontend
 npm install react-scripts@latest
 ```
 
 #### 2. Node.js Version Mismatch
+
 This project requires Node.js v22.x. If you have multiple versions, use nvm (Node Version Manager) to switch:
+
 ```bash
 nvm install 22
 nvm use 22
 ```
 
 #### 3. Database Connection Issues
+
 - Verify MySQL is running
 - Check `.env` database credentials
 - Ensure the database exists and is accessible
@@ -440,7 +512,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - `npm test`: Run backend tests
 - `npm run migrate`: Run database migrations
 
-## Repository Structure
+## Repository Structuree
 
 ```text
 BSI-telemetry-reporting/

@@ -3,13 +3,14 @@
 ![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
 ![Material-UI](https://img.shields.io/badge/Material--UI-7.1.0-0081CB?logo=mui)
 ![Recharts](https://img.shields.io/badge/Recharts-2.15.3-FF6384?logo=recharts)
+![Leaflet](https://img.shields.io/badge/Leaflet-1.9.3-199900?logo=leaflet)
 ![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js)
 ![License](https://img.shields.io/badge/License-MIT-green)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 [![ESLint](https://img.shields.io/badge/ESLint-8.57-4B32C3?logo=eslint)](https://eslint.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 
-React frontend application for the BSI Telemetry Reports project. Built with Material UI and Recharts for data visualization. This application provides real-time monitoring, data analysis, and reporting capabilities for telemetry data across multiple base stations.
+React frontend application for BSI Telemetry Reports project. Built with Material UI, Recharts, and Leaflet for data visualization and geographic mapping. This application provides real-time monitoring, data analysis, reporting capabilities, and interactive Kenya map visualization for telemetry data across multiple base stations.
 
 ## 🚀 Getting Started
 
@@ -22,29 +23,34 @@ React frontend application for the BSI Telemetry Reports project. Built with Mat
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/OnsongoMabeya/Telemetry-Reporting.git
    cd Telemetry-Reporting/frontend
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Configure environment variables**
+
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
    ```
 
 4. **Start the development server**
+
    ```bash
    npm start
    ```
 
 5. **Access the application**
-   ```
+
+   ```link
    http://localhost:3010
    ```
 
@@ -79,19 +85,33 @@ REACT_APP_GA_TRACKING_ID=UA-XXXXX-Y
 The frontend is designed for flexible deployment with automatic hostname detection:
 
 ### Development
+
 - **Frontend**: `http://localhost:3010`
 - **API**: `http://localhost:5000`
 
 ### Production
+
 - **Frontend**: `https://your-domain.com`
 - **API**: `https://api.your-domain.com` or relative path `/api`
 
 ### Key Features
+
 - **Automatic API Detection**: Dynamically determines the correct API endpoint
 - **Environment-based Configuration**: Different settings for dev/test/prod
 - **CORS Ready**: Pre-configured for secure cross-origin requests
 
 ## ✨ Features
+
+### 🗺️ Kenya Map
+
+- **Interactive Kenya Map**: Real-time base station monitoring with Leaflet
+  - OpenStreetMap tiles with zoom and pan controls
+  - Color-coded markers for station status (online/offline/unknown)
+  - Interactive popups with station details and coordinates
+  - Auto-refresh every 5 minutes for real-time updates
+  - Responsive design for mobile and desktop viewing
+  - BSI-branded header with station counts and status
+  - Map bounds auto-fit to show all stations clearly
 
 ### 📊 Dashboard
 
@@ -137,7 +157,7 @@ The frontend is designed for flexible deployment with automatic hostname detecti
 - **Custom Templates**: Branded report templates
 - **Automated Delivery**: Email reports to stakeholders
 
-### 📈 Data Visualization
+### 📈 Data Visualizationn
 
 #### Chart Types
 
@@ -162,7 +182,7 @@ The frontend is designed for flexible deployment with automatic hostname detecti
 - Smooth animations (60fps)
 - Memory-efficient data handling
 
-### 📑 Reporting
+### 📑 Reportingg
 
 - Generate PDF reports with BSI branding
 - Custom report templates
@@ -305,6 +325,7 @@ This will create an optimized production build in the `build` directory.
 #### Static Hosting
 
 1. Build the application:
+
    ```bash
    npm run build
    ```
@@ -314,11 +335,13 @@ This will create an optimized production build in the `build` directory.
 #### Docker
 
 1. Build the Docker image:
+
    ```bash
    docker build -t bsi-telemetry-frontend .
    ```
 
 2. Run the container:
+
    ```bash
    docker run -p 80:80 bsi-telemetry-frontend
    ```
@@ -356,6 +379,7 @@ Note: The development server runs on port 3010 to avoid conflicts with other ser
 ## Dependencies
 
 ### Core
+
 - React 19.1.0
 - React Router 7.6.0
 - Material-UI 7.1.0
@@ -365,8 +389,11 @@ Note: The development server runs on port 3010 to avoid conflicts with other ser
 - jsPDF 3.0.1
 - html2canvas 1.4.1
 - File Saver 2.0.5
+- **Leaflet 1.9.4**: Interactive mapping library
+- **React-Leaflet 4.2.1**: React integration for Leaflet
 
-### Development
+### Developmentt
+
 - @testing-library/react (included with create-react-app)
 - ESLint (included with create-react-app)
 - Prettier (recommended)
@@ -413,6 +440,15 @@ src/
 - Application header with navigation
 - Responsive design
 
+### KenyaMap
+
+- Interactive Leaflet map component for Kenya base station visualization
+- Real-time data fetching with 5-minute refresh intervals
+- Color-coded markers based on station status
+- Responsive design integrated with dashboard layout
+- BSI branding and styling consistency
+- Auto-fitting map bounds to show all stations
+
 ### NodeList
 
 - Displays all available nodes
@@ -422,6 +458,7 @@ src/
 ### NodeDetail
 
 - Tab-based navigation between base stations
+- **Integrated Kenya Map**: Shows all base stations on left side of telemetry graphs
 - Responsive 2x4 grid layout for metrics:
 
   - Forward Power (with threshold analysis)
@@ -445,7 +482,12 @@ src/
   - Threshold violations
   - Performance recommendations
 
-## Development
+- Map Integration:
+  - Kenya map displayed alongside telemetry graphs
+  - Real-time station status indicators
+  - Interactive station markers with details
+
+## Developmennt
 
 The application is built with modern React practices including:
 
@@ -463,9 +505,10 @@ The frontend communicates with the backend through these endpoints:
 - `GET /api/nodes` - Fetch all nodes
 - `GET /api/basestations/:nodeName` - Fetch base stations for a node
 - `GET /api/telemetry/:nodeName/:baseStation` - Fetch telemetry data
+- `GET /api/basestations-map` - Fetch all base stations with coordinates for Kenya map
 - `POST /api/reports/generate` - Generate PDF reports
 
-## Environment Variables
+## Environment Variabless
 
 The following environment variables can be configured in `.env`:
 
@@ -477,7 +520,7 @@ REACT_APP_THEME=light  # light or dark
 REACT_APP_ANALYTICS=false  # Enable/disable analytics
 ```
 
-## Contributing
+## Contributingg
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
