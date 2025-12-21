@@ -1,8 +1,38 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { Container, Box, Typography, FormControl, InputLabel, Select, MenuItem, Paper, CircularProgress, Alert, useTheme, useMediaQuery } from '@mui/material';
+import { 
+  Container, 
+  Box, 
+  Typography, 
+  FormControl, 
+  InputLabel, 
+  Select, 
+  MenuItem, 
+  Paper, 
+  CircularProgress, 
+  Alert, 
+  useTheme, 
+  useMediaQuery,
+  IconButton,
+  Tooltip,
+  Chip,
+  Avatar,
+  Badge,
+  alpha
+} from '@mui/material';
+import { 
+  Refresh, 
+  Settings, 
+  Timeline, 
+  Wifi, 
+  Assessment,
+  Tune,
+  DateRange,
+  LocationOn
+} from '@mui/icons-material';
+import { motion, AnimatePresence } from 'framer-motion';
 import ReportGenerator from './reports/ReportGenerator';
 import KenyaMap from './KenyaMap';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 
@@ -190,219 +220,223 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
 
   if (isLoading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" height={300}>
-        <CircularProgress />
-      </Box>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Box 
+          display="flex" 
+          justifyContent="center" 
+          alignItems="center" 
+          height={350}
+          sx={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: 2,
+            position: 'relative'
+          }}
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          >
+            <CircularProgress 
+              size={60}
+              thickness={4}
+              sx={{ 
+                color: 'white',
+                '& .MuiCircularProgress-circle': {
+                  strokeLinecap: 'round'
+                }
+              }}
+            />
+          </motion.div>
+        </Box>
+      </motion.div>
     );
   }
 
   return (
-    <Paper
-      elevation={3}
-      sx={{
-        p: 3,
-        mb: 3,
-        borderRadius: 2,
-        backgroundColor: '#fff',
-        '&:hover': {
-          boxShadow: 6,
-        },
-      }}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      whileHover={{ y: -5 }}
     >
-      <Box
+      <Paper
+        elevation={6}
         sx={{
-          display: 'flex',
-          alignItems: 'center',
-          '&::before': {
-            content: '""',
-            width: 4,
-            height: 24,
-            marginRight: 2,
-            borderRadius: 2,
-            backgroundColor: getGraphColor(dataKey),
+          p: 3,
+          mb: 3,
+          borderRadius: 3,
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          transition: 'all 0.3s ease',
+          '&:hover': {
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
+            transform: 'translateY(-2px)'
           },
         }}
       >
-        <Typography
-          variant="h6"
+        <Box
           sx={{
-            fontWeight: 600,
-            color: (theme) => theme.palette.grey[800],
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            mb: 2
           }}
         >
-          {title}
-        </Typography>
-      </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+            >
+              <Avatar
+                sx={{
+                  width: 40,
+                  height: 40,
+                  mr: 2,
+                  background: `linear-gradient(135deg, ${getGraphColor(dataKey)}, ${alpha(getGraphColor(dataKey), 0.7)})`,
+                }}
+              >
+                <Timeline sx={{ color: 'white' }} />
+              </Avatar>
+            </motion.div>
+            <Box>
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                  color: '#1a1a1a',
+                  fontSize: '1.1rem'
+                }}
+              >
+                {title}
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#666' }}>
+                Real-time telemetry data
+              </Typography>
+            </Box>
+          </Box>
+          <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
+            <Tooltip title="Refresh data">
+              <IconButton size="small">
+                <Refresh sx={{ color: getGraphColor(dataKey) }} />
+              </IconButton>
+            </Tooltip>
+          </motion.div>
+        </Box>
 
-      <Box height={350} mt={2}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart
-            data={downsampledData}
-            margin={{
-              top: 10,
-              right: 30,
-              left: 10,
-              bottom: 10,
-            }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis
-              dataKey="timestamp"
-              type="number"
-              scale="time"
-              domain={getTimeDomain()}
-              tickFormatter={formatXAxis}
-              tick={{ fontSize: 12, fill: '#666' }}
-              ticks={(() => {
-                if (!downsampledData || downsampledData.length === 0) return [];
-                const min = downsampledData[0].timestamp;
-                const max = downsampledData[downsampledData.length - 1].timestamp;
-                const tickCount = Math.min(6, downsampledData.length);
-                const step = (max - min) / (tickCount - 1);
-                return Array.from({ length: tickCount }, (_, i) => min + (step * i));
-              })()}
-              axisLine={{ stroke: '#ccc' }}
-              tickLine={{ stroke: '#ccc' }}
-              padding={{ left: 10, right: 10 }}
-              interval="preserveStartEnd"
-            />
-            <YAxis
-              domain={getYAxisDomain()}
-              tickFormatter={(value) => {
-                // Format numbers with appropriate decimal places
-                if (value === null || value === undefined) return 'N/A';
-                
-                // For very small numbers, use scientific notation
-                if (Math.abs(value) > 0 && Math.abs(value) < 0.01) {
-                  return value.toExponential(2);
-                }
-                
-                // For numbers with many decimal places, limit to 4
-                const strValue = value.toString();
-                if (strValue.includes('.') && strValue.split('.')[1].length > 4) {
-                  return value.toFixed(4);
-                }
-                
-                // For whole numbers, don't show decimal places
-                if (Number.isInteger(value)) {
-                  return value.toString();
-                }
-                
-                // For other numbers, show up to 2 decimal places
-                return value.toFixed(2);
-              }}
-              tick={{
-                fontSize: 11,
-                fill: '#666',
-                fontFamily: 'monospace'
-              }}
-              width={70}
-              axisLine={{ stroke: '#ddd' }}
-              tickLine={{ stroke: '#eee' }}
-              padding={{ top: 10, bottom: 10 }}
-              label={{
-                value: unit,
-                angle: -90,
-                position: 'insideLeft',
-                offset: -10,
-                style: { textAnchor: 'middle', fill: '#666' },
-              }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: 'rgba(255, 255, 255, 0.98)',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                padding: '10px',
-                fontSize: '13px',
-                minWidth: '180px',
-              }}
-              labelFormatter={(timestamp) => {
-                try {
-                  const date = new Date(timestamp);
-                  return new Intl.DateTimeFormat('en-US', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    timeZone: 'Africa/Nairobi',
-                    hour12: false
-                  }).format(date);
-                } catch (error) {
-                  console.error('Error formatting tooltip date:', error);
-                  return timestamp || 'N/A';
-                }
-              }}
-              formatter={(value, name, props) => {
-                const formattedValue = value !== null && value !== undefined 
-                  ? `${Number(value).toFixed(2)} ${unit}`
-                  : 'N/A';
-                
-                // Return an array with the value and name (title)
-                return [formattedValue, title];
-              }}
-              labelStyle={{ 
-                fontWeight: 'bold', 
-                marginBottom: '5px',
-                color: '#333',
-                fontSize: '0.9em'
-              }}
-              itemStyle={{
-                padding: '2px 0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}
-              separator=": "
-            />
-            <Legend wrapperStyle={{ paddingTop: '10px' }} />
-            <Line
-              type="monotone"
-              dataKey={dataKey}
-              stroke={getGraphColor(dataKey)}
-              strokeWidth={2}
-              dot={false}
-              activeDot={{ r: 6, strokeWidth: 0 }}
-              isAnimationActive={false}
-              name={title}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </Box>
-
-      <Box
-        mt={2}
-        sx={{
-          borderTop: 1,
-          borderColor: (theme) => theme.palette.grey[200],
-          pt: 2,
-        }}
-      >
-        <Typography
-          variant="subtitle2"
-          sx={{
-            fontWeight: 600,
-            color: (theme) => theme.palette.grey[700],
-            fontSize: '0.9rem'
+        <Box 
+          height={350} 
+          sx={{ 
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4))',
+            borderRadius: 2,
+            p: 1
           }}
         >
-          Analysis:
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{
-            color: (theme) => theme.palette.grey[600],
-            lineHeight: 1.6,
-            fontSize: '0.85rem'
-          }}
-        >
-          {generateAnalysis(data, dataKey, title)}
-        </Typography>
-      </Box>
-    </Paper>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={downsampledData}
+              margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            >
+              <defs>
+                <linearGradient id={`gradient-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={getGraphColor(dataKey)} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={getGraphColor(dataKey)} stopOpacity={0.1}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid 
+                strokeDasharray="3 3" 
+                stroke="rgba(0, 0, 0, 0.1)"
+                strokeOpacity={0.3}
+              />
+              <XAxis 
+                dataKey="timestamp" 
+                tickFormatter={formatXAxis}
+                stroke="#666"
+                tick={{ fontSize: 12 }}
+                domain={getTimeDomain()}
+                type="number"
+                scale="time"
+              />
+              <YAxis 
+                stroke="#666"
+                tick={{ fontSize: 12 }}
+                domain={getYAxisDomain()}
+                tickFormatter={(value) => {
+                  if (dataKey === 'vswr') {
+                    return value.toFixed(2);
+                  } else if (dataKey === 'returnLoss') {
+                    return value.toFixed(1);
+                  } else if (dataKey === 'temperature') {
+                    return `${value.toFixed(1)}°C`;
+                  } else if (dataKey === 'voltage') {
+                    return `${value.toFixed(1)}V`;
+                  } else if (dataKey === 'current') {
+                    return `${value.toFixed(2)}A`;
+                  } else {
+                    return value.toFixed(2);
+                  }
+                }}
+              />
+              <RechartsTooltip
+                contentStyle={{
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  borderRadius: 8,
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
+                }}
+                labelFormatter={(value) => {
+                  try {
+                    return new Date(value).toLocaleString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      timeZone: 'Africa/Nairobi'
+                    });
+                  } catch (error) {
+                    return '';
+                  }
+                }}
+                formatter={(value, name) => [
+                  typeof value === 'number' ? value.toFixed(2) : value,
+                  unit ? `${name} (${unit})` : name
+                ]}
+              />
+              <Legend 
+                wrapperStyle={{
+                  paddingTop: '20px'
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey={dataKey}
+                stroke={getGraphColor(dataKey)}
+                strokeWidth={3}
+                dot={false}
+                activeDot={{
+                  r: 6,
+                  fill: getGraphColor(dataKey),
+                  stroke: '#fff',
+                  strokeWidth: 2
+                }}
+                fill={`url(#gradient-${dataKey})`}
+                animationDuration={1500}
+                animationEasing="ease-in-out"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </Box>
+      </Paper>
+    </motion.div>
   );
 });
 
@@ -745,207 +779,399 @@ const NodeDetail = () => {
 
   return (
     <ErrorBoundary>
-      <Container sx={{ py: 4 }}>
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: { xs: 'column', sm: 'row' },
-          justifyContent: 'space-between', 
-          alignItems: { xs: 'stretch', sm: 'center' },
-          gap: 2,
-          mb: 3 
-        }}>
-          <Typography 
-            variant={isMobile ? 'h5' : 'h4'} 
-            gutterBottom
-            sx={{ 
-              textAlign: { xs: 'center', sm: 'left' },
-              mb: { xs: 1, sm: 0 }
+      <Container maxWidth="xl" sx={{ py: 4 }}>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 3,
+            mb: 4 
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <Avatar
+                  sx={{
+                    width: 56,
+                    height: 56,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)'
+                  }}
+                >
+                  <Assessment sx={{ fontSize: 32, color: 'white' }} />
+                </Avatar>
+              </motion.div>
+              <Box>
+                <Typography 
+                  variant={isMobile ? 'h5' : 'h4'} 
+                  sx={{ 
+                    fontWeight: 700,
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    mb: 0.5
+                  }}
+                >
+                  Telemetry Dashboard
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#666' }}>
+                  Real-time monitoring and analysis
+                </Typography>
+              </Box>
+            </Box>
+            
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <IconButton
+                onClick={fetchTelemetryData}
+                disabled={isLoading}
+                sx={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                  }
+                }}
+              >
+                <Refresh />
+              </IconButton>
+            </motion.div>
+          </Box>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <Paper
+            elevation={8}
+            sx={{
+              p: 3,
+              mb: 4,
+              borderRadius: 3,
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
             }}
           >
-            Telemetry Dashboard
-          </Typography>
-          <ReportGenerator 
-            nodes={nodes} 
-            onError={(error) => setError(error.message)}
-            currentNode={selectedNode}
-            currentTimeRange={timeFilter}
-          />
-          {/* Debug info */}
-          {process.env.NODE_ENV === 'development' && (
-            <div style={{ display: 'none' }}>
-              <pre>Selected Node: {selectedNode}</pre>
-              <pre>Base Stations: {JSON.stringify(baseStations, null, 2)}</pre>
-            </div>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', md: 'row' },
+              gap: 3,
+              alignItems: { xs: 'stretch', md: 'center' }
+            }}>
+              <motion.div whileHover={{ scale: 1.02 }} style={{ flex: 1 }}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ 
+                    background: 'white',
+                    px: 1,
+                    '&.Mui-focused': {
+                      color: '#667eea'
+                    }
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Wifi fontSize="small" />
+                      Node
+                    </Box>
+                  </InputLabel>
+                  <Select
+                    value={selectedNode || ''}
+                    label="Node"
+                    onChange={(e) => setSelectedNode(e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(102, 126, 234, 0.3)'
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(102, 126, 234, 0.6)'
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#667eea'
+                      }
+                    }}
+                  >
+                    {nodes.map((node) => (
+                      <MenuItem key={node.id} value={node.id}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Avatar sx={{ width: 24, height: 24, bgcolor: '#667eea' }}>
+                            {node.name.charAt(0).toUpperCase()}
+                          </Avatar>
+                          {node.name}
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </motion.div>
+
+              <motion.div whileHover={{ scale: 1.02 }} style={{ flex: 1 }}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ 
+                    background: 'white',
+                    px: 1,
+                    '&.Mui-focused': {
+                      color: '#764ba2'
+                    }
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <LocationOn fontSize="small" />
+                      Base Station
+                    </Box>
+                  </InputLabel>
+                  <Select
+                    value={selectedBaseStation || ''}
+                    label="Base Station"
+                    onChange={(e) => setSelectedBaseStation(e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(118, 75, 162, 0.3)'
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(118, 75, 162, 0.6)'
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#764ba2'
+                      }
+                    }}
+                  >
+                    {baseStations.map((station) => (
+                      <MenuItem key={station.id} value={station.id}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Avatar sx={{ width: 24, height: 24, bgcolor: '#764ba2' }}>
+                            {station.name.charAt(0).toUpperCase()}
+                          </Avatar>
+                          {station.name}
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </motion.div>
+
+              <motion.div whileHover={{ scale: 1.02 }} style={{ flex: 1 }}>
+                <FormControl fullWidth>
+                  <InputLabel sx={{ 
+                    background: 'white',
+                    px: 1,
+                    '&.Mui-focused': {
+                      color: '#f59e0b'
+                    }
+                  }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <DateRange fontSize="small" />
+                      Time Range
+                    </Box>
+                  </InputLabel>
+                  <Select
+                    value={timeFilter}
+                    label="Time Range"
+                    onChange={(e) => setTimeFilter(e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(245, 158, 11, 0.3)'
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(245, 158, 11, 0.6)'
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#f59e0b'
+                      }
+                    }}
+                  >
+                    {TIME_FILTERS.map((filter) => (
+                      <MenuItem key={filter.value} value={filter.value}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                          <Chip 
+                            label={filter.label} 
+                            size="small"
+                            sx={{ 
+                              bgcolor: alpha('#f59e0b', 0.1),
+                              color: '#f59e0b',
+                              fontWeight: 600
+                            }} 
+                          />
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </motion.div>
+            </Box>
+          </Paper>
+        </motion.div>
+
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Alert 
+                severity="error" 
+                sx={{ 
+                  mb: 4,
+                  borderRadius: 2,
+                  background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(244, 67, 54, 0.05))',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(244, 67, 54, 0.2)'
+                }}
+              >
+                {error}
+              </Alert>
+            </motion.div>
           )}
-        </Box>
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2, 
-          mb: 4,
-          '& .MuiFormControl-root': {
-            width: '100%',
-            maxWidth: '100%',
-            mb: { xs: 1, sm: 0 }
-          },
-          '& .MuiInputBase-root': {
-            width: '100%'
-          }
-        }}>
-          <FormControl>
-            <InputLabel>Node</InputLabel>
-            <Select
-              value={selectedNode || ''}
-              label="Node"
-              onChange={(e) => setSelectedNode(e.target.value)}
-            >
-              {nodes.map((node) => (
-                <MenuItem key={node.id} value={node.id}>
-                  {node.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl>
-            <InputLabel>Base Station</InputLabel>
-            <Select
-              value={selectedBaseStation || ''}
-              label="Base Station"
-              onChange={(e) => setSelectedBaseStation(e.target.value)}
-            >
-              {baseStations.map((station) => (
-                <MenuItem key={station.id} value={station.id}>
-                  {station.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl>
-            <InputLabel>Time Range</InputLabel>
-            <Select
-              value={timeFilter}
-              label="Time Range"
-              onChange={(e) => setTimeFilter(e.target.value)}
-            >
-              {TIME_FILTERS.map((filter) => (
-                <MenuItem key={filter.value} value={filter.value}>
-                  {filter.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Box>
-        {error && (
-          <Alert severity="error" sx={{ mb: 4 }}>
-            {error}
-          </Alert>
-        )}
-        <Box sx={{ 
-          display: 'grid', 
-          gridTemplateColumns: { xs: '1fr', sm: '400px 1fr 1fr' }, 
-          gap: 2,
-          mb: 2 
-        }}>
-          {/* Kenya Map - Left Side */}
+        </AnimatePresence>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
           <Box sx={{ 
-            gridRow: { xs: 'auto', sm: 'span 4' },
-            height: { xs: '400px', sm: '600px' }
+            display: 'grid', 
+            gridTemplateColumns: { xs: '1fr', sm: '450px 1fr 1fr' }, 
+            gap: 3,
+            mb: 4 
           }}>
-            <Paper elevation={3} sx={{ height: '100%', overflow: 'hidden' }}>
-              <KenyaMap selectedNode={selectedNode} />
-            </Paper>
-          </Box>
-          
-          {/* Graphs - Right Side */}
-          {/* First Row */}
-          <Box>
-            <TelemetryGraph
-              data={telemetryData}
-              title="Forward Power"
-              dataKey="forwardPower"
-              unit="W"
-              isLoading={isLoading}
-              timeFilter={timeFilter}
-            />
-          </Box>
-          <Box>
-            <TelemetryGraph
-              data={telemetryData}
-              title="Reflected Power"
-              dataKey="reflectedPower"
-              unit="W"
-              isLoading={isLoading}
-              timeFilter={timeFilter}
-            />
-          </Box>
+            {/* Kenya Map - Left Side */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              whileHover={{ scale: 1.02 }}
+            >
+              <Paper
+                elevation={8}
+                sx={{
+                  height: { xs: '400px', sm: '600px' },
+                  borderRadius: 3,
+                  overflow: 'hidden',
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
+                    transform: 'translateY(-2px)'
+                  }
+                }}
+              >
+                <KenyaMap selectedNode={selectedNode} />
+              </Paper>
+            </motion.div>
+            
+            {/* Graphs - Right Side */}
+            <Box sx={{ display: 'grid', gap: 3 }}>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+              >
+                <TelemetryGraph
+                  data={telemetryData}
+                  title="Forward Power"
+                  dataKey="forwardPower"
+                  unit="W"
+                  isLoading={isLoading}
+                  timeFilter={timeFilter}
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.7 }}
+              >
+                <TelemetryGraph
+                  data={telemetryData}
+                  title="Reflected Power"
+                  dataKey="reflectedPower"
+                  unit="W"
+                  isLoading={isLoading}
+                  timeFilter={timeFilter}
+                />
+              </motion.div>
+            </Box>
 
-          {/* Second Row */}
-          <Box>
-            <TelemetryGraph
-              data={telemetryData}
-              title="VSWR"
-              dataKey="vswr"
-              unit=""
-              isLoading={isLoading}
-              timeFilter={timeFilter}
-            />
+            <Box sx={{ display: 'grid', gap: 3 }}>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
+              >
+                <TelemetryGraph
+                  data={telemetryData}
+                  title="VSWR"
+                  dataKey="vswr"
+                  unit=""
+                  isLoading={isLoading}
+                  timeFilter={timeFilter}
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.9 }}
+              >
+                <TelemetryGraph
+                  data={telemetryData}
+                  title="Return Loss"
+                  dataKey="returnLoss"
+                  unit="dB"
+                  isLoading={isLoading}
+                  timeFilter={timeFilter}
+                />
+              </motion.div>
+            </Box>
           </Box>
-          <Box>
-            <TelemetryGraph
-              data={telemetryData}
-              title="Return Loss"
-              dataKey="returnLoss"
-              unit="dB"
-              isLoading={isLoading}
-              timeFilter={timeFilter}
-            />
-          </Box>
+        </motion.div>
 
-          {/* Third Row */}
-          <Box>
-            <TelemetryGraph
-              data={telemetryData}
-              title="Temperature"
-              dataKey="temperature"
-              unit="°C"
-              isLoading={isLoading}
-              timeFilter={timeFilter}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 1.0 }}
+        >
+          <Paper
+            elevation={6}
+            sx={{
+              p: 3,
+              borderRadius: 3,
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+              <Avatar sx={{ bgcolor: '#667eea' }}>
+                <Settings />
+              </Avatar>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Reports & Analysis
+              </Typography>
+            </Box>
+            <ReportGenerator 
+              nodes={nodes} 
+              onError={(error) => setError(error.message)}
+              currentNode={selectedNode}
+              currentTimeRange={timeFilter}
             />
-          </Box>
-          <Box>
-            <TelemetryGraph
-              data={telemetryData}
-              title="Voltage"
-              dataKey="voltage"
-              unit="V"
-              isLoading={isLoading}
-              timeFilter={timeFilter}
-            />
-          </Box>
-
-          {/* Fourth Row */}
-          <Box>
-            <TelemetryGraph
-              data={telemetryData}
-              title="Current"
-              dataKey="current"
-              unit="A"
-              isLoading={isLoading}
-              timeFilter={timeFilter}
-            />
-          </Box>
-          <Box>
-            <TelemetryGraph
-              data={telemetryData}
-              title="Power"
-              dataKey="power"
-              unit="W"
-              isLoading={isLoading}
-              timeFilter={timeFilter}
-            />
-          </Box>
-        </Box>
-    </Container>
+          </Paper>
+        </motion.div>
+      </Container>
     </ErrorBoundary>
   );
 };
