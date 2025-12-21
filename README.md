@@ -3,31 +3,62 @@
 A comprehensive telemetry monitoring solution for tracking and analyzing node performance across multiple base stations. The system provides real-time data visualization, historical analysis, and automated reporting capabilities.
 
 ![BSI Telemetry Dashboard](https://img.shields.io/badge/Status-Active-success)
-![Version](https://img.shields.io/badge/Version-1.0.1-blue)
+![Version](https://img.shields.io/badge/Version-1.1.0-blue)
+![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js)
+![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js)
 ![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql)
 
-## 🌐 Network Access
+## 🚀 Key Features
 
-The application is designed for flexible deployment and can be accessed from multiple interfaces:
+### 🌐 Network Access
 
-- **Local Development**: `http://localhost:3010`
-- **Network Access**: `http://[YOUR_IP_ADDRESS]:3010` (works with any network-accessible IP)
-- **Backend API**: `http://[YOUR_IP_ADDRESS]:5000` (automatically configured)
+- **Flexible Deployment**: Access from multiple interfaces
+  - Local Development: `http://localhost:3010`
+  - Network Access: `http://[YOUR_IP]:3010`
+  - Backend API: `http://[YOUR_IP]:5000`
+- **Automatic Configuration**: Dynamic API endpoint detection
+- **Cross-Origin Ready**: Pre-configured CORS settings
 
-The frontend automatically detects the hostname and configures API endpoints accordingly. This means you can access the application from any device on the same network without manual configuration changes.
+### 📊 Core Functionality
 
-- Dynamic API endpoint configuration based on hostname
-- Seamless switching between localhost and network access
-- CORS pre-configured for common development scenarios
+- **Real-time Monitoring**: Live telemetry data visualization
+- **Interactive Maps**: Kenya-wide base station monitoring
+- **Comprehensive Reporting**: Generate and export reports in multiple formats
+- **User Authentication**: Secure access control
+- **Responsive Design**: Works on all device sizes
+- **Dark/Light Mode**: Better user experience in any lighting
 
-## 🌟 Features
+## 🛠️ Technical Stack
 
-### 🗺️ Geographic Visualization
+### Frontend
 
-- **Interactive Kenya Map**: Real-time base station monitoring with Leaflet
+- **Framework**: React 19.1.0
+- **UI Library**: Material-UI 7.1.0
+- **Data Visualization**: Recharts 2.15.3
+- **Maps**: Leaflet 1.9.3 with React-Leaflet
+- **State Management**: React Context API
+- **Build Tool**: Vite
+
+### Backend
+
+- **Runtime**: Node.js 22.x
+- **Framework**: Express 5.x
+- **Database**: MySQL 8.0+
+- **Authentication**: JWT
+- **API Documentation**: Swagger/OpenAPI
+- **Caching**: node-cache
+
+## 🗺️ Geographic Visualization
+
+### Interactive Kenya Map
+
+- Real-time base station monitoring with Leaflet
   - OpenStreetMap tiles with zoom and pan controls
   - Color-coded markers for station status (online/offline/unknown)
   - Interactive popups with station details and coordinates

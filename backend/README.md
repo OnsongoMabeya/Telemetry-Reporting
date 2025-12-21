@@ -4,42 +4,57 @@
 [![Express](https://img.shields.io/badge/Express-5.x-lightgrey)](https://expressjs.com/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-blue)](https://www.mysql.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/OnsongoMabeya/Telemetry-Reporting/ci.yml?branch=main)](https://github.com/OnsongoMabeya/Telemetry-Reporting/actions)
-[![Coverage Status](https://coveralls.io/repos/github/OnsongoMabeya/Telemetry-Reporting/badge.svg?branch=main)](https://coveralls.io/github/OnsongoMabeya/Telemetry-Reporting?branch=main)
+[![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 
-Node.js/Express backend server for the BSI Telemetry Reports application. This service handles all data processing, database operations, and provides a RESTful API for the frontend application. The backend now includes enhanced features like email report generation, improved error handling, and better data processing capabilities.
+High-performance Node.js/Express backend for the BSI Telemetry Reports system. This service provides a robust RESTful API, real-time data processing, and seamless integration with the frontend application. Built with scalability and maintainability in mind.
 
-## 🌟 Features
+## 🚀 Features
+
+### Core Features
 
 - **RESTful API** with JWT authentication
-- **Real-time data processing** with WebSocket support
-- **Email report generation** with customizable templates
-- **Caching** with node-cache for improved performance
-- **Rate limiting** to prevent abuse
-- **Comprehensive error handling** with custom error middleware
-- **Request validation** using express-validator
+- **Real-time Data Processing** with WebSocket support
+- **Comprehensive Error Handling** with custom middleware
+- **Request Validation** using express-validator
+- **API Documentation** with Swagger/OpenAPI
+- **TypeScript** for type safety
+
+### Performance & Scalability
+
+- **Caching** with node-cache
+- **Rate Limiting** to prevent abuse
+- **Connection Pooling** for database operations
+- **Efficient Query Building** with Knex.js
+
+### Security
+
+- **Helmet** for security headers
+- **CORS** configuration
+- **Input Sanitization**
+- **Rate Limiting**
+- **Environment-based Configuration**
+
+### Development & Operations
+
+- **Docker** support
+- **Database Migrations** with Knex.js
 - **Logging** with Winston
-- **API documentation** with Swagger/OpenAPI
-- **Unit and integration tests** with Jest
-- **Docker support** for easy deployment
-- **Environment-based configuration**
-- **Database migrations** with Knex.js
-- **Scheduled tasks** for report generation
-- **Health check endpoints**
-- **Request/Response logging**
-- **Security headers** with Helmet
+- **Testing** with Jest
+- **CI/CD** ready
 - **CORS** with dynamic origin configuration
 - **Geographic mapping** with Kenya base station coordinates
 
-## 🚀 Getting Started
+## 🛠 Getting Started
 
 ### Prerequisites
 
 - Node.js 22.x (LTS recommended)
-- MySQL 8.0 or higher
-- npm 10.x or higher
+- MySQL 8.0+ or compatible database
+- npm 10.x or yarn
+- Git
 
-### Installation
+### 🚀 Quick Start
 
 1. **Clone the repository**
 
@@ -51,27 +66,48 @@ Node.js/Express backend server for the BSI Telemetry Reports application. This s
 2. **Install dependencies**
 
    ```bash
+   # Using npm
    npm install
+   
+   # Or using yarn
+   yarn install
    ```
 
-3. **Set up environment variables**
+3. **Configure environment**
 
    ```bash
    cp .env.example .env
-   # Edit .env with your configuration
+   # Update database credentials and other settings
    ```
 
-4. **Start the server**
+4. **Database setup**
 
    ```bash
-   # Development
-   npm run dev
+   # Run migrations
+   npx knex migrate:latest
    
-   # Production
-   npm start
+   # Seed initial data (optional)
+   npx knex seed:run
    ```
 
-The server will be available at `http://localhost:5000` by default.
+5. **Start the server**
+
+   ```bash
+   # Development mode with hot-reload
+   npm run dev
+   
+   # Production mode
+   npm start
+   
+   # Using Docker
+   docker-compose up -d
+   ```
+
+6. **Access the API**
+
+   - API Documentation: [http://localhost:5000/api-docs](http://localhost:5000/api-docs)
+   - Health Check: [http://localhost:5000/health](http://localhost:5000/health)
+   - API Base URL: [http://localhost:5000/api](http://localhost:5000/api) by default.
 
 ## 🔧 Configuration
 

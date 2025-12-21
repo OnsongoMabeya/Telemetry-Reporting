@@ -1,58 +1,67 @@
 # BSI Telemetry Reports - Frontend
 
-![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
-![Material-UI](https://img.shields.io/badge/Material--UI-7.1.0-0081CB?logo=mui)
-![Recharts](https://img.shields.io/badge/Recharts-2.15.3-FF6384?logo=recharts)
-![Leaflet](https://img.shields.io/badge/Leaflet-1.9.3-199900?logo=leaflet)
-![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js)
-![License](https://img.shields.io/badge/License-MIT-green)
+[![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)](https://reactjs.org/)
+[![Material-UI](https://img.shields.io/badge/Material--UI-7.1.0-0081CB?logo=mui)](https://mui.com/)
+[![Recharts](https://img.shields.io/badge/Recharts-2.15.3-FF6384?logo=recharts)](https://recharts.org/)
+[![Leaflet](https://img.shields.io/badge/Leaflet-1.9.3-199900?logo=leaflet)](https://leafletjs.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 [![ESLint](https://img.shields.io/badge/ESLint-8.57-4B32C3?logo=eslint)](https://eslint.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 
-React frontend application for BSI Telemetry Reports project. Built with Material UI, Recharts, and Leaflet for data visualization and geographic mapping. This application provides real-time monitoring, data analysis, reporting capabilities, and interactive Kenya map visualization for telemetry data across multiple base stations.
+Modern React frontend for the BSI Telemetry Reports system, providing real-time monitoring, data visualization, and reporting capabilities for telemetry data across multiple base stations in Kenya. Built with cutting-edge web technologies for optimal performance and user experience.
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
 ### Prerequisites
 
 - Node.js v22.x (LTS recommended)
-- npm 10.x or higher
+- npm 10.x or yarn
 - Backend API server (see [backend README](../backend/README.md))
+- Modern web browser (Chrome, Firefox, Edge, or Safari)
 
-### Installation
+### 🛠 Installation & Setup
 
 1. **Clone the repository**
 
-   ```bash
-   git clone https://github.com/OnsongoMabeya/Telemetry-Reporting.git
-   cd Telemetry-Reporting/frontend
-   ```
+    ```bash
+    git clone https://github.com/OnsongoMabeya/Telemetry-Reporting.git
+    cd Telemetry-Reporting/frontend
+    ```
 
 2. **Install dependencies**
 
    ```bash
+   # Using npm
    npm install
+   
+   # Or using yarn
+   yarn install
    ```
 
-3. **Configure environment variables**
+3. **Configure environment**
 
    ```bash
    cp .env.example .env
-   # Edit .env with your configuration
+   # Update API endpoint and other settings
    ```
 
-4. **Start the development server**
+4. **Start development server**
 
    ```bash
-   npm start
+   # Development mode with hot reload
+   npm run dev
+   
+   # Or for production build
+   npm run build
+   npm run preview
    ```
 
 5. **Access the application**
 
-   ```link
-   http://localhost:3010
-   ```
+   - Development: [http://localhost:3010](http://localhost:3010)
+   - Production: Configured by your hosting provider
 
 ## 🔧 Configuration
 
@@ -100,7 +109,35 @@ The frontend is designed for flexible deployment with automatic hostname detecti
 - **Environment-based Configuration**: Different settings for dev/test/prod
 - **CORS Ready**: Pre-configured for secure cross-origin requests
 
-## ✨ Features
+## ✨ Key Features
+
+### 🗺️ Interactive Kenya Map
+
+- Real-time base station monitoring
+- Color-coded status indicators
+- Interactive popups with detailed information
+- Responsive design for all devices
+
+### 📊 Data Visualization
+
+- Real-time telemetry charts
+- Multiple chart types (line, bar, gauge)
+- Customizable time ranges
+- Export functionality
+
+### 📱 Responsive Design
+
+- Mobile-first approach
+- Adaptive layouts for all screen sizes
+- Touch-friendly controls
+- Offline capabilities
+
+### 🛠 Developer Experience
+
+- TypeScript support
+- Component library with Storybook
+- Comprehensive test coverage
+- CI/CD ready
 
 ### 🗺️ Kenya Map
 
@@ -529,7 +566,3 @@ REACT_APP_ANALYTICS=false  # Enable/disable analytics
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
