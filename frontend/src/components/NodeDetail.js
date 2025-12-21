@@ -229,7 +229,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
           display="flex" 
           justifyContent="center" 
           alignItems="center" 
-          height={350}
+          height={250}
           sx={{
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             borderRadius: 2,
@@ -241,7 +241,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
           >
             <CircularProgress 
-              size={60}
+              size={50}
               thickness={4}
               sx={{ 
                 color: 'white',
@@ -266,8 +266,8 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
       <Paper
         elevation={6}
         sx={{
-          p: 3,
-          mb: 3,
+          p: { xs: 2, sm: 2.5 },
+          mb: 2,
           borderRadius: 3,
           background: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(20px)',
@@ -331,7 +331,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
         </Box>
 
         <Box 
-          height={350} 
+          height={250} 
           sx={{ 
             background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4))',
             borderRadius: 2,
@@ -779,7 +779,7 @@ const NodeDetail = () => {
 
   return (
     <ErrorBoundary>
-      <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3 } }}>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -790,8 +790,8 @@ const NodeDetail = () => {
             flexDirection: { xs: 'column', sm: 'row' },
             justifyContent: 'space-between', 
             alignItems: { xs: 'stretch', sm: 'center' },
-            gap: 3,
-            mb: 4 
+            gap: 2,
+            mb: 3 
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <motion.div
@@ -856,8 +856,8 @@ const NodeDetail = () => {
           <Paper
             elevation={8}
             sx={{
-              p: 3,
-              mb: 4,
+              p: { xs: 2, sm: 2.5 },
+              mb: 3,
               borderRadius: 3,
               background: 'rgba(255, 255, 255, 0.95)',
               backdropFilter: 'blur(20px)',
@@ -1042,21 +1042,31 @@ const NodeDetail = () => {
         >
           <Box sx={{ 
             display: 'grid', 
-            gridTemplateColumns: { xs: '1fr', sm: '450px 1fr 1fr' }, 
-            gap: 3,
-            mb: 4 
+            gridTemplateColumns: { 
+              xs: '1fr', 
+              sm: '1fr 1fr', 
+              md: '1.2fr 1fr 1fr',
+              lg: '1fr 1fr 1fr 1fr'
+            }, 
+            gap: { xs: 2, sm: 2.5 },
+            mb: 3 
           }}>
-            {/* Kenya Map - Left Side */}
+            {/* Kenya Map - Takes 1-2 columns depending on screen size */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.6, delay: 0.5 }}
               whileHover={{ scale: 1.02 }}
+              sx={{
+                gridColumn: { xs: '1', sm: '1 / 3', md: '1', lg: '1 / 3' },
+                minHeight: { xs: '300px', sm: '350px', md: '400px' }
+              }}
             >
               <Paper
                 elevation={8}
                 sx={{
-                  height: { xs: '400px', sm: '600px' },
+                  height: '100%',
+                  minHeight: { xs: '300px', sm: '350px', md: '400px' },
                   borderRadius: 3,
                   overflow: 'hidden',
                   background: 'rgba(255, 255, 255, 0.95)',
@@ -1074,68 +1084,81 @@ const NodeDetail = () => {
               </Paper>
             </motion.div>
             
-            {/* Graphs - Right Side */}
-            <Box sx={{ display: 'grid', gap: 3 }}>
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.6 }}
-              >
-                <TelemetryGraph
-                  data={telemetryData}
-                  title="Forward Power"
-                  dataKey="forwardPower"
-                  unit="W"
-                  isLoading={isLoading}
-                  timeFilter={timeFilter}
-                />
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.7 }}
-              >
-                <TelemetryGraph
-                  data={telemetryData}
-                  title="Reflected Power"
-                  dataKey="reflectedPower"
-                  unit="W"
-                  isLoading={isLoading}
-                  timeFilter={timeFilter}
-                />
-              </motion.div>
-            </Box>
+            {/* Forward Power Graph */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.6 }}
+              sx={{
+                minHeight: { xs: '250px', sm: '300px', md: '350px' }
+              }}
+            >
+              <TelemetryGraph
+                data={telemetryData}
+                title="Forward Power"
+                dataKey="forwardPower"
+                unit="W"
+                isLoading={isLoading}
+                timeFilter={timeFilter}
+              />
+            </motion.div>
 
-            <Box sx={{ display: 'grid', gap: 3 }}>
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.8 }}
-              >
-                <TelemetryGraph
-                  data={telemetryData}
-                  title="VSWR"
-                  dataKey="vswr"
-                  unit=""
-                  isLoading={isLoading}
-                  timeFilter={timeFilter}
-                />
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.9 }}
-              >
-                <TelemetryGraph
-                  data={telemetryData}
-                  title="Return Loss"
-                  dataKey="returnLoss"
-                  unit="dB"
-                  isLoading={isLoading}
-                  timeFilter={timeFilter}
-                />
-              </motion.div>
-            </Box>
+            {/* Reflected Power Graph */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.7 }}
+              sx={{
+                minHeight: { xs: '250px', sm: '300px', md: '350px' }
+              }}
+            >
+              <TelemetryGraph
+                data={telemetryData}
+                title="Reflected Power"
+                dataKey="reflectedPower"
+                unit="W"
+                isLoading={isLoading}
+                timeFilter={timeFilter}
+              />
+            </motion.div>
+
+            {/* VSWR Graph */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.8 }}
+              sx={{
+                minHeight: { xs: '250px', sm: '300px', md: '350px' }
+              }}
+            >
+              <TelemetryGraph
+                data={telemetryData}
+                title="VSWR"
+                dataKey="vswr"
+                unit=""
+                isLoading={isLoading}
+                timeFilter={timeFilter}
+              />
+            </motion.div>
+
+            {/* Return Loss Graph */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.9 }}
+              sx={{
+                minHeight: { xs: '250px', sm: '300px', md: '350px' }
+              }}
+            >
+              <TelemetryGraph
+                data={telemetryData}
+                title="Return Loss"
+                dataKey="returnLoss"
+                unit="dB"
+                isLoading={isLoading}
+                timeFilter={timeFilter}
+              />
+            </motion.div>
           </Box>
         </motion.div>
 
@@ -1147,7 +1170,7 @@ const NodeDetail = () => {
           <Paper
             elevation={6}
             sx={{
-              p: 3,
+              p: { xs: 2, sm: 3 },
               borderRadius: 3,
               background: 'rgba(255, 255, 255, 0.95)',
               backdropFilter: 'blur(20px)',
@@ -1156,8 +1179,8 @@ const NodeDetail = () => {
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-              <Avatar sx={{ bgcolor: '#667eea' }}>
-                <Settings />
+              <Avatar sx={{ bgcolor: '#667eea', width: 40, height: 40 }}>
+                <Settings fontSize="small" />
               </Avatar>
               <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 Reports & Analysis
