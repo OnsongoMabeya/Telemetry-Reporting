@@ -420,7 +420,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
                 type="monotone"
                 dataKey={dataKey}
                 stroke={getGraphColor(dataKey)}
-                strokeWidth={3}
+                strokeWidth={1.5}
                 dot={false}
                 activeDot={{
                   r: 6,
@@ -779,7 +779,7 @@ const NodeDetail = () => {
 
   return (
     <ErrorBoundary>
-      <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3 } }}>
+      <Container maxWidth="false" sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 } }}>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1045,8 +1045,8 @@ const NodeDetail = () => {
             gridTemplateColumns: { 
               xs: '1fr', 
               sm: '1fr 1fr', 
-              md: '1.2fr 1fr 1fr',
-              lg: '1fr 1fr 1fr 1fr'
+              md: '1.5fr 1fr 1fr',
+              lg: '2fr 1fr 1fr 1fr'
             }, 
             gap: { xs: 2, sm: 2.5 },
             mb: 3 
@@ -1058,15 +1058,15 @@ const NodeDetail = () => {
               transition={{ duration: 0.6, delay: 0.5 }}
               whileHover={{ scale: 1.02 }}
               sx={{
-                gridColumn: { xs: '1', sm: '1 / 3', md: '1', lg: '1 / 3' },
-                minHeight: { xs: '300px', sm: '350px', md: '400px' }
+                gridColumn: { xs: '1', sm: '1 / 3', md: '1 / 2', lg: '1 / 2' },
+                minHeight: { xs: '300px', sm: '350px', md: '450px', lg: '500px' }
               }}
             >
               <Paper
                 elevation={8}
                 sx={{
                   height: '100%',
-                  minHeight: { xs: '300px', sm: '350px', md: '400px' },
+                  minHeight: { xs: '300px', sm: '350px', md: '450px', lg: '500px' },
                   borderRadius: 3,
                   overflow: 'hidden',
                   background: 'rgba(255, 255, 255, 0.95)',
