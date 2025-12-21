@@ -639,7 +639,8 @@ app.get('/api/basestations-map', async (req, res) => {
       'ISIOLO': { lat: 0.3549, lng: 37.5821, status: 'online' },
       'WAJIR': { lat: 1.7471, lng: 40.0575, status: 'offline' },
       'MANDERA': { lat: 3.9377, lng: 41.8569, status: 'offline' },
-      'LIMURU': { lat: -1.2634, lng: 36.8033, status: 'online' },
+      'LIMURU': { lat: -1.1085, lng: 36.6421, status: 'online' },
+      'LIMURU_NMG': { lat: -1.1085, lng: 36.6421, status: 'online' },
       'WEBUYE': { lat: 0.6069, lng: 34.7399, status: 'online' },
       'MAZERAS': { lat: -3.6739, lng: 39.4927, status: 'online' }
     };
