@@ -27,6 +27,11 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 ### 📊 Core Functionality
 
+- **Accurate Base Station Mapping**: Precise geographic coordinates for all base stations across Kenya
+  - All base stations plotted with verified GPS coordinates
+  - Special handling for clustered locations (e.g., LIMURU and LIMURU_NMG at 1.1085° S, 36.6421° E)
+  - Real-time status indicators for each station
+
 - **Real-time Monitoring**: Live telemetry data visualization
 - **Interactive Maps**: Kenya-wide base station monitoring
 - **Comprehensive Reporting**: Generate and export reports in multiple formats

@@ -479,11 +479,32 @@ src/
 
 ### KenyaMap
 
-- Interactive Leaflet map component for Kenya base station visualization
-- Real-time data fetching with 5-minute refresh intervals
-- Color-coded markers based on station status
-- Responsive design integrated with dashboard layout
-- BSI branding and styling consistency
+### 🗺️ Kenya Base Station Map Features
+
+- **Interactive Leaflet Map**: High-performance visualization of all base stations across Kenya
+- **Accurate Station Plotting**: Precise geographic coordinates for all stations
+  - Verified GPS coordinates for each location
+  - Special handling for co-located stations (e.g., LIMURU and LIMURU_NMG at 1.1085° S, 36.6421° E)
+  - Automatic clustering of nearby stations
+
+- **Real-time Data**:
+
+  - 5-minute refresh intervals for up-to-date status
+  - Color-coded markers based on real-time status (online/offline)
+  - Smooth animations for status changes
+
+- **Interactive Features**:
+  - Clickable markers with detailed station information
+  - Tooltips showing station name and status
+  - Zoom and pan controls
+  - Responsive design that works on all devices
+  - BSI-branded map styling
+
+- **Station Information**:
+  - Station name and identifier
+  - Current status (online/offline)
+  - Last updated timestamp
+  - Number of connected nodes (if applicable)
 - Auto-fitting map bounds to show all stations
 - **Node Filtering**: Accepts `selectedNode` prop to filter base stations by selected node
 - **Dynamic Updates**: Re-fetches data when node selection changes

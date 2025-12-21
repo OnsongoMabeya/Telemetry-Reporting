@@ -585,19 +585,49 @@ GET /api/nodes/:nodeId/metrics
   "Node 2",
   "Node 3"
 ]
-```
-
-#### Get Base Stations with Coordinates
-
-```http
-GET /api/basestations-map?nodeName=Aviation%20FM
-```
 
 **Description**: Retrieve all base stations with their geographic coordinates and real-time status for Kenya map visualization. Supports optional node filtering to show only base stations belonging to a specific node.
 
-**Parameters**:
+**Key Features**:
+- Precise geographic coordinates for all base stations across Kenya
+- Special handling for co-located stations (e.g., LIMURU and LIMURU_NMG at 1.1085° S, 36.6421° E)
+- Real-time status indicators (online/offline)
+- Case-insensitive station name matching
+- Efficient caching for improved performance
 
+**Parameters**:
 - `nodeName` (optional, string): Filter base stations by node name
+
+**Response Format**:
+```json
+[
+  {
+    "id": "LIMURU",
+    "name": "LIMURU",
+    "lat": -1.1085,
+    "lng": 36.6421,
+    "status": "online"
+  },
+  {
+    "id": "LIMURU_NMG",
+    "name": "LIMURU_NMG",
+    "lat": -1.1085,
+    "lng": 36.6421,
+    "status": "online"
+  }
+  // ... other stations
+]
+```
+
+**Example Request**:
+
+```bash
+# Get all base stations
+GET /api/basestations-map
+
+# Get base stations for a specific node
+GET /api/basestations-map?nodeName=Aviation%20FM
+```
 
 **Response**:
 
