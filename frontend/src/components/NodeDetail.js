@@ -779,7 +779,11 @@ const NodeDetail = () => {
 
   return (
     <ErrorBoundary>
-      <Container maxWidth="false" sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 } }}>
+      <Container maxWidth="false" sx={{ 
+        px: { xs: 2, sm: 3 }, 
+        py: { xs: 2, sm: 3 },
+        pt: { xs: 10, sm: 11, md: 12 } // Add top padding to account for fixed navbar
+      }}>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
