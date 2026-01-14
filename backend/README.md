@@ -716,7 +716,6 @@ The backend implements intelligent data sampling based on the requested time ran
 
 | Time Range | Sample Interval | Data Points | Cache TTL  | Best For |
 |------------|-----------------|-------------|------------|----------|
-
 | 5m         | 10 seconds      | 30          | 30s        | Real-time monitoring |
 | 10m        | 10 seconds      | 60          | 30s        | Short-term analysis |
 | 30m        | 30 seconds      | 60          | 2m         | Quick diagnostics |
@@ -764,7 +763,6 @@ The system includes accurate coordinates for major Kenya locations:
 
 | Station | Latitude | Longitude | Status |
 |---------|----------|-----------|--------|
-
 | Nairobi | -1.2921 | 36.8219 | Online |
 | Mombasa | -4.0435 | 39.6682 | Online |
 | Kisumu | -0.0917 | 34.7679 | Online |
