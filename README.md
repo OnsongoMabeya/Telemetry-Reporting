@@ -31,6 +31,7 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
   - All base stations plotted with verified GPS coordinates
   - Special handling for clustered locations (e.g., LIMURU and LIMURU_NMG at 1.1085° S, 36.6421° E)
   - Real-time status indicators for each station
+  - **Coordinate Corrections**: Updated LIMURU and LIMURU_NMG stations to correct Limuru town coordinates (1.1085° S, 36.6421° E)
 
 - **Real-time Monitoring**: Live telemetry data visualization
 - **Interactive Maps**: Kenya-wide base station monitoring
@@ -386,6 +387,7 @@ The system automatically adjusts data sampling based on the selected time range 
 
 | Time Range | Sample Interval | Data Points | Cache TTL  | Best For |
 |------------|-----------------|-------------|------------|----------|
+
 | 5m         | 10 seconds      | 30          | 30s        | Real-time monitoring |
 | 10m        | 10 seconds      | 60          | 30s        | Short-term analysis |
 | 30m        | 30 seconds      | 60          | 2m         | Quick diagnostics |

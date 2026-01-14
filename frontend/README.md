@@ -127,10 +127,12 @@ The frontend is designed for flexible deployment with automatic hostname detecti
 
 ### 📱 Responsive Design
 
-- Mobile-first approach
-- Adaptive layouts for all screen sizes
-- Touch-friendly controls
-- Offline capabilities
+- **Mobile-First Approach**: Optimized for mobile and tablet devices
+- **Adaptive Layouts**: Responsive grid system that adjusts to screen size
+- **Touch-Friendly Controls**: Optimized for touch interactions
+- **Mobile Filter Drawer**: On mobile and tablet views, filters are accessible via a drawer button to maximize screen real estate
+- **Desktop Inline Filters**: On desktop views, filters are displayed inline for immediate access
+- **Offline Capabilities**: Basic functionality available without internet connection
 
 ### 🛠 Developer Experience
 
