@@ -34,6 +34,8 @@ High-performance Node.js/Express backend for the BSI Telemetry Reports system. T
 - **Input Sanitization**
 - **Rate Limiting**
 - **Environment-based Configuration**
+- **JWT Authentication** with bcrypt password hashing
+- **Protected Routes** requiring valid authentication tokens
 
 ### Development & Operations
 
@@ -148,6 +150,13 @@ RATE_LIMIT_MAX=100
 
 # Cache Settings
 CACHE_TTL=300  # 5 minutes
+
+# Admin Authentication
+ADMIN_USERNAME=BSI
+ADMIN_PASSWORD_HASH=$2b$10$qDH7bN/lOUxoESYtFmmFG.zfnPR8YaBTyVxIVSaMw5x5zTW/l6eRq
+
+# Session Configuration
+SESSION_TIMEOUT_MINUTES=30
 ```
 
 ### Network & CORS Configuration
@@ -188,7 +197,94 @@ The backend is configured to handle requests from specific origins defined in th
 - **Preflight Cache**: 24 hours
 - **Max Age**: 86400 seconds
 
-## 📚 API Documentation
+## � Authentication
+
+The backend implements JWT-based authentication for secure access control.
+
+### Authentication Endpoints
+
+#### Login
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+
+{
+  "username": "BSI",
+  "password": "Reporting2026"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Login successful",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "username": "BSI",
+    "role": "admin"
+  },
+  "expiresIn": 1800
+}
+```
+
+#### Verify Token
+
+```http
+GET /api/auth/verify
+Authorization: Bearer <token>
+```
+
+#### Logout
+
+```http
+POST /api/auth/logout
+Authorization: Bearer <token>
+```
+
+### Protected Routes
+
+All API routes require authentication:
+
+- `GET /api/nodes` - Get all nodes
+- `GET /api/basestations/:nodeName` - Get base stations for a node
+- `GET /api/telemetry/:nodeName/:baseStation` - Get telemetry data
+- `GET /api/basestations-map` - Get base stations with coordinates
+
+### Authentication Middleware
+
+The authentication middleware (`/middleware/auth.js`) validates JWT tokens and returns appropriate error codes:
+
+- `NO_TOKEN` - No token provided in Authorization header
+- `TOKEN_EXPIRED` - Token has expired (30 minutes)
+- `INVALID_TOKEN` - Token is invalid or malformed
+
+### Security Features
+
+- **Password Hashing**: bcrypt with 10 salt rounds
+- **JWT Tokens**: Signed with `JWT_SECRET`, expire after `SESSION_TIMEOUT_MINUTES`
+- **Rate Limiting**: Login endpoint limited to 5 attempts per 15 minutes
+- **Error Codes**: Specific error codes for different authentication failures
+
+### Admin Credentials
+
+Default admin user (configured in `.env`):
+
+- **Username**: `BSI`
+- **Password**: `Reporting2026` (stored as bcrypt hash)
+- **Role**: Administrator
+
+**Password Hash Generation:**
+
+```javascript
+const bcrypt = require('bcryptjs');
+const hash = await bcrypt.hash('Reporting2026', 10);
+// Result: $2b$10$qDH7bN/lOUxoESYtFmmFG.zfnPR8YaBTyVxIVSaMw5x5zTW/l6eRq
+```
+
+## � API Documentation
 
 API documentation is available at `/api-docs` when running in development mode. The documentation is generated using Swagger/OpenAPI.
 
@@ -714,20 +810,20 @@ GET /api/telemetry/:nodeName/:baseStation
 
 The backend implements intelligent data sampling based on the requested time range to optimize performance and data relevance:
 
-| Time Range | Sample Interval | Data Points | Cache TTL  | Best For |
-|------------|-----------------|-------------|------------|----------|
-| 5m         | 10 seconds      | 30          | 30s        | Real-time monitoring |
-| 10m        | 10 seconds      | 60          | 30s        | Short-term analysis |
-| 30m        | 30 seconds      | 60          | 2m         | Quick diagnostics |
-| 1h         | 1 minute        | 60          | 5m         | Hourly trends |
+| Time Range | Sample Interval | Data Points | Cache TTL  | Best For              |
+|------------|-----------------|-------------|------------|-----------------------|
+| 5m         | 10 seconds      | 30          | 30s        | Real-time monitoring  |
+| 10m        | 10 seconds      | 60          | 30s        | Short-term analysis   |
+| 30m        | 30 seconds      | 60          | 2m         | Quick diagnostics     |
+| 1h         | 1 minute        | 60          | 5m         | Hourly trends         |
 | 2h         | 2 minutes       | 60          | 5m         | Multi-hour monitoring |
-| 6h         | 5 minutes       | 72          | 10m        | Half-day analysis |
-| 1d         | 15 minutes      | 96          | 15m        | Daily overview |
-| 2d         | 30 minutes      | 96          | 30m        | Two-day trends |
-| 5d         | 1 hour          | 120         | 1h         | Weekly analysis |
-| 1w         | 2 hours         | 84          | 2h         | Weekly summary |
-| 2w         | 4 hours         | 84          | 4h         | Bi-weekly review |
-| 30d        | 1 day           | 30          | 12h        | Monthly reporting |
+| 6h         | 5 minutes       | 72          | 10m        | Half-day analysis     |
+| 1d         | 15 minutes      | 96          | 15m        | Daily overview        |
+| 2d         | 30 minutes      | 96          | 30m        | Two-day trends        |
+| 5d         | 1 hour          | 120         | 1h         | Weekly analysis       |
+| 1w         | 2 hours         | 84          | 2h         | Weekly summary        |
+| 2w         | 4 hours         | 84          | 4h         | Bi-weekly review      |
+| 30d        | 1 day           | 30          | 12h        | Monthly reporting     |
 
 ### Cache Strategy
 
@@ -741,43 +837,42 @@ The application uses the following key tables:
 
 ### `node_status_table`
 
-| Column | Type | Description |
-|--------|------|-------------|
-
-| `id` | int | Primary key |
-| `NodeName` | varchar(255) | Name of node |
-| `NodeBaseStationName` | varchar(255) | Name of base station |
-| `time` | datetime | Timestamp of reading |
-| `Analog1Value` | float | Forward Power (W) |
-| `Analog2Value` | float | Reflected Power (W) |
-| `Analog3Value` | float | VSWR (Voltage Standing Wave Ratio) |
-| `Analog4Value` | float | Return Loss (dB) |
-| `Analog5Value` | float | Temperature (°C) |
-| `Analog6Value` | float | Voltage (V) |
-| `Analog7Value` | float | Current (A) |
-| `Analog8Value` | float | Power (W) |
+| Column                | Type         | Description                        |
+|-----------------------|--------------|------------------------------------|
+| `id`                  | int          | Primary key                        |
+| `NodeName`            | varchar(255) | Name of node                       |
+| `NodeBaseStationName` | varchar(255) | Name of base station               |
+| `time`                | datetime     | Timestamp of reading               |
+| `Analog1Value`        | float        | Forward Power (W)                  |
+| `Analog2Value`        | float        | Reflected Power (W)                |
+| `Analog3Value`        | float        | VSWR (Voltage Standing Wave Ratio) |
+| `Analog4Value`        | float        | Return Loss (dB)                   |
+| `Analog5Value`        | float        | Temperature (°C)                   |
+| `Analog6Value`        | float        | Voltage (V)                        |
+| `Analog7Value`        | float        | Current (A)                        |
+| `Analog8Value`        | float        | Power (W)                          |
 
 ### Kenya Base Station Coordinates
 
 The system includes accurate coordinates for major Kenya locations:
 
-| Station | Latitude | Longitude | Status |
-|---------|----------|-----------|--------|
-| Nairobi | -1.2921 | 36.8219 | Online |
-| Mombasa | -4.0435 | 39.6682 | Online |
-| Kisumu | -0.0917 | 34.7679 | Online |
-| Eldoret | 0.5143 | 35.2698 | Online |
-| Nakuru | -0.3031 | 36.0695 | Online |
-| Kitale | 1.0149 | 35.0013 | Online |
-| Garissa | -0.4528 | 39.6460 | Offline |
-| Kakamega | 0.2842 | 34.7519 | Online |
-| Nyeri | -0.4243 | 36.9568 | Online |
-| Meru | 0.0470 | 37.6555 | Online |
-| Thika | -1.0361 | 37.0695 | Online |
-| Malindi | -3.2192 | 40.1164 | Online |
-| Limuru | -1.2634 | 36.8033 | Online |
-| Webuye | 0.6069 | 34.7399 | Online |
-| Mazeras | -3.6739 | 39.4927 | Online |
+| Station          | Latitude     | Longitude     | Status     |
+|------------------|--------------|---------------|------------|
+| Nairobi          | -1.2921      | 36.8219       | Online     |
+| Mombasa          | -4.0435      | 39.6682       | Online     |
+| Kisumu           | -0.0917      | 34.7679       | Online     |
+| Eldoret          | 0.5143       | 35.2698       | Online     |
+| Nakuru           | -0.3031      | 36.0695       | Online     |
+| Kitale           | 1.0149       | 35.0013       | Online     |
+| Garissa          | -0.4528      | 39.6460       | Offline    |
+| Kakamega         | 0.2842       | 34.7519       | Online     |
+| Nyeri            | -0.4243      | 36.9568       | Online     |
+| Meru             | 0.0470       | 37.6555       | Online     |
+| Thika            | -1.0361      | 37.0695       | Online     |
+| Malindi          | -3.2192      | 40.1164       | Online     |
+| Limuru           | -1.2634      | 36.8033       | Online     |
+| Webuye           | 0.6069       | 34.7399       | Online     |
+| Mazeras          | -3.6739      | 39.4927       | Online     |
 
 ### Indexes
 

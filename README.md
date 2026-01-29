@@ -36,9 +36,35 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 - **Real-time Monitoring**: Live telemetry data visualization
 - **Interactive Maps**: Kenya-wide base station monitoring
 - **Comprehensive Reporting**: Generate and export reports in multiple formats
-- **User Authentication**: Secure access control
+- **User Authentication**: Secure JWT-based access control with role-based permissions
 - **Responsive Design**: Works on all device sizes
 - **Dark/Light Mode**: Better user experience in any lighting
+
+### 🔐 Authentication & Security
+
+The system implements JWT-based authentication with the following features:
+
+- **Secure Login**: Admin authentication with bcrypt password hashing (10 rounds)
+- **Session Management**: 30-minute JWT token expiry with automatic logout
+- **Rate Limiting**: Protection against brute force attacks (5 login attempts per 15 minutes)
+- **Protected Routes**: All API endpoints require valid authentication
+- **Token Storage**: Secure localStorage implementation with automatic refresh
+- **User Management**: Admin dashboard with logout functionality
+
+**Default Admin Credentials:**
+
+- Username: `BSI`
+- Password: `Reporting2026`
+- Role: Administrator
+
+**Security Features:**
+
+- Password hashing with bcrypt
+- JWT tokens signed with secret key
+- Automatic token expiration and validation
+- Rate limiting on login and API endpoints
+- CORS protection with configurable origins
+- Input validation and sanitization
 
 ## 🛠️ Technical Stack
 
@@ -385,20 +411,20 @@ REACT_APP_FEATURE_EMAIL=true
 
 The system automatically adjusts data sampling based on the selected time range to optimize performance and user experience:
 
-| Time Range | Sample Interval | Data Points | Cache TTL  | Best For |
-|------------|-----------------|-------------|------------|----------|
-| 5m         | 10 seconds      | 30          | 30s        | Real-time monitoring |
-| 10m        | 10 seconds      | 60          | 30s        | Short-term analysis |
-| 30m        | 30 seconds      | 60          | 2m         | Quick diagnostics |
-| 1h         | 1 minute        | 60          | 5m         | Hourly trends |
+| Time Range | Sample Interval | Data Points | Cache TTL  | Best For              |
+|------------|-----------------|-------------|------------|-----------------------|
+| 5m         | 10 seconds      | 30          | 30s        | Real-time monitoring  |
+| 10m        | 10 seconds      | 60          | 30s        | Short-term analysis   |
+| 30m        | 30 seconds      | 60          | 2m         | Quick diagnostics     |
+| 1h         | 1 minute        | 60          | 5m         | Hourly trends         |
 | 2h         | 2 minutes       | 60          | 5m         | Multi-hour monitoring |
-| 6h         | 5 minutes       | 72          | 10m        | Half-day analysis |
-| 1d         | 15 minutes      | 96          | 15m        | Daily overview |
-| 2d         | 30 minutes      | 96          | 30m        | Two-day trends |
-| 5d         | 1 hour          | 120         | 1h         | Weekly analysis |
-| 1w         | 2 hours         | 84          | 2h         | Weekly summary |
-| 2w         | 4 hours         | 84          | 4h         | Bi-weekly review |
-| 30d        | 1 day           | 30          | 12h        | Monthly reporting |
+| 6h         | 5 minutes       | 72          | 10m        | Half-day analysis     |
+| 1d         | 15 minutes      | 96          | 15m        | Daily overview        |
+| 2d         | 30 minutes      | 96          | 30m        | Two-day trends        |
+| 5d         | 1 hour          | 120         | 1h         | Weekly analysis       |
+| 1w         | 2 hours         | 84          | 2h         | Weekly summary        |
+| 2w         | 4 hours         | 84          | 4h         | Bi-weekly review      |
+| 30d        | 1 day           | 30          | 12h        | Monthly reporting     |
 
 ## 🤝 Contributing
 

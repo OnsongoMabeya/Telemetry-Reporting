@@ -89,6 +89,75 @@ REACT_APP_FEATURE_EXPORT=true
 REACT_APP_GA_TRACKING_ID=UA-XXXXX-Y
 ```
 
+## 🔐 Authentication
+
+The frontend implements JWT-based authentication with the following components:
+
+### Authentication Context
+
+Located at `/src/context/AuthContext.js`, provides:
+
+- `user` - Current authenticated user object
+- `token` - JWT authentication token
+- `isAuthenticated` - Boolean authentication status
+- `loading` - Loading state during token verification
+- `login(username, password)` - Login function
+- `logout()` - Logout function
+
+### Login Modal
+
+Beautiful modal overlay (`/src/components/LoginModal.js`) that:
+
+- Appears automatically when user is not authenticated
+- Cannot be closed until successful login
+- Shows error messages for failed attempts
+- Features BSI-branded gradient design
+- Includes password visibility toggle
+- Displays loading states during authentication
+
+### Axios Interceptor
+
+Automatic JWT token management (`/src/services/axiosInterceptor.js`):
+
+- Adds `Authorization: Bearer <token>` header to all API requests
+- Handles 401 responses by automatically logging out user
+- Removes expired/invalid tokens from localStorage
+- Provides centralized error handling
+
+### User Interface
+
+- **Navbar Integration**: User avatar with username tooltip and logout menu
+- **Session Management**: 30-minute token expiry with automatic logout
+- **Token Storage**: localStorage for persistent sessions
+- **Auto-refresh**: Token verified on app load
+
+### Usage Example
+
+```javascript
+import { useAuth } from './context/AuthContext';
+
+function MyComponent() {
+  const { user, isAuthenticated, login, logout } = useAuth();
+
+  const handleLogin = async () => {
+    const result = await login('BSI', 'Reporting2026');
+    if (result.success) {
+      console.log('Logged in as:', user.username);
+    }
+  };
+
+  return (
+    <div>
+      {isAuthenticated ? (
+        <button onClick={logout}>Logout</button>
+      ) : (
+        <button onClick={handleLogin}>Login</button>
+      )}
+    </div>
+  );
+}
+```
+
 ## 🌐 Network & API Configuration
 
 The frontend is designed for flexible deployment with automatic hostname detection:
