@@ -124,12 +124,46 @@ Automatic JWT token management (`/src/services/axiosInterceptor.js`):
 - Removes expired/invalid tokens from localStorage
 - Provides centralized error handling
 
+**Important**: All components must import axios from `../services/axiosInterceptor` instead of the default `axios` package to ensure the authentication token is included in requests:
+
+```javascript
+// ✅ Correct - uses interceptor
+import axios from '../services/axiosInterceptor';
+
+// ❌ Wrong - bypasses interceptor
+import axios from 'axios';
+```
+
+### Authentication Guards
+
+Components check authentication status before making API requests:
+
+```javascript
+import { useAuth } from '../context/AuthContext';
+
+const MyComponent = () => {
+  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return; // Skip API calls until user logs in
+    }
+
+    // Fetch data only when authenticated
+    fetchData();
+  }, [isAuthenticated]);
+};
+```
+
+This prevents 401 errors from occurring before the user has logged in.
+
 ### User Interface
 
 - **Navbar Integration**: User avatar with username tooltip and logout menu
 - **Session Management**: 30-minute token expiry with automatic logout
 - **Token Storage**: localStorage for persistent sessions
 - **Auto-refresh**: Token verified on app load
+- **Protected Components**: NodeDetail and KenyaMap only fetch data when authenticated
 
 ### Usage Example
 

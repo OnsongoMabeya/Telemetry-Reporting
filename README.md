@@ -505,6 +505,25 @@ nvm use 22
 - Check `.env` database credentials
 - Ensure the database exists and is accessible
 
+#### 4. Authentication 401 Errors
+
+If you encounter 401 Unauthorized errors after login:
+
+1. **Clear browser localStorage**:
+
+   ```javascript
+   // In browser console (F12)
+   localStorage.clear()
+   ```
+
+2. **Hard refresh** the page (Cmd+Shift+R or Ctrl+Shift+R)
+
+3. **Login again** with credentials:
+   - Username: `BSI`
+   - Password: `Reporting2026`
+
+This clears any stale tokens from previous sessions.
+
 ## 📞 Support
 
 For support, please contact:

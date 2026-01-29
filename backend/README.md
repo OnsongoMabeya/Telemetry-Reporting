@@ -284,7 +284,25 @@ const hash = await bcrypt.hash('Reporting2026', 10);
 // Result: $2b$10$qDH7bN/lOUxoESYtFmmFG.zfnPR8YaBTyVxIVSaMw5x5zTW/l6eRq
 ```
 
-## � API Documentation
+### Troubleshooting Authentication
+
+#### 401 Errors After Login
+
+If clients receive 401 errors after successful login:
+
+1. **Verify token is being sent**: Check that the `Authorization: Bearer <token>` header is present in requests
+2. **Check token expiry**: Tokens expire after 30 minutes (configurable via `SESSION_TIMEOUT_MINUTES`)
+3. **Validate JWT_SECRET**: Ensure the `JWT_SECRET` in `.env` matches what was used to sign the token
+4. **Review middleware order**: Authentication middleware must be applied before protected routes
+
+#### Common Issues
+
+- **Missing Authorization header**: Frontend must include token in all API requests
+- **Token format**: Must be `Bearer <token>`, not just the token string
+- **CORS issues**: Ensure frontend origin is in `ALLOWED_ORIGINS`
+- **Stale tokens**: Clients should clear localStorage and re-login if tokens become invalid
+
+## 📚 API Documentation
 
 API documentation is available at `/api-docs` when running in development mode. The documentation is generated using Swagger/OpenAPI.
 
