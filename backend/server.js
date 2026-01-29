@@ -7,6 +7,8 @@ require('dotenv').config();
 
 // Import routes
 const emailRoutes = require('./routes/email');
+const authRoutes = require('./routes/auth');
+const { authenticateToken } = require('./middleware/auth');
 
 // Helper function to get cache TTL based on time filter
 const getCacheTTL = (timeFilter) => {
@@ -114,8 +116,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Email routes
 app.use('/api', emailRoutes);
 
+// Auth routes
+app.use('/api/auth', authRoutes);
+
 // Routes
-app.get('/api/nodes', async (req, res) => {
+app.get('/api/nodes', authenticateToken, async (req, res) => {
   try {
     const [rows] = await pool.promise().query('SELECT DISTINCT NodeName FROM node_status_table ORDER BY NodeName');
     // Transform the rows into the expected format
@@ -133,7 +138,7 @@ app.get('/api/nodes', async (req, res) => {
   }
 });
 
-app.get('/api/basestations/:nodeName', async (req, res) => {
+app.get('/api/basestations/:nodeName', authenticateToken, async (req, res) => {
   const { nodeName } = req.params;
   try {
     const [rows] = await pool.promise().query(
@@ -453,7 +458,7 @@ app.get('/api/nodes', async (req, res) => {
 });
 
 // Telemetry data endpoint
-app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
+app.get('/api/telemetry/:nodeName/:baseStation', authenticateToken, async (req, res) => {
   const { nodeName, baseStation } = req.params;
   const { timeFilter = '1h', page = 1, pageSize = 200 } = req.query; // Increased default pageSize
   
@@ -565,7 +570,7 @@ app.get('/api/telemetry/:nodeName/:baseStation', async (req, res) => {
 });
 
 // Base stations with coordinates for Kenya map
-app.get('/api/basestations-map', async (req, res) => {
+app.get('/api/basestations-map', authenticateToken, async (req, res) => {
   try {
     const { nodeName } = req.query;
     

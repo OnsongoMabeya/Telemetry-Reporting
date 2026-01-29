@@ -10,7 +10,9 @@ import {
   MenuItem,
   useTheme,
   useMediaQuery,
-  Fade
+  Fade,
+  Avatar,
+  Tooltip
 } from '@mui/material';
 import { 
   Menu as MenuIcon, 
@@ -19,14 +21,19 @@ import {
   Map, 
   Settings,
   Brightness4,
-  Brightness7
+  Brightness7,
+  Logout,
+  Person
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 const Navbar = () => {
   const [anchorEl, setAnchorEl] = useState(null);
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [scrolled, setScrolled] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const { user, logout } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -44,6 +51,19 @@ const Navbar = () => {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleUserMenuOpen = (event) => {
+    setUserMenuAnchor(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
+
+  const handleLogout = async () => {
+    handleUserMenuClose();
+    await logout();
   };
 
   const toggleDarkMode = () => {
@@ -214,6 +234,23 @@ const Navbar = () => {
                     )}
                   </IconButton>
                 </motion.div>
+
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Tooltip title={user?.username || 'User'}>
+                    <IconButton
+                      onClick={handleUserMenuOpen}
+                      sx={{
+                        ml: 1,
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)'
+                        }
+                      }}
+                    >
+                      <Person sx={{ color: 'white' }} />
+                    </IconButton>
+                  </Tooltip>
+                </motion.div>
               </motion.div>
             )}
 
@@ -274,6 +311,49 @@ const Navbar = () => {
               </Box>
             </MenuItem>
           ))}
+        </Menu>
+
+        {/* User Menu */}
+        <Menu
+          anchorEl={userMenuAnchor}
+          open={Boolean(userMenuAnchor)}
+          onClose={handleUserMenuClose}
+          TransitionComponent={Fade}
+          PaperProps={{
+            sx: {
+              background: 'rgba(17, 25, 40, 0.95)',
+              backdropFilter: 'blur(16px) saturate(180%)',
+              border: '1px solid rgba(255, 255, 255, 0.125)',
+              mt: 2,
+              minWidth: 200
+            }
+          }}
+        >
+          <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.6)' }}>
+              Signed in as
+            </Typography>
+            <Typography variant="body1" sx={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 600 }}>
+              {user?.username}
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+              {user?.role === 'admin' ? 'Administrator' : 'User'}
+            </Typography>
+          </Box>
+          <MenuItem
+            onClick={handleLogout}
+            sx={{
+              color: 'rgba(255, 255, 255, 0.9)',
+              '&:hover': {
+                background: 'rgba(255, 100, 100, 0.2)'
+              }
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Logout />
+              <Typography>Logout</Typography>
+            </Box>
+          </MenuItem>
         </Menu>
       </AppBar>
     </AnimatePresence>

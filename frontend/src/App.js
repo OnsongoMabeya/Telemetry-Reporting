@@ -1,9 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { Box, CircularProgress } from '@mui/material';
 import Navbar from './components/Navbar';
 import NodeDetail from './components/NodeDetail';
 import RootElement from './components/RootElement';
+import LoginModal from './components/LoginModal';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { setAuthLogout } from './services/axiosInterceptor';
+import './services/axiosInterceptor';
 import './styles/global.css';
 
 const theme = createTheme({
@@ -310,16 +315,51 @@ const theme = createTheme({
   },
 });
 
+const AppContent = () => {
+  const { isAuthenticated, loading, logout } = useAuth();
+
+  useEffect(() => {
+    setAuthLogout(logout);
+  }, [logout]);
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        }}
+      >
+        <CircularProgress size={60} sx={{ color: 'white' }} />
+      </Box>
+    );
+  }
+
+  return (
+    <>
+      <LoginModal open={!isAuthenticated} />
+      {isAuthenticated && (
+        <RootElement>
+          <div className="App">
+            <Navbar />
+            <NodeDetail />
+          </div>
+        </RootElement>
+      )}
+    </>
+  );
+};
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <RootElement>
-        <div className="App">
-          <Navbar />
-          <NodeDetail />
-        </div>
-      </RootElement>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </ThemeProvider>
   );
 }
