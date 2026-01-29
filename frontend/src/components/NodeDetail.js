@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { 
   Container, 
   Box, 
@@ -33,7 +34,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ReportGenerator from './reports/ReportGenerator';
 import KenyaMap from './KenyaMap';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
-import axios from 'axios';
+import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
 
 
@@ -549,25 +550,20 @@ const NodeDetail = () => {
   const [selectedBaseStation, setSelectedBaseStation] = useState(null);
   const [error, setError] = useState(null);
 
-  // Axios instance with default config
-  const api = axios.create({
-    baseURL: API_BASE_URL,
-    headers: {
-      'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-      'Content-Type': 'application/json'
-    }
-  });
+  const { isAuthenticated } = useAuth();
 
   // Fetch available nodes
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     const fetchNodes = async () => {
       console.log('Fetching nodes...');
       setError(null);
       
       try {
-        const response = await api.get('/api/nodes');
+        const response = await axios.get(`${API_BASE_URL}/api/nodes`);
         console.log('Nodes response:', response.data);
         
         if (response.data && Array.isArray(response.data)) {
@@ -593,7 +589,7 @@ const NodeDetail = () => {
     };
     
     fetchNodes();
-  }, []);
+  }, [isAuthenticated]);
 
   const TIME_FILTERS = [
     { value: '5m', label: 'Last 5 minutes' },
@@ -624,7 +620,7 @@ const NodeDetail = () => {
       setError(null);
       
       try {
-        const response = await api.get(`/api/basestations/${selectedNode}`);
+        const response = await axios.get(`${API_BASE_URL}/api/basestations/${selectedNode}`);
         console.log('Base stations API response:', response.data);
 
         if (!Array.isArray(response.data)) {
@@ -677,7 +673,7 @@ const NodeDetail = () => {
     
     try {
       const startTime = Date.now();
-      const response = await api.get(`/api/telemetry/${selectedNode}/${selectedBaseStation}`, {
+      const response = await axios.get(`${API_BASE_URL}/api/telemetry/${selectedNode}/${selectedBaseStation}`, {
         params: { 
           timeFilter,
           _t: new Date().getTime() // Cache buster

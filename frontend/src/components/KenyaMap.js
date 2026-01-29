@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { 
   Box, 
@@ -25,7 +26,7 @@ import {
   MyLocation
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -100,6 +101,7 @@ const KenyaMap = ({ selectedNode }) => {
   const [selectedStation, setSelectedStation] = useState(null);
   const [hoveredStation, setHoveredStation] = useState(null);
   const theme = useTheme();
+  const { isAuthenticated } = useAuth();
 
   const fetchBaseStations = async () => {
     try {
@@ -122,10 +124,14 @@ const KenyaMap = ({ selectedNode }) => {
   };
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
     fetchBaseStations();
     const interval = setInterval(fetchBaseStations, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [selectedNode]);
+  }, [selectedNode, isAuthenticated]);
 
   const getStatusIcon = (status) => {
     switch (status) {

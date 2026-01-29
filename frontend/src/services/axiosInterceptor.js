@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { API_BASE_URL } from '../config/api';
 
 let authContextLogout = null;
 
@@ -11,7 +10,7 @@ axios.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     
-    if (token && config.url?.startsWith(API_BASE_URL)) {
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     
