@@ -111,13 +111,37 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Helper function to check if user has a specific role
+  const hasRole = (role) => {
+    return user?.role === role;
+  };
+
+  // Helper function to check if user has any of the specified roles
+  const hasAnyRole = (roles) => {
+    return roles.includes(user?.role);
+  };
+
+  // Helper function to check if user is admin
+  const isAdmin = () => {
+    return user?.role === 'admin';
+  };
+
+  // Helper function to check if user is admin or manager
+  const isAdminOrManager = () => {
+    return user?.role === 'admin' || user?.role === 'manager';
+  };
+
   const value = {
     user,
     token,
     loading,
     isAuthenticated,
     login,
-    logout
+    logout,
+    hasRole,
+    hasAnyRole,
+    isAdmin,
+    isAdminOrManager
   };
 
   return (

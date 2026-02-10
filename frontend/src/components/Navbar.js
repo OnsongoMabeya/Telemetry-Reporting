@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   AppBar, 
   Toolbar, 
@@ -23,7 +24,8 @@ import {
   Brightness4,
   Brightness7,
   Logout,
-  Person
+  Person,
+  ManageAccounts
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -337,9 +339,27 @@ const Navbar = () => {
               {user?.username}
             </Typography>
             <Typography variant="caption" sx={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-              {user?.role === 'admin' ? 'Administrator' : 'User'}
+              {user?.role === 'admin' ? 'Administrator' : user?.role === 'manager' ? 'Manager' : 'Viewer'}
             </Typography>
           </Box>
+          {(user?.role === 'admin' || user?.role === 'manager') && (
+            <MenuItem
+              component={Link}
+              to="/users"
+              onClick={handleUserMenuClose}
+              sx={{
+                color: 'rgba(255, 255, 255, 0.9)',
+                '&:hover': {
+                  background: 'rgba(255, 255, 255, 0.1)'
+                }
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <ManageAccounts />
+                <Typography>User Management</Typography>
+              </Box>
+            </MenuItem>
+          )}
           <MenuItem
             onClick={handleLogout}
             sx={{

@@ -8,6 +8,7 @@ require('dotenv').config();
 // Import routes
 const emailRoutes = require('./routes/email');
 const authRoutes = require('./routes/auth');
+const usersRoutes = require('./routes/users');
 const { authenticateToken } = require('./middleware/auth');
 
 // Helper function to get cache TTL based on time filter
@@ -109,6 +110,9 @@ pool.getConnection((err, connection) => {
   connection.release();
 });
 
+// Make database connection available to routes
+app.set('db', pool.promise());
+
 // File upload limit
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -116,8 +120,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Email routes
 app.use('/api', emailRoutes);
 
-// Auth routes
+// Auth routes (public)
 app.use('/api/auth', authRoutes);
+
+// User management routes (protected)
+app.use('/api/users', authenticateToken, usersRoutes);
 
 // Routes
 app.get('/api/nodes', authenticateToken, async (req, res) => {

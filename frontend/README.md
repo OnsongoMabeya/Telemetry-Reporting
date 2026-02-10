@@ -165,6 +165,73 @@ This prevents 401 errors from occurring before the user has logged in.
 - **Auto-refresh**: Token verified on app load
 - **Protected Components**: NodeDetail and KenyaMap only fetch data when authenticated
 
+## 👥 User Management
+
+The application includes a comprehensive user management system for administrators and managers.
+
+### User Roles
+
+Three role levels with different permissions:
+
+- **Admin**: Full access to all features including user management
+- **Manager**: Can view users and manage data, limited user management
+- **Viewer**: Read-only access to telemetry data
+
+### User Management Interface
+
+Located at `/users` route, accessible from the user menu (avatar icon) for admins and managers.
+
+#### Features
+
+- **User List**: View all users with their roles, status, and last login
+- **Create User**: Add new users with username, email, password, and role (Admin only)
+- **Edit User**: Update user information, role, and active status (Admin only)
+- **Delete User**: Remove users from the system (Admin only, cannot delete self)
+- **Activity Logs**: Track user actions for audit purposes (Admin only)
+
+#### Role-Based UI
+
+The interface adapts based on user role:
+
+```javascript
+import { useAuth } from './context/AuthContext';
+
+function MyComponent() {
+  const { user, isAdmin, isAdminOrManager } = useAuth();
+
+  return (
+    <div>
+      {isAdmin() && <AdminOnlyFeature />}
+      {isAdminOrManager() && <ManagerFeature />}
+      <ViewerFeature />
+    </div>
+  );
+}
+```
+
+### AuthContext Helpers
+
+The AuthContext provides role-checking helpers:
+
+- `hasRole(role)`: Check if user has a specific role
+- `hasAnyRole([roles])`: Check if user has any of the specified roles
+- `isAdmin()`: Check if user is admin
+- `isAdminOrManager()`: Check if user is admin or manager
+
+### Navigation
+
+- **Dashboard**: `/` - Main telemetry dashboard (all users)
+- **User Management**: `/users` - User administration (admin/manager only)
+
+### User Profile
+
+Users can view their profile information in the navbar menu:
+
+- Username
+- Role badge (Admin/Manager/Viewer)
+- Access to User Management (if permitted)
+- Logout option
+
 ### Usage Example
 
 ```javascript

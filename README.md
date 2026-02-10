@@ -524,7 +524,61 @@ If you encounter 401 Unauthorized errors after login:
 
 This clears any stale tokens from previous sessions.
 
-## 📞 Support
+## � User Management & Roles
+
+The system supports multiple users with role-based access control (RBAC).
+
+### User Roles
+
+- **Admin**: Full system access, can create/edit/delete users, view all data and logs
+- **Manager**: Can view users and all data, limited management capabilities
+- **Viewer**: Read-only access to telemetry data and dashboards
+
+### Features
+
+- **User Creation**: Admins can create new users with specific roles
+- **User Management**: View, edit, and delete users (admin only)
+- **Profile Management**: Users can update their own profile information
+- **Activity Logging**: Audit trail of all user actions (admin access)
+- **Role-Based UI**: Interface adapts based on user permissions
+- **Session Tracking**: Monitor active user sessions and last login times
+
+### Setup
+
+1. **Run Database Migration**:
+
+   ```bash
+   mysql -u your_user -p your_database < backend/database/migrations/001_create_users_table.sql
+   ```
+
+2. **Default Admin Account**:
+   - Username: `BSI`
+   - Password: `Reporting2026`
+   - Role: Administrator
+
+3. **Create Additional Users**:
+   - Login as admin
+   - Navigate to User Management (avatar menu → User Management)
+   - Click "Add User" and fill in the details
+
+### API Endpoints
+
+- `POST /api/users/signup` - Create new user (admin only)
+- `GET /api/users` - List all users (admin/manager)
+- `GET /api/users/:id` - Get user details
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Delete user (admin only)
+- `GET /api/users/activity/logs` - View activity logs (admin only)
+
+### Security
+
+- Passwords are hashed using bcrypt (10 salt rounds)
+- Role-based middleware protects sensitive endpoints
+- Activity logging for audit compliance
+- Users cannot delete their own accounts
+- Inactive users cannot login
+
+## �📞 Support
 
 For support, please contact:
 

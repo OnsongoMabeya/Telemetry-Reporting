@@ -1,9 +1,11 @@
 import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box, CircularProgress } from '@mui/material';
 import Navbar from './components/Navbar';
 import NodeDetail from './components/NodeDetail';
+import UserManagement from './components/UserManagement';
 import RootElement from './components/RootElement';
 import LoginModal from './components/LoginModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -342,12 +344,18 @@ const AppContent = () => {
     <>
       <LoginModal open={!isAuthenticated} />
       {isAuthenticated && (
-        <RootElement>
-          <div className="App">
-            <Navbar />
-            <NodeDetail />
-          </div>
-        </RootElement>
+        <Router>
+          <RootElement>
+            <div className="App">
+              <Navbar />
+              <Routes>
+                <Route path="/" element={<NodeDetail />} />
+                <Route path="/users" element={<UserManagement />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </div>
+          </RootElement>
+        </Router>
       )}
     </>
   );

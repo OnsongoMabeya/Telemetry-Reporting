@@ -302,7 +302,112 @@ If clients receive 401 errors after successful login:
 - **CORS issues**: Ensure frontend origin is in `ALLOWED_ORIGINS`
 - **Stale tokens**: Clients should clear localStorage and re-login if tokens become invalid
 
-## 📚 API Documentation
+## � User Management
+
+The system supports multiple users with role-based access control (RBAC).
+
+### User Roles
+
+- **Admin**: Full system access, can manage users, view all data
+- **Manager**: Can view users and all data, limited management capabilities
+- **Viewer**: Read-only access to telemetry data
+
+### Database Schema
+
+The user management system uses three tables:
+
+1. **users**: Stores user accounts with roles and profile information
+2. **user_sessions**: Tracks active sessions (future feature)
+3. **user_activity_log**: Audit trail of user actions
+
+### User Management Endpoints
+
+#### Create User (Admin Only)
+
+```http
+POST /api/users/signup
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "SecurePass123",
+  "role": "viewer",
+  "firstName": "John",
+  "lastName": "Doe"
+}
+```
+
+#### Get All Users (Admin/Manager)
+
+```http
+GET /api/users
+Authorization: Bearer <token>
+```
+
+#### Get User by ID
+
+```http
+GET /api/users/:id
+Authorization: Bearer <token>
+```
+
+#### Update User
+
+```http
+PUT /api/users/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "email": "newemail@example.com",
+  "firstName": "John",
+  "lastName": "Smith",
+  "role": "manager",
+  "isActive": true
+}
+```
+
+**Note**: Only admins can change roles and active status. Users can update their own profile.
+
+#### Delete User (Admin Only)
+
+```http
+DELETE /api/users/:id
+Authorization: Bearer <admin_token>
+```
+
+#### Get Activity Logs (Admin Only)
+
+```http
+GET /api/users/activity/logs?limit=100&userId=1&action=LOGIN
+Authorization: Bearer <admin_token>
+```
+
+### Role-Based Access Control
+
+Routes are protected with middleware that checks user roles:
+
+- `requireAdmin`: Only admin users can access
+- `requireAdminOrManager`: Admin or manager users can access
+- Profile routes: Users can access their own profile, admins/managers can access any profile
+
+### Database Migration
+
+Run the migration to create user tables:
+
+```bash
+mysql -u your_user -p your_database < backend/database/migrations/001_create_users_table.sql
+```
+
+This will:
+
+- Create the `users`, `user_sessions`, and `user_activity_log` tables
+- Insert the default admin user (BSI)
+- Set up foreign keys and indexes
+
+## �📚 API Documentation
 
 API documentation is available at `/api-docs` when running in development mode. The documentation is generated using Swagger/OpenAPI.
 
