@@ -2,15 +2,10 @@
 
 [![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)](https://reactjs.org/)
 [![Material-UI](https://img.shields.io/badge/Material--UI-7.1.0-0081CB?logo=mui)](https://mui.com/)
-[![Recharts](https://img.shields.io/badge/Recharts-2.15.3-FF6384?logo=recharts)](https://recharts.org/)
 [![Leaflet](https://img.shields.io/badge/Leaflet-1.9.3-199900?logo=leaflet)](https://leafletjs.com/)
-[![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
-[![ESLint](https://img.shields.io/badge/ESLint-8.57-4B32C3?logo=eslint)](https://eslint.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 
-Modern React frontend for the BSI Telemetry Reports system, providing real-time monitoring, data visualization, reporting capabilities, and comprehensive user management with role-based access control for telemetry data across multiple base stations in Kenya. Built with cutting-edge web technologies for optimal performance and user experience.
+Modern React frontend for the BSI Telemetry Reports system. Provides real-time monitoring, data visualization, user management with role-based access control, and node assignment for telemetry data across Kenya.
 
 ## 🚀 Quick Start
 

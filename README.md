@@ -8,11 +8,6 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 ![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
-![License](https://img.shields.io/badge/License-MIT-green)
-![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js)
-![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql)
 
 ## 🚀 Key Features
 
@@ -27,18 +22,13 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 ### 📊 Core Functionality
 
-- **Accurate Base Station Mapping**: Precise geographic coordinates for all base stations across Kenya
-  - All base stations plotted with verified GPS coordinates
-  - Special handling for clustered locations (e.g., LIMURU and LIMURU_NMG at 1.1085° S, 36.6421° E)
-  - Real-time status indicators for each station
-  - **Coordinate Corrections**: Updated LIMURU and LIMURU_NMG stations to correct Limuru town coordinates (1.1085° S, 36.6421° E)
-
-- **Real-time Monitoring**: Live telemetry data visualization
-- **Interactive Maps**: Kenya-wide base station monitoring
+- **Real-time Monitoring**: Live telemetry data visualization with accurate base station mapping
+- **Interactive Maps**: Kenya-wide base station monitoring with verified GPS coordinates
+- **User Management**: Role-based access control with admin, manager, and viewer roles
+- **Node Assignment**: Granular access control - assign specific nodes to users
 - **Comprehensive Reporting**: Generate and export reports in multiple formats
-- **User Authentication**: Secure JWT-based access control with role-based permissions
-- **Responsive Design**: Works on all device sizes
-- **Dark/Light Mode**: Better user experience in any lighting
+- **Responsive Design**: Works seamlessly on all device sizes
+- **Dark/Light Mode**: Optimized viewing in any lighting condition
 
 ### 🔐 Authentication & Security
 
