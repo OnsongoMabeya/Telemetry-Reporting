@@ -10,7 +10,7 @@
 [![ESLint](https://img.shields.io/badge/ESLint-8.57-4B32C3?logo=eslint)](https://eslint.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 
-Modern React frontend for the BSI Telemetry Reports system, providing real-time monitoring, data visualization, and reporting capabilities for telemetry data across multiple base stations in Kenya. Built with cutting-edge web technologies for optimal performance and user experience.
+Modern React frontend for the BSI Telemetry Reports system, providing real-time monitoring, data visualization, reporting capabilities, and comprehensive user management with role-based access control for telemetry data across multiple base stations in Kenya. Built with cutting-edge web technologies for optimal performance and user experience.
 
 ## 🚀 Quick Start
 
@@ -97,12 +97,16 @@ The frontend implements JWT-based authentication with the following components:
 
 Located at `/src/context/AuthContext.js`, provides:
 
-- `user` - Current authenticated user object
+- `user` - Current authenticated user object with role information
 - `token` - JWT authentication token
 - `isAuthenticated` - Boolean authentication status
 - `loading` - Loading state during token verification
 - `login(username, password)` - Login function
 - `logout()` - Logout function
+- `hasRole(role)` - Check if user has specific role
+- `hasAnyRole([roles])` - Check if user has any of the specified roles
+- `isAdmin()` - Check if user is admin
+- `isAdminOrManager()` - Check if user is admin or manager
 
 ### Login Modal
 
@@ -218,10 +222,28 @@ The AuthContext provides role-checking helpers:
 - `isAdmin()`: Check if user is admin
 - `isAdminOrManager()`: Check if user is admin or manager
 
-### Navigation
+### Navigation & Routing
+
+The application uses React Router for client-side navigation:
+
+#### Routes
 
 - **Dashboard**: `/` - Main telemetry dashboard (all users)
+  - Real-time node monitoring
+  - Base station status
+  - Telemetry data visualization
+  
 - **User Management**: `/users` - User administration (admin/manager only)
+  - Create, edit, delete users
+  - View user activity logs
+  - Manage user roles and permissions
+
+#### Navigation Access
+
+- All authenticated users can access the dashboard
+- Only admins and managers see the "User Management" link in the navbar
+- Unauthorized route access redirects to dashboard
+- Unauthenticated users see login modal
 
 ### User Profile
 

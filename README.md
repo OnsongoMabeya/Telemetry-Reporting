@@ -3,7 +3,7 @@
 A comprehensive telemetry monitoring solution for tracking and analyzing node performance across multiple base stations. The system provides real-time data visualization, historical analysis, and automated reporting capabilities.
 
 ![BSI Telemetry Dashboard](https://img.shields.io/badge/Status-Active-success)
-![Version](https://img.shields.io/badge/Version-1.1.0-blue)
+![Version](https://img.shields.io/badge/Version-2.0.0-blue)
 ![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js)
 ![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql)
@@ -42,14 +42,22 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 ### 🔐 Authentication & Security
 
-The system implements JWT-based authentication with the following features:
+The system implements comprehensive JWT-based authentication with role-based access control (RBAC):
 
-- **Secure Login**: Admin authentication with bcrypt password hashing (10 rounds)
+- **Multi-User Support**: Database-driven user management with three role levels
+- **Secure Login**: bcrypt password hashing (10 rounds) for all users
 - **Session Management**: 30-minute JWT token expiry with automatic logout
 - **Rate Limiting**: Protection against brute force attacks (5 login attempts per 15 minutes)
 - **Protected Routes**: All API endpoints require valid authentication
 - **Token Storage**: Secure localStorage implementation with automatic refresh
-- **User Management**: Admin dashboard with logout functionality
+- **User Management**: Full CRUD operations for user accounts (admin only)
+- **Activity Logging**: Comprehensive audit trail for all user actions
+
+**User Roles:**
+
+- **Admin**: Full system access, user management, activity logs
+- **Manager**: View users and data, limited management capabilities
+- **Viewer**: Read-only access to telemetry data
 
 **Default Admin Credentials:**
 
@@ -59,12 +67,15 @@ The system implements JWT-based authentication with the following features:
 
 **Security Features:**
 
-- Password hashing with bcrypt
+- Password hashing with bcrypt (10 salt rounds)
 - JWT tokens signed with secret key
 - Automatic token expiration and validation
 - Rate limiting on login and API endpoints
 - CORS protection with configurable origins
 - Input validation and sanitization
+- Role-based access control middleware
+- Activity logging for audit compliance
+- Account status management (active/inactive)
 
 ## 🛠️ Technical Stack
 
@@ -260,9 +271,20 @@ The map includes coordinates for major Kenya locations:
    ```
 
 4. **Set up the database**
-   - Create a new MySQL database
-   - Import the database schema (check `backend/database/` for SQL files)
-   - Update database credentials in the backend `.env` file
+
+   ```bash
+   # Create database
+   mysql -u root -p -e "CREATE DATABASE bsi_telemetry;"
+   
+   # Run user management migration
+   mysql -u root -p bsi_telemetry < backend/database/migrations/001_create_users_table.sql
+   ```
+
+   This creates:
+   - `users` table with role-based access control
+   - `user_sessions` table for session tracking
+   - `user_activity_log` table for audit trail
+   - Default admin user (BSI/Reporting2026)
 
 5. **Configure Environment**
 

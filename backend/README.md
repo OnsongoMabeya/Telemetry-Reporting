@@ -13,11 +13,13 @@ High-performance Node.js/Express backend for the BSI Telemetry Reports system. T
 
 ### Core Features
 
-- **RESTful API** with JWT authentication
+- **RESTful API** with JWT authentication and role-based access control (RBAC)
+- **User Management System** with admin, manager, and viewer roles
 - **Real-time Data Processing** with WebSocket support
 - **Comprehensive Error Handling** with custom middleware
 - **Request Validation** using express-validator
 - **API Documentation** with Swagger/OpenAPI
+- **Activity Logging** for audit compliance
 - **TypeScript** for type safety
 
 ### Performance & Scalability
@@ -30,12 +32,16 @@ High-performance Node.js/Express backend for the BSI Telemetry Reports system. T
 ### Security
 
 - **Helmet** for security headers
-- **CORS** configuration
-- **Input Sanitization**
-- **Rate Limiting**
+- **CORS** configuration with dynamic origin support
+- **Input Sanitization** and validation
+- **Rate Limiting** (5 login attempts per 15 minutes)
 - **Environment-based Configuration**
-- **JWT Authentication** with bcrypt password hashing
+- **JWT Authentication** with bcrypt password hashing (10 salt rounds)
 - **Protected Routes** requiring valid authentication tokens
+- **Role-Based Access Control (RBAC)** with three permission levels
+- **Activity Logging** for security audit trails
+- **Account Status Management** (active/inactive users)
+- **Password Strength Validation** (minimum 8 characters)
 
 ### Development & Operations
 
