@@ -272,19 +272,34 @@ The map includes coordinates for major Kenya locations:
 
 4. **Set up the database**
 
+   **Option A: Automated Setup (Recommended)**
+
+   ```bash
+   cd backend
+   npm run db:setup
+   ```
+
+   **Option B: Manual Setup**
+
    ```bash
    # Create database
-   mysql -u root -p -e "CREATE DATABASE bsi_telemetry;"
+   mysql -u root -p -e "CREATE DATABASE horiserverlive;"
    
    # Run user management migration
-   mysql -u root -p bsi_telemetry < backend/database/migrations/001_create_users_table.sql
+   mysql -u root -p horiserverlive < backend/database/migrations/001_create_users_table.sql
+   
+   # Run node assignment migration
+   mysql -u root -p horiserverlive < backend/database/migrations/002_create_user_node_assignments.sql
    ```
 
    This creates:
    - `users` table with role-based access control
    - `user_sessions` table for session tracking
    - `user_activity_log` table for audit trail
+   - `user_node_assignments` table for node access control
    - Default admin user (BSI/Reporting2026)
+
+   📖 **For detailed setup instructions, see [DATABASE_SETUP.md](DATABASE_SETUP.md)**
 
 5. **Configure Environment**
 
