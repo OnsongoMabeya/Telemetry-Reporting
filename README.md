@@ -560,6 +560,7 @@ The system supports multiple users with role-based access control (RBAC).
 
 - **User Creation**: Admins can create new users with specific roles
 - **User Management**: View, edit, and delete users (admin only)
+- **Node Assignment**: Assign specific nodes to users for granular access control
 - **Profile Management**: Users can update their own profile information
 - **Activity Logging**: Audit trail of all user actions (admin access)
 - **Role-Based UI**: Interface adapts based on user permissions
@@ -567,10 +568,14 @@ The system supports multiple users with role-based access control (RBAC).
 
 ### Setup
 
-1. **Run Database Migration**:
+1. **Run Database Migrations**:
 
    ```bash
+   # Create user management tables
    mysql -u your_user -p your_database < backend/database/migrations/001_create_users_table.sql
+   
+   # Create node assignment tables
+   mysql -u your_user -p your_database < backend/database/migrations/002_create_user_node_assignments.sql
    ```
 
 2. **Default Admin Account**:
@@ -585,12 +590,22 @@ The system supports multiple users with role-based access control (RBAC).
 
 ### API Endpoints
 
+**User Management:**
+
 - `POST /api/users/signup` - Create new user (admin only)
 - `GET /api/users` - List all users (admin/manager)
 - `GET /api/users/:id` - Get user details
 - `PUT /api/users/:id` - Update user
 - `DELETE /api/users/:id` - Delete user (admin only)
 - `GET /api/users/activity/logs` - View activity logs (admin only)
+
+**Node Assignment:**
+
+- `GET /api/node-assignments/user/:userId` - Get user's node assignments
+- `GET /api/node-assignments/available-nodes` - List all available nodes (admin)
+- `POST /api/node-assignments` - Assign nodes to user (admin)
+- `DELETE /api/node-assignments/:id` - Remove node assignment (admin)
+- `PUT /api/node-assignments/user/:userId/access-all` - Toggle access to all nodes (admin)
 
 ### Security
 

@@ -73,10 +73,7 @@ const Navbar = () => {
   };
 
   const menuItems = [
-    { icon: <Home />, label: 'Dashboard', path: '/' },
-    { icon: <Assessment />, label: 'Analytics', path: '/analytics' },
-    { icon: <Map />, label: 'Map View', path: '/map' },
-    { icon: <Settings />, label: 'Settings', path: '/settings' }
+    { icon: <Home />, label: 'Dashboard', path: '/' }
   ];
 
   return (
@@ -186,35 +183,37 @@ const Navbar = () => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1,
-                        px: 2,
-                        py: 1,
-                        borderRadius: 2,
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        '&:hover': {
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          backdropFilter: 'blur(10px)'
-                        }
-                      }}
-                    >
-                      <Box sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-                        {item.icon}
-                      </Box>
-                      <Typography
-                        variant="body2"
+                    <Link to={item.path} style={{ textDecoration: 'none' }}>
+                      <Box
                         sx={{
-                          color: 'rgba(255, 255, 255, 0.9)',
-                          fontWeight: 500
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1,
+                          px: 2,
+                          py: 1,
+                          borderRadius: 2,
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            backdropFilter: 'blur(10px)'
+                          }
                         }}
                       >
-                        {item.label}
-                      </Typography>
-                    </Box>
+                        <Box sx={{ color: 'rgba(255, 255, 255, 0.9)' }}>
+                          {item.icon}
+                        </Box>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: 'rgba(255, 255, 255, 0.9)',
+                            fontWeight: 500
+                          }}
+                        >
+                          {item.label}
+                        </Typography>
+                      </Box>
+                    </Link>
                   </motion.div>
                 ))}
                 
@@ -299,6 +298,8 @@ const Navbar = () => {
           {menuItems.map((item) => (
             <MenuItem
               key={item.label}
+              component={Link}
+              to={item.path}
               onClick={handleMenuClose}
               sx={{
                 color: 'rgba(255, 255, 255, 0.9)',

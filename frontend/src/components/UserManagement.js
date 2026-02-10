@@ -36,11 +36,13 @@ import {
   Person as PersonIcon,
   AdminPanelSettings as AdminIcon,
   ManageAccounts as ManagerIcon,
-  Visibility as ViewerIcon
+  Visibility as ViewerIcon,
+  Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
+import NodeAssignmentDialog from './NodeAssignmentDialog';
 
 const UserManagement = () => {
   const { user: currentUser } = useAuth();
@@ -51,6 +53,8 @@ const UserManagement = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState('create'); // 'create' or 'edit'
   const [selectedUser, setSelectedUser] = useState(null);
+  const [openNodeAssignmentDialog, setOpenNodeAssignmentDialog] = useState(false);
+  const [nodeAssignmentUser, setNodeAssignmentUser] = useState(null);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -164,6 +168,20 @@ const UserManagement = () => {
     }
   };
 
+  const handleOpenNodeAssignment = (user) => {
+    setNodeAssignmentUser(user);
+    setOpenNodeAssignmentDialog(true);
+  };
+
+  const handleCloseNodeAssignment = () => {
+    setOpenNodeAssignmentDialog(false);
+    setNodeAssignmentUser(null);
+  };
+
+  const handleNodeAssignmentSuccess = () => {
+    fetchUsers();
+  };
+
   const getRoleIcon = (role) => {
     switch (role) {
       case 'admin':
@@ -202,24 +220,41 @@ const UserManagement = () => {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {/* Debug Info */}
+      <Alert severity="info" sx={{ mb: 2 }}>
+        Logged in as: <strong>{currentUser?.username}</strong> | Role: <strong>{currentUser?.role}</strong>
+      </Alert>
+
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h4" component="h1">
           User Management
         </Typography>
-        <Box>
+        <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Refresh">
             <IconButton onClick={fetchUsers} sx={{ mr: 1 }}>
               <RefreshIcon />
             </IconButton>
           </Tooltip>
-          {currentUser?.role === 'admin' && (
+          {currentUser?.role === 'admin' ? (
             <Button
               variant="contained"
+              color="primary"
+              size="large"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog('create')}
+              sx={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)'
+                }
+              }}
             >
               Add User
             </Button>
+          ) : (
+            <Alert severity="warning" sx={{ py: 0.5 }}>
+              Only admins can add users
+            </Alert>
           )}
         </Box>
       </Box>
@@ -287,6 +322,15 @@ const UserManagement = () => {
                   <TableCell align="right">
                     {currentUser?.role === 'admin' && (
                       <>
+                        <Tooltip title="Assign Nodes">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => handleOpenNodeAssignment(user)}
+                          >
+                            <AssignmentIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Edit">
                           <IconButton
                             size="small"
@@ -404,6 +448,14 @@ const UserManagement = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Node Assignment Dialog */}
+      <NodeAssignmentDialog
+        open={openNodeAssignmentDialog}
+        onClose={handleCloseNodeAssignment}
+        user={nodeAssignmentUser}
+        onSuccess={handleNodeAssignmentSuccess}
+      />
     </Container>
   );
 };

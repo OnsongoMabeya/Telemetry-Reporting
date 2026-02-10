@@ -8,10 +8,14 @@ The BSI Telemetry Reporting System now includes a comprehensive user management 
 
 ### 1. Database Setup
 
-Run the migration to create user tables:
+Run the migrations to create user tables:
 
 ```bash
+# Create user management tables
 mysql -u your_user -p your_database < backend/database/migrations/001_create_users_table.sql
+
+# Create node assignment tables
+mysql -u your_user -p your_database < backend/database/migrations/002_create_user_node_assignments.sql
 ```
 
 This creates:
@@ -19,6 +23,7 @@ This creates:
 - `users` table - User accounts with roles
 - `user_sessions` table - Session tracking
 - `user_activity_log` table - Audit trail
+- `user_node_assignments` table - Node access control
 
 ### 2. Default Admin Account
 
@@ -65,6 +70,59 @@ npm run dev
 - Read-only access to telemetry data
 - Cannot access user management
 - Cannot modify any data
+
+## Node Assignment System
+
+The system includes granular node access control, allowing admins to restrict which telemetry nodes each user can view.
+
+### Access Modes
+
+#### 1. Access to All Nodes
+
+- Admins have this by default
+- Can be granted to any user via toggle switch
+- User sees all nodes in the system
+- Overrides individual node assignments
+
+#### 2. Specific Node Assignment
+
+- Assign individual nodes to users
+- Users only see assigned nodes
+- Multiple nodes can be assigned per user
+- Assignments tracked with notes and timestamps
+
+### Managing Node Assignments
+
+#### Assign Nodes to User (Admin Only)
+
+1. Navigate to User Management (`/users`)
+2. Click the "Assign Nodes" icon (📋) for a user
+3. Choose assignment mode:
+   - **Access All Nodes**: Toggle on for unrestricted access
+   - **Specific Nodes**: Select individual nodes from the list
+4. Add optional notes about the assignment
+5. Click "Save Assignments"
+
+#### View User's Assigned Nodes
+
+- Assigned nodes appear as chips in the dialog
+- Current assignments are pre-selected
+- Changes are highlighted before saving
+
+#### Remove Node Assignments
+
+- Uncheck nodes in the assignment dialog
+- Or toggle off "Access All Nodes"
+- Deletions are logged for audit trail
+
+### Node Filtering
+
+Users automatically see only their assigned nodes:
+
+- Dashboard displays only accessible nodes
+- Node selector shows filtered list
+- API endpoints enforce node access control
+- Unauthorized access attempts are blocked
 
 ## Features
 
@@ -208,6 +266,90 @@ Authorization: Bearer <admin_token>
 ```http
 GET /api/users/activity/logs?limit=100&userId=1&action=LOGIN
 Authorization: Bearer <admin_token>
+```
+
+### Node Assignment
+
+#### Get User's Node Assignments
+
+```http
+GET /api/node-assignments/user/:userId
+Authorization: Bearer <token>
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "assignments": [
+    {
+      "id": 1,
+      "userId": 2,
+      "nodeName": "NAIROBI_CBD",
+      "assignedBy": 1,
+      "assignedByUsername": "BSI",
+      "assignedAt": "2026-02-10T09:30:00Z",
+      "notes": "Primary monitoring node"
+    }
+  ]
+}
+```
+
+#### Get Available Nodes
+
+```http
+GET /api/node-assignments/available-nodes
+Authorization: Bearer <admin_token>
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "nodes": ["NAIROBI_CBD", "MOMBASA_PORT", "KISUMU_WEST", ...]
+}
+```
+
+#### Assign Nodes to User
+
+```http
+POST /api/node-assignments
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "userId": 2,
+  "nodeNames": ["NAIROBI_CBD", "MOMBASA_PORT"],
+  "notes": "Assigned for regional monitoring"
+}
+```
+
+#### Remove Node Assignment
+
+```http
+DELETE /api/node-assignments/:id
+Authorization: Bearer <admin_token>
+```
+
+Or by user and node:
+
+```http
+DELETE /api/node-assignments/user/:userId/node/:nodeName
+Authorization: Bearer <admin_token>
+```
+
+#### Toggle Access to All Nodes
+
+```http
+PUT /api/node-assignments/user/:userId/access-all
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "accessAllNodes": true
+}
 ```
 
 ## Frontend Integration

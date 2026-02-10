@@ -9,6 +9,7 @@ require('dotenv').config();
 const emailRoutes = require('./routes/email');
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
+const nodeAssignmentsRoutes = require('./routes/nodeAssignments');
 const { authenticateToken } = require('./middleware/auth');
 
 // Helper function to get cache TTL based on time filter
@@ -126,15 +127,43 @@ app.use('/api/auth', authRoutes);
 // User management routes (protected)
 app.use('/api/users', authenticateToken, usersRoutes);
 
+// Node assignments routes (protected)
+app.use('/api/node-assignments', authenticateToken, nodeAssignmentsRoutes);
+
 // Routes
 app.get('/api/nodes', authenticateToken, async (req, res) => {
   try {
-    const [rows] = await pool.promise().query('SELECT DISTINCT NodeName FROM node_status_table ORDER BY NodeName');
-    // Transform the rows into the expected format
-    const nodes = rows.map(row => ({
-      id: row.NodeName,  // Use NodeName as the id
-      name: row.NodeName // Use NodeName as the display name
-    }));
+    // Check if user has access to all nodes or specific assignments
+    const [userAccess] = await pool.promise().query(
+      'SELECT access_all_nodes, role FROM users WHERE id = ?',
+      [req.user.id]
+    );
+
+    let nodes;
+    
+    if (userAccess[0].access_all_nodes || userAccess[0].role === 'admin') {
+      // User has access to all nodes
+      const [rows] = await pool.promise().query('SELECT DISTINCT NodeName FROM node_status_table ORDER BY NodeName');
+      nodes = rows.map(row => ({
+        id: row.NodeName,
+        name: row.NodeName
+      }));
+    } else {
+      // User has access to assigned nodes only
+      const [rows] = await pool.promise().query(
+        `SELECT DISTINCT nst.NodeName 
+         FROM node_status_table nst
+         INNER JOIN user_node_assignments una ON nst.NodeName = una.node_name
+         WHERE una.user_id = ?
+         ORDER BY nst.NodeName`,
+        [req.user.id]
+      );
+      nodes = rows.map(row => ({
+        id: row.NodeName,
+        name: row.NodeName
+      }));
+    }
+    
     res.json(nodes);
   } catch (error) {
     console.error('Error fetching nodes:', error);
