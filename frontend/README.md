@@ -245,6 +245,66 @@ The application uses React Router for client-side navigation:
 - Unauthorized route access redirects to dashboard
 - Unauthenticated users see login modal
 
+### Node Assignment Dialog
+
+The `NodeAssignmentDialog` component allows admins to assign specific telemetry nodes to users for granular access control.
+
+**Features:**
+
+- **Access All Nodes Toggle**: Grant unrestricted access to all nodes
+- **Individual Node Selection**: Assign specific nodes via checkboxes
+- **Select All/Deselect All**: Bulk selection controls
+- **Current Assignments Display**: Shows assigned nodes as chips
+- **Notes Field**: Add context about the assignment
+- **Real-time Updates**: Immediate feedback on save/error
+
+**Props:**
+
+```javascript
+<NodeAssignmentDialog
+  open={boolean}              // Dialog visibility
+  onClose={function}          // Close handler
+  userId={number}             // Target user ID
+  userName={string}           // Target user name
+  onAssignmentComplete={function} // Success callback
+/>
+```
+
+**Usage Example:**
+
+```javascript
+import NodeAssignmentDialog from './components/NodeAssignmentDialog';
+
+function UserManagement() {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  const handleOpenDialog = (user) => {
+    setSelectedUser(user);
+    setDialogOpen(true);
+  };
+
+  return (
+    <>
+      <Button onClick={() => handleOpenDialog(user)}>
+        Assign Nodes
+      </Button>
+      
+      <NodeAssignmentDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        userId={selectedUser?.id}
+        userName={selectedUser?.username}
+        onAssignmentComplete={() => {
+          setDialogOpen(false);
+          fetchUsers(); // Refresh user list
+        }}
+      />
+    </>
+  );
+}
+```
+
 ### User Profile
 
 Users can view their profile information in the navbar menu:

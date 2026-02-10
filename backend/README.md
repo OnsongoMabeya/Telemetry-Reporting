@@ -413,7 +413,122 @@ This will:
 - Insert the default admin user (BSI)
 - Set up foreign keys and indexes
 
-## �📚 API Documentation
+## 🔐 Node Assignment System
+
+The system includes granular node access control, allowing admins to restrict which telemetry nodes each user can view.
+
+### Access Modes
+
+#### 1. Access to All Nodes
+
+- Admins have this by default (`access_all_nodes = 1`)
+- Can be granted to any user
+- User sees all nodes in the system
+- Overrides individual node assignments
+
+#### 2. Specific Node Assignment
+
+- Assign individual nodes to users
+- Users only see assigned nodes
+- Multiple nodes can be assigned per user
+- Assignments tracked with notes and timestamps
+
+### Node Assignment Endpoints
+
+#### Get User's Node Assignments
+
+```http
+GET /api/node-assignments/user/:userId
+Authorization: Bearer <token>
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "assignments": [
+    {
+      "id": 1,
+      "userId": 2,
+      "nodeName": "NAIROBI_CBD",
+      "assignedBy": 1,
+      "assignedByUsername": "BSI",
+      "assignedAt": "2026-02-10T09:30:00Z",
+      "notes": "Primary monitoring node"
+    }
+  ]
+}
+```
+
+#### Get Available Nodes (Admin Only)
+
+```http
+GET /api/node-assignments/available-nodes
+Authorization: Bearer <admin_token>
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "nodes": ["NAIROBI_CBD", "MOMBASA_PORT", "KISUMU_WEST", ...]
+}
+```
+
+#### Assign Nodes to User (Admin Only)
+
+```http
+POST /api/node-assignments
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "userId": 2,
+  "nodeNames": ["NAIROBI_CBD", "MOMBASA_PORT"],
+  "notes": "Assigned for regional monitoring"
+}
+```
+
+#### Remove Node Assignment (Admin Only)
+
+```http
+DELETE /api/node-assignments/:id
+Authorization: Bearer <admin_token>
+```
+
+Or by user and node:
+
+```http
+DELETE /api/node-assignments/user/:userId/node/:nodeName
+Authorization: Bearer <admin_token>
+```
+
+#### Toggle Access to All Nodes (Admin Only)
+
+```http
+PUT /api/node-assignments/user/:userId/access-all
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "accessAllNodes": true
+}
+```
+
+### Node Filtering
+
+The `/api/nodes` endpoint automatically filters nodes based on user assignments:
+
+- **Admins**: See all nodes (bypass filtering)
+- **Users with `access_all_nodes = 1`**: See all nodes
+- **Users with specific assignments**: Only see assigned nodes
+- **Users with no assignments**: See no nodes
+
+This filtering is enforced at the API level to ensure data security.
+
+## 📚 API Documentation
 
 API documentation is available at `/api-docs` when running in development mode. The documentation is generated using Swagger/OpenAPI.
 
