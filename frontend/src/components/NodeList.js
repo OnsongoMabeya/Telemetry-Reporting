@@ -26,7 +26,7 @@ import SignalCellularAltIcon from '@mui/icons-material/SignalCellularAlt';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageContainer, SectionContainer } from './layout/PageContainer';
-import axios from 'axios';
+import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
 
 const NodeList = () => {
