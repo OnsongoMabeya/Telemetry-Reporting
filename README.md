@@ -302,10 +302,12 @@ The map includes coordinates for major Kenya locations:
 
 6. **Environment Variables**
 
+   **Important:** Each computer should have its own `.env` file with local MySQL credentials. The `.env` file is gitignored and won't be committed to version control.
+
 ### Backend (`.env`)
 
 ```env
-# Database Configuration
+# Database Configuration (use your local MySQL credentials)
 DB_HOST=localhost
 DB_USER=your_username
 DB_PASSWORD=your_secure_password

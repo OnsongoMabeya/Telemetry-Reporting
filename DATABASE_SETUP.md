@@ -6,6 +6,8 @@ This guide helps you set up the BSI Telemetry database on a new computer or envi
 
 ### Option 1: Automated Setup (Recommended)
 
+**Important:** The setup script uses your database credentials from the `.env` file in the `backend` folder. Make sure to configure your `.env` file with your MySQL credentials before running the setup.
+
 Run the automated setup script that checks and creates all required tables:
 
 ```bash
@@ -13,8 +15,19 @@ cd backend
 npm run db:setup
 ```
 
+The script will display your configuration before connecting:
+
+```text
+📋 Database Configuration:
+   Host: localhost
+   User: john
+   Database: horiserverlive
+   Password: ***
+```
+
 This script will:
 
+- ✅ Load credentials from your `.env` file
 - ✅ Check if all required tables exist
 - ✅ Run missing migrations automatically
 - ✅ Verify the setup was successful
@@ -57,7 +70,7 @@ Before running the setup, ensure:
 
 3. **Environment variables are configured**
 
-   Create a `.env` file in the `backend` folder:
+   Create a `.env` file in the `backend` folder with **your local MySQL credentials**:
 
    ```env
    DB_HOST=localhost
@@ -67,6 +80,12 @@ Before running the setup, ensure:
    JWT_SECRET=your_secret_key_here
    SESSION_TIMEOUT_MINUTES=30
    ```
+
+   **Important for Multiple Computers:**
+   - Each computer should have its own `.env` file with local MySQL credentials
+   - The `.env` file is gitignored and won't be committed to version control
+   - Example: Computer A uses `DB_USER=root`, Computer B uses `DB_USER=john`
+   - The setup scripts automatically read from your local `.env` file
 
 ## Required Tables
 
