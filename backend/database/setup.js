@@ -1,7 +1,7 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs').promises;
 const path = require('path');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
@@ -42,10 +42,17 @@ async function setupDatabase() {
     console.log('🔧 BSI Telemetry Database Setup\n');
     console.log('================================\n');
     
+    // Show configuration being used
+    console.log('📋 Database Configuration:');
+    console.log(`   Host: ${dbConfig.host}`);
+    console.log(`   User: ${dbConfig.user}`);
+    console.log(`   Database: ${dbConfig.database}`);
+    console.log(`   Password: ${dbConfig.password ? '***' : '(empty)'}\n`);
+    
     // Connect to database
     console.log('📡 Connecting to database...');
     connection = await mysql.createConnection(dbConfig);
-    console.log(`✅ Connected to database: ${dbConfig.database}\n`);
+    console.log(`✅ Connected successfully!\n`);
     
     // Check required tables
     const requiredTables = {
