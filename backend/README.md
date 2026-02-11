@@ -526,11 +526,44 @@ To view the API documentation:
    http://localhost:5000/api-docs
    ```
 
-## � Available Scripts
+## 📦 Available Scripts
 
 - `npm start` - Start the backend server
 - `npm run db:setup` - Run automated database setup and migrations
 - `npm run db:migrate` - Alias for db:setup
+
+## 🔧 Troubleshooting
+
+### Node Filtering Issues
+
+If users see all nodes instead of their assigned nodes:
+
+**Diagnostic Script:**
+
+```bash
+node check-user-nodes.js
+```
+
+This script checks:
+
+- User's role and access settings
+- Node assignments in database
+- What nodes the user should see
+- Potential configuration issues
+
+**Common Issues:**
+
+1. **Frontend not using authenticated axios**
+   - Components must import from `'../services/axiosInterceptor'`
+   - NOT from `'axios'` directly
+
+2. **User has `access_all_nodes = 1`**
+   - Check database: `SELECT access_all_nodes FROM users WHERE username = 'USERNAME'`
+   - Set to 0 for specific node access
+
+3. **No node assignments**
+   - Assign nodes via User Management UI
+   - Or directly in database: `user_node_assignments` table
 
 ## 🤝 Contributing
 

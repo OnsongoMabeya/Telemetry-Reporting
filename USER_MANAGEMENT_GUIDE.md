@@ -470,6 +470,43 @@ import { Link } from 'react-router-dom';
 - Verify password meets requirements
 - Ensure valid role is specified
 
+### User Sees All Nodes Instead of Assigned Nodes
+
+**Symptoms:**
+
+- User with specific node assignments sees all nodes
+- Node filtering not working after login
+
+**Common Causes:**
+
+1. **Frontend not using authenticated axios instance**
+   - Check that components import `axios` from `'../services/axiosInterceptor'`
+   - NOT from `'axios'` directly
+   - The interceptor adds JWT token to all requests
+
+2. **User has `access_all_nodes` enabled**
+   - Check user settings in database
+   - Set `access_all_nodes = 0` for specific node access
+
+3. **No node assignments**
+   - User must have at least one node assigned
+   - Use "Assign Nodes" in User Management
+
+**Verification:**
+
+```bash
+# Run diagnostic script
+cd backend
+node check-user-nodes.js
+```
+
+This will show:
+
+- User's access settings
+- Assigned nodes
+- What nodes they should see
+- Any configuration issues
+
 ## Database Schema
 
 ### users Table
