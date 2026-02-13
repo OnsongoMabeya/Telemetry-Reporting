@@ -17,7 +17,7 @@ import {
   Tooltip,
   Chip,
   Avatar,
-  Badge,
+  Button,
   alpha
 } from '@mui/material';
 import { 
@@ -26,7 +26,6 @@ import {
   Timeline, 
   Wifi, 
   Assessment,
-  Tune,
   DateRange,
   LocationOn
 } from '@mui/icons-material';
@@ -441,19 +440,18 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
   );
 });
 
-const generateAnalysis = (data, dataKey, title) => {
-  if (!data || data.length === 0) {
-    return "No data available for analysis.";
-  }
-
-  const values = data.map(item => item[dataKey]);
-  const current = values[values.length - 1];
-  const avg = values.reduce((a, b) => a + b, 0) / values.length;
-  const max = Math.max(...values);
-  const min = Math.min(...values);
-
-  return generateRecommendation(dataKey, current, avg, max, min);
-};
+// Analysis function removed - not currently used
+// const generateAnalysis = (data, dataKey, title) => {
+//   if (!data || data.length === 0) {
+//     return "No data available for analysis.";
+//   }
+//   const values = data.map(item => item[dataKey]);
+//   const current = values[values.length - 1];
+//   const avg = values.reduce((a, b) => a + b, 0) / values.length;
+//   const max = Math.max(...values);
+//   const min = Math.min(...values);
+//   return generateRecommendation(dataKey, current, avg, max, min);
+// };
 
 const generateRecommendation = (metric, current, avg, max, min) => {
   // Handle null/undefined values
@@ -549,8 +547,9 @@ const NodeDetail = () => {
   const [baseStations, setBaseStations] = useState([]);
   const [selectedBaseStation, setSelectedBaseStation] = useState(null);
   const [error, setError] = useState(null);
+  const [hasMappings, setHasMappings] = useState(true);
 
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, hasRole } = useAuth();
 
   // Fetch available nodes
   useEffect(() => {
@@ -672,6 +671,24 @@ const NodeDetail = () => {
     setError(null);
     
     try {
+      // First, check if metric mappings exist for this node/base station
+      const mappingsResponse = await axios.get(
+        `${API_BASE_URL}/api/telemetry-mappings/${selectedNode}/${selectedBaseStation}`
+      );
+      
+      console.log('Metric mappings response:', mappingsResponse.data);
+      setMetricMappings(mappingsResponse.data.mappings);
+      setHasMappings(mappingsResponse.data.hasMappings);
+      
+      // If no mappings, don't fetch telemetry data
+      if (!mappingsResponse.data.hasMappings || mappingsResponse.data.mappings.length === 0) {
+        console.log('No metric mappings configured for this node/base station');
+        setTelemetryData([]);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Proceed with telemetry data fetch if mappings exist
       const startTime = Date.now();
       const response = await axios.get(`${API_BASE_URL}/api/telemetry/${selectedNode}/${selectedBaseStation}`, {
         params: { 
@@ -1035,23 +1052,87 @@ const NodeDetail = () => {
           )}
         </AnimatePresence>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-        >
-          <Box sx={{ 
-            display: 'grid', 
-            gridTemplateColumns: { 
-              xs: '1fr', 
-              sm: '1fr 1fr', 
-              md: '1.5fr 1fr 1fr',
-              lg: '2fr 1fr 1fr 1fr'
-            }, 
-            gap: { xs: 2, sm: 2.5 },
-            mb: 3 
-          }}>
-            {/* Kenya Map - Takes 1-2 columns depending on screen size */}
+        {/* Show message when node has no metric mappings */}
+        {!hasMappings && selectedNode && selectedBaseStation && !isLoading && (
+          <AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Alert 
+                severity={hasRole('admin') ? 'warning' : 'info'}
+                icon={<Settings />}
+                sx={{ 
+                  mb: 4,
+                  borderRadius: 2,
+                  background: hasRole('admin') 
+                    ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))'
+                    : 'linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05))',
+                  backdropFilter: 'blur(20px)',
+                  border: hasRole('admin')
+                    ? '1px solid rgba(245, 158, 11, 0.2)'
+                    : '1px solid rgba(33, 150, 243, 0.2)',
+                  p: 3
+                }}
+              >
+                <Typography variant="h6" gutterBottom fontWeight="bold">
+                  {hasRole('admin') 
+                    ? '⚙️ Visualization Configuration Required' 
+                    : '🔧 Visualization Setup In Progress'}
+                </Typography>
+                <Typography variant="body1" paragraph>
+                  {hasRole('admin') 
+                    ? `The node "${selectedNode}" at base station "${selectedBaseStation}" does not have metric mappings configured yet.`
+                    : `The visualization for "${selectedNode}" at base station "${selectedBaseStation}" is currently being configured.`}
+                </Typography>
+                <Typography variant="body2">
+                  {hasRole('admin') 
+                    ? 'Please configure the metric mappings in Visualization Settings to enable telemetry data display for this node. You can map database columns (Analog, Digital, Output) to custom metric names with units and display order.'
+                    : 'The administrator is currently setting up the visualization metrics for this node. Please check back shortly. The node and base station selection will remain available.'}
+                </Typography>
+                {hasRole('admin') && (
+                  <Box sx={{ mt: 2 }}>
+                    <Button
+                      variant="contained"
+                      startIcon={<Settings />}
+                      onClick={() => window.location.href = '/visualization-settings'}
+                      sx={{
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%)',
+                        }
+                      }}
+                    >
+                      Configure Visualization Settings
+                    </Button>
+                  </Box>
+                )}
+              </Alert>
+            </motion.div>
+          </AnimatePresence>
+        )}
+
+        {/* Only show graphs if node has metric mappings */}
+        {hasMappings && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            <Box sx={{ 
+              display: 'grid', 
+              gridTemplateColumns: { 
+                xs: '1fr', 
+                sm: '1fr 1fr', 
+                md: '1.5fr 1fr 1fr',
+                lg: '2fr 1fr 1fr 1fr'
+              }, 
+              gap: { xs: 2, sm: 2.5 },
+              mb: 3 
+            }}>
+              {/* Kenya Map - Takes 1-2 columns depending on screen size */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1160,8 +1241,10 @@ const NodeDetail = () => {
               />
             </motion.div>
           </Box>
-        </motion.div>
+          </motion.div>
+        )}
 
+        {/* Reports section - always show */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

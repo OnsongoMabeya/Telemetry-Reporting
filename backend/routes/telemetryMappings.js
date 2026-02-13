@@ -29,17 +29,12 @@ router.get('/:nodeName/:baseStation', async (req, res) => {
       [nodeName, baseStation]
     );
 
-    // If no mappings found, return default mappings based on hardcoded columns
+    // If no mappings found, return empty to enforce manual configuration
     if (mappings.length === 0) {
       return res.json({
         hasMappings: false,
-        mappings: [
-          { metric_name: 'Forward Power', column_name: 'Analog1Value', unit: 'dBm', display_order: 1 },
-          { metric_name: 'Reflected Power', column_name: 'Analog2Value', unit: 'dBm', display_order: 2 },
-          { metric_name: 'VSWR', column_name: 'Analog3Value', unit: '', display_order: 3 },
-          { metric_name: 'Return Loss', column_name: 'Analog4Value', unit: 'dB', display_order: 4 }
-        ],
-        message: 'Using default mappings. Configure custom mappings in Visualization Settings.'
+        mappings: [],
+        message: 'No metric mappings configured for this node/base station. Please configure in Visualization Settings.'
       });
     }
 
