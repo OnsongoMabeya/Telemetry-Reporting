@@ -344,22 +344,40 @@ const Navbar = () => {
             </Typography>
           </Box>
           {(user?.role === 'admin' || user?.role === 'manager') && (
-            <MenuItem
-              component={Link}
-              to="/users"
-              onClick={handleUserMenuClose}
-              sx={{
-                color: 'rgba(255, 255, 255, 0.9)',
-                '&:hover': {
-                  background: 'rgba(255, 255, 255, 0.1)'
-                }
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <ManageAccounts />
-                <Typography>User Management</Typography>
-              </Box>
-            </MenuItem>
+            <>
+              <MenuItem
+                component={Link}
+                to="/users"
+                onClick={handleUserMenuClose}
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  '&:hover': {
+                    background: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <ManageAccounts />
+                  <Typography>User Management</Typography>
+                </Box>
+              </MenuItem>
+              <MenuItem
+                component={Link}
+                to="/visualization-settings"
+                onClick={handleUserMenuClose}
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.9)',
+                  '&:hover': {
+                    background: 'rgba(255, 255, 255, 0.1)'
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Settings />
+                  <Typography>Visualization Settings</Typography>
+                </Box>
+              </MenuItem>
+            </>
           )}
           <MenuItem
             onClick={handleLogout}

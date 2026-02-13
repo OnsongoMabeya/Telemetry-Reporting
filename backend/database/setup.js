@@ -59,7 +59,9 @@ async function setupDatabase() {
       'users': '001_create_users_table.sql',
       'user_sessions': '001_create_users_table.sql',
       'user_activity_log': '001_create_users_table.sql',
-      'user_node_assignments': '002_create_user_node_assignments.sql'
+      'user_node_assignments': '002_create_user_node_assignments.sql',
+      'metric_mappings': '003_create_metric_mappings.sql',
+      'metric_mapping_audit': '003_create_metric_mappings.sql'
     };
     
     console.log('🔍 Checking database tables...\n');

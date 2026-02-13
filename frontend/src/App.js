@@ -6,6 +6,7 @@ import { Box, CircularProgress } from '@mui/material';
 import Navbar from './components/Navbar';
 import NodeDetail from './components/NodeDetail';
 import UserManagement from './components/UserManagement';
+import VisualizationSettings from './components/VisualizationSettings';
 import RootElement from './components/RootElement';
 import LoginModal from './components/LoginModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -351,6 +352,7 @@ const AppContent = () => {
               <Routes>
                 <Route path="/" element={<NodeDetail />} />
                 <Route path="/users" element={<UserManagement />} />
+                <Route path="/visualization-settings" element={<VisualizationSettings />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </div>
