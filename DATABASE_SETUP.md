@@ -46,6 +46,9 @@ mysql -u your_user -p your_database < database/migrations/001_create_users_table
 
 # Run node assignment migration
 mysql -u your_user -p your_database < database/migrations/002_create_user_node_assignments.sql
+
+# Run metric mappings migration
+mysql -u your_user -p your_database < database/migrations/003_create_metric_mappings.sql
 ```
 
 Replace `your_user` and `your_database` with your MySQL credentials.
@@ -108,10 +111,20 @@ The setup creates the following tables:
 ### Node Assignment Tables
 
 1. **`user_node_assignments`** - Node access control
-
    - Maps users to specific telemetry nodes
    - Tracks who assigned nodes and when
    - Includes notes for context
+
+### Metric Mapping Tables
+
+1. **`metric_mappings`** - Dynamic visualization configuration
+   - Maps database columns to custom metric names per node/base station
+   - Stores units and display order
+   - Supports 48 columns: Analog1-16, Digital1-16, Output1-16
+
+2. **`metric_mapping_audit`** - Complete audit trail
+   - Tracks all metric mapping changes (CREATE, UPDATE, DELETE)
+   - Stores old/new values, user, timestamp, IP address
 
 ### Additional Columns
 
