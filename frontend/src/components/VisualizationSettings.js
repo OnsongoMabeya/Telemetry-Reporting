@@ -26,7 +26,6 @@ import {
   InputLabel,
   Select,
   Tooltip,
-  Badge,
   Grid,
   Card,
   CardContent,
@@ -39,14 +38,13 @@ import {
   Warning as WarningIcon,
   Timeline as TimelineIcon,
   CheckCircle as CheckCircleIcon,
-  History as HistoryIcon,
   Settings as SettingsIcon
 } from '@mui/icons-material';
 import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
 
 const VisualizationSettings = () => {
-  const { user, hasRole } = useAuth();
+  const { hasRole } = useAuth();
   const [mappings, setMappings] = useState([]);
   const [nodes, setNodes] = useState([]);
   const [unmappedNodes, setUnmappedNodes] = useState([]);
@@ -65,10 +63,10 @@ const VisualizationSettings = () => {
   });
 
   const isAdmin = hasRole('admin');
-  const isManager = hasRole('manager');
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchData = async () => {

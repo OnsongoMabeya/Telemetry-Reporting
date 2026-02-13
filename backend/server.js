@@ -11,6 +11,7 @@ const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
 const nodeAssignmentsRoutes = require('./routes/nodeAssignments');
 const metricMappingsRoutes = require('./routes/metricMappings');
+const telemetryMappingsRoutes = require('./routes/telemetryMappings');
 const { authenticateToken } = require('./middleware/auth');
 
 // Helper function to get cache TTL based on time filter
@@ -133,6 +134,9 @@ app.use('/api/node-assignments', authenticateToken, nodeAssignmentsRoutes);
 
 // Metric mappings routes (protected)
 app.use('/api/metric-mappings', authenticateToken, metricMappingsRoutes);
+
+// Telemetry mappings routes (protected)
+app.use('/api/telemetry-mappings', authenticateToken, telemetryMappingsRoutes);
 
 // Routes
 app.get('/api/nodes', authenticateToken, async (req, res) => {

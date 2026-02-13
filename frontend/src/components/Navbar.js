@@ -12,14 +12,11 @@ import {
   useTheme,
   useMediaQuery,
   Fade,
-  Avatar,
   Tooltip
 } from '@mui/material';
 import { 
   Menu as MenuIcon, 
   Home, 
-  Assessment, 
-  Map, 
   Settings,
   Brightness4,
   Brightness7,
