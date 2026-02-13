@@ -677,7 +677,6 @@ const NodeDetail = () => {
       );
       
       console.log('Metric mappings response:', mappingsResponse.data);
-      setMetricMappings(mappingsResponse.data.mappings);
       setHasMappings(mappingsResponse.data.hasMappings);
       
       // If no mappings, don't fetch telemetry data
@@ -1114,56 +1113,52 @@ const NodeDetail = () => {
           </AnimatePresence>
         )}
 
+        {/* Kenya Map - Always visible */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+        >
+          <Paper
+            elevation={8}
+            sx={{
+              height: { xs: '300px', sm: '350px', md: '450px', lg: '500px' },
+              borderRadius: 3,
+              overflow: 'hidden',
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+              transition: 'all 0.3s ease',
+              mb: 3,
+              '&:hover': {
+                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
+                transform: 'translateY(-2px)'
+              }
+            }}
+          >
+            <KenyaMap selectedNode={selectedNode} />
+          </Paper>
+        </motion.div>
+
         {/* Only show graphs if node has metric mappings */}
         {hasMappings && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
           >
             <Box sx={{ 
               display: 'grid', 
               gridTemplateColumns: { 
                 xs: '1fr', 
                 sm: '1fr 1fr', 
-                md: '1.5fr 1fr 1fr',
-                lg: '2fr 1fr 1fr 1fr'
+                md: '1fr 1fr',
+                lg: '1fr 1fr 1fr'
               }, 
               gap: { xs: 2, sm: 2.5 },
               mb: 3 
             }}>
-              {/* Kenya Map - Takes 1-2 columns depending on screen size */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              whileHover={{ scale: 1.02 }}
-              sx={{
-                gridColumn: { xs: '1', sm: '1 / 3', md: '1 / 2', lg: '1 / 2' },
-                minHeight: { xs: '300px', sm: '350px', md: '450px', lg: '500px' }
-              }}
-            >
-              <Paper
-                elevation={8}
-                sx={{
-                  height: '100%',
-                  minHeight: { xs: '300px', sm: '350px', md: '450px', lg: '500px' },
-                  borderRadius: 3,
-                  overflow: 'hidden',
-                  background: 'rgba(255, 255, 255, 0.95)',
-                  backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-                  transition: 'all 0.3s ease',
-                  '&:hover': {
-                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-                    transform: 'translateY(-2px)'
-                  }
-                }}
-              >
-                <KenyaMap selectedNode={selectedNode} />
-              </Paper>
-            </motion.div>
             
             {/* Forward Power Graph */}
             <motion.div
