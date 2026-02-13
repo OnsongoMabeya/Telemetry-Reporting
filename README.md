@@ -11,6 +11,19 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 ## 🚀 Key Features
 
+### 📊 Dynamic Metric Mapping System (NEW)
+
+- **Grafana-Style Visualization Configuration**: Admins can dynamically map database columns to custom metric names per node/base station
+- **48 Available Columns**: Map Analog1-16, Digital1-16, and Output1-16 values to meaningful metric names
+- **Custom Units & Display Order**: Configure units (dBm, W, dB, etc.) and control graph display order
+- **Enforcement Mode**: Only nodes with configured metric mappings display telemetry data
+- **Role-Based Messaging**: 
+  - Admins see configuration prompts with direct links to settings
+  - Managers/Viewers see informative messages about setup progress
+- **Complete Audit Trail**: Track all metric mapping changes with user, timestamp, and IP logging
+- **Verification Tools**: Built-in scripts to check mapping coverage across all nodes
+- **Per-Node Configuration**: Each node/base station combination has independent metric mappings
+
 ### 🌐 Network Access
 
 - **Flexible Deployment**: Access from multiple interfaces
@@ -280,6 +293,9 @@ The map includes coordinates for major Kenya locations:
    
    # Run node assignment migration
    mysql -u root -p horiserverlive < backend/database/migrations/002_create_user_node_assignments.sql
+   
+   # Run metric mappings migration
+   mysql -u root -p horiserverlive < backend/database/migrations/003_create_metric_mappings.sql
    ```
 
    This creates:
@@ -287,6 +303,8 @@ The map includes coordinates for major Kenya locations:
    - `user_sessions` table for session tracking
    - `user_activity_log` table for audit trail
    - `user_node_assignments` table for node access control
+   - `metric_mappings` table for dynamic visualization configuration
+   - `metric_mapping_audit` table for complete audit trail
    - Default admin user (BSI/Reporting2026)
 
    📖 **For detailed setup instructions, see [DATABASE_SETUP.md](DATABASE_SETUP.md)**
@@ -614,6 +632,18 @@ The system supports multiple users with role-based access control (RBAC).
 - `DELETE /api/node-assignments/:id` - Remove node assignment (admin)
 - `PUT /api/node-assignments/user/:userId/access-all` - Toggle access to all nodes (admin)
 
+**Metric Mappings (NEW):**
+
+- `GET /api/metric-mappings/columns` - Get all 48 available database columns
+- `GET /api/metric-mappings` - List all metric mappings with filters
+- `GET /api/metric-mappings/nodes` - Get nodes with mapping status
+- `GET /api/metric-mappings/unmapped` - Get unmapped nodes requiring configuration
+- `POST /api/metric-mappings` - Create new metric mapping (admin only)
+- `PUT /api/metric-mappings/:id` - Update metric mapping (admin only)
+- `DELETE /api/metric-mappings/:id` - Soft delete metric mapping (admin only)
+- `GET /api/metric-mappings/audit/:id` - Get audit trail for mapping
+- `GET /api/telemetry-mappings/:nodeName/:baseStation` - Get mappings for telemetry display
+
 ### Security
 
 - Passwords are hashed using bcrypt (10 salt rounds)
@@ -697,7 +727,73 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - `npm test`: Run backend tests
 - `npm run migrate`: Run database migrations
 
-## Repository Structuree
+## 🎯 Metric Mapping System
+
+### Overview
+
+The Dynamic Metric Mapping System allows administrators to configure custom visualization metrics for each node/base station combination without code changes.
+
+### Features
+
+- **48 Available Columns**: Analog1-16, Digital1-16, Output1-16 values from `node_status_table`
+- **Custom Metric Names**: Map columns to meaningful names (e.g., "Forward Power", "VSWR")
+- **Units Configuration**: Set appropriate units (dBm, W, dB, V, A, °C, etc.)
+- **Display Order Control**: Define the order graphs appear on dashboard
+- **Per-Node Configuration**: Each node/base station has independent mappings
+- **Enforcement**: Telemetry graphs only display when mappings are configured
+- **Audit Trail**: Complete history of all mapping changes
+
+### Admin Workflow
+
+1. **Login as Admin** (BSI/Reporting2026)
+2. **Navigate to Visualization Settings** (User menu → Visualization Settings)
+3. **View Statistics Dashboard**:
+   - Total metric mappings configured
+   - Configured vs unmapped nodes
+   - Alert list of nodes needing configuration
+4. **Configure Metrics per Node**:
+   - Select node and base station
+   - Click "Add Metric Mapping"
+   - Choose database column (Analog1-16, Digital1-16, Output1-16)
+   - Enter custom metric name
+   - Set unit (optional)
+   - Set display order
+5. **Save and Verify**: Return to dashboard to see configured graphs
+
+### Verification
+
+Run the verification script to check mapping coverage:
+
+```bash
+cd backend
+node verify-nodes.js
+```
+
+Output shows:
+- Total unique node/base station combinations
+- Mapping status for each node
+- Coverage percentage
+- List of unmapped nodes requiring configuration
+
+### Database Schema
+
+**metric_mappings table:**
+- `id`: Primary key
+- `node_name`: Node identifier
+- `base_station_name`: Base station identifier
+- `metric_name`: Custom display name
+- `column_name`: Database column (Analog1Value, etc.)
+- `unit`: Measurement unit (optional)
+- `display_order`: Graph ordering
+- `is_active`: Soft delete flag
+- `created_by`: User who created mapping
+- `created_at`: Creation timestamp
+- `updated_at`: Last update timestamp
+
+**metric_mapping_audit table:**
+- Complete audit trail with action type, old/new values, user, IP, timestamp
+
+## Repository Structure
 
 ```text
 BSI-telemetry-reporting/
@@ -707,6 +803,8 @@ BSI-telemetry-reporting/
 │   │   ├── assets/        # Images and other static assets
 │   │   ├── components/    # React components
 │   │   │   ├── reports/   # Report generation components
+│   │   │   ├── VisualizationSettings.js  # Metric mapping UI
+│   │   │   ├── NodeDetail.js             # Dashboard with conditional rendering
 │   │   │   └── ...       # Other components
 │   │   ├── config/        # Configuration files
 │   │   ├── App.js         # Main application component
@@ -716,8 +814,19 @@ BSI-telemetry-reporting/
 │   └── README.md         # Frontend documentation
 │
 ├── backend/              # Node.js/Express backend server
+│   ├── database/         # Database files
+│   │   ├── migrations/   # SQL migration files
+│   │   │   ├── 001_create_users_table.sql
+│   │   │   ├── 002_create_user_node_assignments.sql
+│   │   │   └── 003_create_metric_mappings.sql
+│   │   └── setup.js      # Database setup script
+│   ├── routes/           # API routes
+│   │   ├── metricMappings.js      # Metric mapping CRUD API
+│   │   ├── telemetryMappings.js   # Telemetry display API
+│   │   └── ...           # Other routes
 │   ├── middleware/       # Express middleware
 │   │   └── auth.js       # Authentication middleware
+│   ├── verify-nodes.js   # Mapping verification script
 │   ├── .env.example     # Example environment variables
 │   ├── server.js        # Main server file
 │   ├── package.json     # Backend dependencies
