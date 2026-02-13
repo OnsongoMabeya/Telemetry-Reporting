@@ -548,6 +548,7 @@ const NodeDetail = () => {
   const [selectedBaseStation, setSelectedBaseStation] = useState(null);
   const [error, setError] = useState(null);
   const [hasMappings, setHasMappings] = useState(true);
+  const [metricMappings, setMetricMappings] = useState([]);
 
   const { isAuthenticated, hasRole } = useAuth();
 
@@ -678,11 +679,13 @@ const NodeDetail = () => {
       
       console.log('Metric mappings response:', mappingsResponse.data);
       setHasMappings(mappingsResponse.data.hasMappings);
+      setMetricMappings(mappingsResponse.data.mappings || []);
       
       // If no mappings, don't fetch telemetry data
       if (!mappingsResponse.data.hasMappings || mappingsResponse.data.mappings.length === 0) {
         console.log('No metric mappings configured for this node/base station');
         setTelemetryData([]);
+        setMetricMappings([]);
         setIsLoading(false);
         return;
       }
@@ -1113,131 +1116,90 @@ const NodeDetail = () => {
           </AnimatePresence>
         )}
 
-        {/* Kenya Map - Always visible */}
+        {/* Unified Grid Layout - Map and Graphs together */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          <Paper
-            elevation={8}
-            sx={{
-              height: { xs: '300px', sm: '350px', md: '450px', lg: '500px' },
-              borderRadius: 3,
-              overflow: 'hidden',
-              background: 'rgba(255, 255, 255, 0.95)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
-              transition: 'all 0.3s ease',
-              mb: 3,
-              '&:hover': {
-                boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-                transform: 'translateY(-2px)'
-              }
-            }}
-          >
-            <KenyaMap selectedNode={selectedNode} />
-          </Paper>
-        </motion.div>
-
-        {/* Only show graphs if node has metric mappings */}
-        {hasMappings && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
-          >
-            <Box sx={{ 
-              display: 'grid', 
-              gridTemplateColumns: { 
-                xs: '1fr', 
-                sm: '1fr 1fr', 
-                md: '1fr 1fr',
-                lg: '1fr 1fr 1fr'
-              }, 
-              gap: { xs: 2, sm: 2.5 },
-              mb: 3 
-            }}>
+          <Box sx={{ 
+            display: 'grid', 
+            gridTemplateColumns: { 
+              xs: '1fr', 
+              sm: '1fr 1fr', 
+              md: '1fr 1fr',
+              lg: '1fr 1fr 1fr'
+            }, 
+            gap: { xs: 2, sm: 2.5 },
+            mb: 3 
+          }}>
             
-            {/* Forward Power Graph */}
+            {/* Kenya Map - Compact size in grid */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              sx={{
-                minHeight: { xs: '250px', sm: '300px', md: '350px' }
-              }}
+              transition={{ duration: 0.6, delay: 0.5 }}
             >
-              <TelemetryGraph
-                data={telemetryData}
-                title="Forward Power"
-                dataKey="forwardPower"
-                unit="W"
-                isLoading={isLoading}
-                timeFilter={timeFilter}
-              />
+              <Paper
+                elevation={8}
+                sx={{
+                  height: { xs: '300px', sm: '350px' },
+                  borderRadius: 3,
+                  overflow: 'hidden',
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  backdropFilter: 'blur(20px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
+                    transform: 'translateY(-2px)'
+                  }
+                }}
+              >
+                <KenyaMap selectedNode={selectedNode} />
+              </Paper>
             </motion.div>
 
-            {/* Reflected Power Graph */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.7 }}
-              sx={{
-                minHeight: { xs: '250px', sm: '300px', md: '350px' }
-              }}
-            >
-              <TelemetryGraph
-                data={telemetryData}
-                title="Reflected Power"
-                dataKey="reflectedPower"
-                unit="W"
-                isLoading={isLoading}
-                timeFilter={timeFilter}
-              />
-            </motion.div>
-
-            {/* VSWR Graph */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.8 }}
-              sx={{
-                minHeight: { xs: '250px', sm: '300px', md: '350px' }
-              }}
-            >
-              <TelemetryGraph
-                data={telemetryData}
-                title="VSWR"
-                dataKey="vswr"
-                unit=""
-                isLoading={isLoading}
-                timeFilter={timeFilter}
-              />
-            </motion.div>
-
-            {/* Return Loss Graph */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.9 }}
-              sx={{
-                minHeight: { xs: '250px', sm: '300px', md: '350px' }
-              }}
-            >
-              <TelemetryGraph
-                data={telemetryData}
-                title="Return Loss"
-                dataKey="returnLoss"
-                unit="dB"
-                isLoading={isLoading}
-                timeFilter={timeFilter}
-              />
-            </motion.div>
+            {/* Dynamically render graphs based on metric mappings */}
+            {hasMappings && metricMappings.length > 0 && metricMappings
+              .sort((a, b) => a.display_order - b.display_order)
+              .map((mapping, index) => {
+                // Map column names to data keys in telemetry data
+                const columnToDataKey = {
+                  'Analog1Value': 'forwardPower',
+                  'Analog2Value': 'reflectedPower',
+                  'Analog3Value': 'vswr',
+                  'Analog4Value': 'returnLoss',
+                  'Analog5Value': 'temperature',
+                  'Analog6Value': 'voltage',
+                  'Analog7Value': 'current',
+                  'Analog8Value': 'power',
+                  // Add more mappings as needed for Analog9-16, Digital1-16, Output1-16
+                };
+                
+                const dataKey = columnToDataKey[mapping.column_name] || mapping.column_name.toLowerCase();
+                
+                return (
+                  <motion.div
+                    key={`${mapping.column_name}-${index}`}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, delay: 0.6 + (index * 0.1) }}
+                  >
+                    <TelemetryGraph
+                      data={telemetryData}
+                      title={mapping.metric_name}
+                      dataKey={dataKey}
+                      unit={mapping.unit || ''}
+                      isLoading={isLoading}
+                      timeFilter={timeFilter}
+                    />
+                  </motion.div>
+                );
+              })}
           </Box>
-          </motion.div>
-        )}
+        </motion.div>
 
         {/* Reports section - always show */}
         <motion.div
