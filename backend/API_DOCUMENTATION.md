@@ -2,7 +2,7 @@
 
 ## Base URL
 
-```
+```text
 http://localhost:5000/api
 ```
 
@@ -10,7 +10,7 @@ http://localhost:5000/api
 
 All endpoints require JWT authentication via Bearer token in the Authorization header:
 
-```
+```http
 Authorization: Bearer <your_jwt_token>
 ```
 
@@ -50,6 +50,7 @@ Get all metric mappings with optional filtering.
 **Access:** Admin, Manager
 
 **Query Parameters:**
+
 - `nodeName` (optional): Filter by node name
 - `baseStation` (optional): Filter by base station name
 - `isActive` (optional): Filter by active status (true/false)
@@ -168,6 +169,7 @@ Create a new metric mapping for a node/base station.
 ```
 
 **Error Responses:**
+
 - `400`: Invalid input or duplicate mapping
 - `403`: Insufficient permissions
 - `500`: Server error
@@ -388,16 +390,16 @@ Retrieve metric mappings for a specific node/base station combination. Used by t
 
 ## Error Codes
 
-| Code | Description |
-|------|-------------|
-| 200 | Success |
-| 201 | Created |
-| 400 | Bad Request - Invalid input |
-| 401 | Unauthorized - Missing or invalid token |
-| 403 | Forbidden - Insufficient permissions |
-| 404 | Not Found - Resource doesn't exist |
-| 409 | Conflict - Duplicate resource |
-| 500 | Internal Server Error |
+| Code | Description                              |
+|------|------------------------------------------|
+| 200  | Success                                  |
+| 201  | Created                                  |
+| 400  | Bad Request - Invalid input              |
+| 401  | Unauthorized - Missing or invalid token  |
+| 403  | Forbidden - Insufficient permissions     |
+| 404  | Not Found - Resource doesn't exist       |
+| 409  | Conflict - Duplicate resource            |
+| 500  | Internal Server Error                    |
 
 ---
 
@@ -416,7 +418,8 @@ List endpoints support pagination via query parameters:
 - `limit`: Items per page (default: 50, max: 100)
 
 Example:
-```
+
+```http
 GET /api/metric-mappings?page=2&limit=25
 ```
 
@@ -431,7 +434,8 @@ Most list endpoints support:
 - Field-specific filters (see individual endpoint docs)
 
 Example:
-```
+
+```http
 GET /api/metric-mappings?nodeName=MediaMax1&sortBy=display_order&sortOrder=asc
 ```
 
@@ -447,4 +451,4 @@ Version is included in the base URL for future compatibility.
 
 ## Support
 
-For API support, contact: support@bsi.com
+For API support, contact: <support@bsi.com>

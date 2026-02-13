@@ -17,7 +17,7 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 - **48 Available Columns**: Map Analog1-16, Digital1-16, and Output1-16 values to meaningful metric names
 - **Custom Units & Display Order**: Configure units (dBm, W, dB, etc.) and control graph display order
 - **Enforcement Mode**: Only nodes with configured metric mappings display telemetry data
-- **Role-Based Messaging**: 
+- **Role-Based Messaging**:
   - Admins see configuration prompts with direct links to settings
   - Managers/Viewers see informative messages about setup progress
 - **Complete Audit Trail**: Track all metric mapping changes with user, timestamp, and IP logging
@@ -733,7 +733,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 The Dynamic Metric Mapping System allows administrators to configure custom visualization metrics for each node/base station combination without code changes.
 
-### Features
+### Metric Mapping Features
 
 - **48 Available Columns**: Analog1-16, Digital1-16, Output1-16 values from `node_status_table`
 - **Custom Metric Names**: Map columns to meaningful names (e.g., "Forward Power", "VSWR")
@@ -770,6 +770,7 @@ node verify-nodes.js
 ```
 
 Output shows:
+
 - Total unique node/base station combinations
 - Mapping status for each node
 - Coverage percentage
@@ -778,6 +779,7 @@ Output shows:
 ### Database Schema
 
 **metric_mappings table:**
+
 - `id`: Primary key
 - `node_name`: Node identifier
 - `base_station_name`: Base station identifier
@@ -791,9 +793,10 @@ Output shows:
 - `updated_at`: Last update timestamp
 
 **metric_mapping_audit table:**
+
 - Complete audit trail with action type, old/new values, user, IP, timestamp
 
-## Repository Structure
+## Project Directory Structure
 
 ```text
 BSI-telemetry-reporting/
