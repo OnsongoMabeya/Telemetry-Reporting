@@ -713,6 +713,7 @@ const NodeDetail = () => {
       }
 
       // Process and sort the data by timestamp
+      // Now data comes with custom metric names from mappings
       const formattedData = response.data.data
         .filter(item => item && item.sample_time) // Filter out invalid items
         .map(item => {
@@ -721,17 +722,16 @@ const NodeDetail = () => {
             console.warn('Invalid timestamp:', item.sample_time, 'in item:', item);
             return null;
           }
-          return {
-            timestamp,
-            temperature: parseFloat(item.temperature) || 0,
-            voltage: parseFloat(item.voltage) || 0,
-            current: parseFloat(item.current) || 0,
-            power: parseFloat(item.power) || 0,
-            forwardPower: parseFloat(item.forwardPower) || 0,
-            reflectedPower: parseFloat(item.reflectedPower) || 0,
-            vswr: parseFloat(item.vswr) || 0,
-            returnLoss: parseFloat(item.returnLoss) || 0
-          };
+          
+          // Build data object dynamically from all properties except sample_time
+          const dataPoint = { timestamp };
+          Object.keys(item).forEach(key => {
+            if (key !== 'sample_time') {
+              dataPoint[key] = parseFloat(item[key]) || 0;
+            }
+          });
+          
+          return dataPoint;
         })
         .filter(Boolean) // Remove any null entries from invalid timestamps
         .sort((a, b) => a.timestamp - b.timestamp);
@@ -1165,20 +1165,8 @@ const NodeDetail = () => {
             {hasMappings && metricMappings.length > 0 && metricMappings
               .sort((a, b) => a.display_order - b.display_order)
               .map((mapping, index) => {
-                // Map column names to data keys in telemetry data
-                const columnToDataKey = {
-                  'Analog1Value': 'forwardPower',
-                  'Analog2Value': 'reflectedPower',
-                  'Analog3Value': 'vswr',
-                  'Analog4Value': 'returnLoss',
-                  'Analog5Value': 'temperature',
-                  'Analog6Value': 'voltage',
-                  'Analog7Value': 'current',
-                  'Analog8Value': 'power',
-                  // Add more mappings as needed for Analog9-16, Digital1-16, Output1-16
-                };
-                
-                const dataKey = columnToDataKey[mapping.column_name] || mapping.column_name.toLowerCase();
+                // Use the metric_name directly as the dataKey since backend now returns data with metric names
+                const dataKey = mapping.metric_name;
                 
                 return (
                   <motion.div

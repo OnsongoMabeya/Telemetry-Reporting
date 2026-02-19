@@ -221,6 +221,29 @@ const calculateDataPoints = (minutes) => {
 
 // Helper function to get telemetry data with pagination
 const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 1, pageSize = 500) => {
+  // First, fetch the metric mappings for this node/base station
+  const [mappings] = await pool.promise().query(
+    `SELECT metric_name, column_name, unit, display_order 
+     FROM metric_mappings 
+     WHERE node_name = ? AND base_station_name = ? AND is_active = 1
+     ORDER BY display_order`,
+    [nodeName, baseStation]
+  );
+
+  // If no mappings exist, return empty data
+  if (!mappings || mappings.length === 0) {
+    console.log('No metric mappings found for', nodeName, baseStation);
+    return {
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize,
+      totalPages: 0
+    };
+  }
+
+  console.log('Found metric mappings:', mappings);
+
   // Set time range based on filter
   let timeRangeMinutes;
   let samplingInterval;
@@ -335,6 +358,13 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
     estimatedPoints: Math.ceil(timeRangeMinutes / timeStep)
   });
 
+  // Build dynamic column selections based on metric mappings
+  const columnSelections = mappings.map(m => 
+    `ROUND(AVG(${m.column_name}), 2) as \`${m.metric_name}\``
+  ).join(',\n        ');
+
+  const columnNames = mappings.map(m => `\`${m.metric_name}\``).join(',\n      ');
+
   const query = `
     WITH time_buckets AS (
       SELECT 
@@ -349,14 +379,7 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
           ),
           '%Y-%m-%d %H:%i:00'
         ) as bucket_start,
-        ROUND(AVG(Analog1Value), 2) as forwardPower,
-        ROUND(AVG(Analog2Value), 2) as reflectedPower,
-        ROUND(AVG(Analog3Value), 2) as vswr,
-        ROUND(AVG(Analog4Value), 2) as returnLoss,
-        ROUND(AVG(Analog5Value), 2) as temperature,
-        ROUND(AVG(Analog6Value), 2) as voltage,
-        ROUND(AVG(Analog7Value), 2) as current,
-        ROUND(AVG(Analog8Value), 2) as power,
+        ${columnSelections},
         COUNT(*) as sample_count
       FROM node_status_table
       WHERE NodeName = ?
@@ -369,14 +392,7 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
     )
     SELECT 
       bucket_start as sample_time,
-      forwardPower,
-      reflectedPower,
-      vswr,
-      returnLoss,
-      temperature,
-      voltage,
-      current,
-      power
+      ${columnNames}
     FROM time_buckets
     ORDER BY sample_time ASC  -- Return in chronological order for the chart
   `;
