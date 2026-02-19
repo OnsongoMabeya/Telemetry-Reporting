@@ -5,6 +5,42 @@ All notable changes to the BSI Telemetry Reporting System will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-02-19
+
+### Added - Intelligent Column Data Analysis
+
+#### Backend API V 2.1.0
+
+- Node-specific column data analysis in `/api/metric-mappings/columns`
+- Query parameters: `nodeName` and `baseStation` for filtered analysis
+- Statistical analysis: `hasData`, `recordCount`, `percentage`, `minValue`, `maxValue`, `avgValue`
+- Automatic detection of columns with non-null/non-zero values
+- Dynamic SQL query building based on user-configured metric mappings
+- Telemetry API now returns data with custom metric names as keys
+
+#### Frontend V 2.1.0
+
+- Real-time column data indicators in metric mapping dialog
+- "Has Data" badges showing percentage and record count
+- "No Data" badges with disabled state for empty columns
+- Loading indicators during column analysis
+- Dynamic data parsing to handle custom metric names
+- Removed hardcoded metric name mappings
+
+### Fixed V 2.1.0
+
+- MySQL AVG() string-to-number conversion bug causing "No Data" display
+- Hardcoded metric mappings preventing custom metric names from displaying
+- Dashboard now shows only user-configured metrics instead of generic defaults
+- Column analysis now properly converts aggregate values before calling toFixed()
+
+### Changed V 2.1.0
+
+- Dashboard graphs now use custom metric names directly (e.g., "MILELE FM Forward Power")
+- Backend dynamically builds SQL queries based on active metric_mappings
+- Frontend parses telemetry data dynamically instead of using fixed schema
+- Empty mappings return empty telemetry data instead of hardcoded defaults
+
 ## [2.0.0] - 2026-02-13
 
 ### Added - Dynamic Metric Mapping System
@@ -59,7 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated `DATABASE_SETUP.md` with migration 003 instructions
 - Updated `backend/API_DOCUMENTATION.md` with new endpoints
 
-### Changed
+### Changed V 2.0.0
 
 #### UI/UX Improvements V 2.0.0
 
@@ -75,14 +111,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - No default mappings provided - explicit configuration required
 - Frontend components must use metric mappings API
 
-### Fixed
+### Fixed V 2.0.0
 
 - Compilation errors in NodeDetail.js (unused imports, JSX structure)
 - Runtime errors with Leaflet map when conditionally rendered
 - ESLint warnings for unused variables and functions
 - Markdown linting issues in documentation files
 
-### Security
+### Security V 2.0.0
 
 - Audit trail for all metric mapping changes
 - IP address logging for compliance

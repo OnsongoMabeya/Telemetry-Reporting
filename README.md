@@ -3,7 +3,7 @@
 A comprehensive telemetry monitoring solution for tracking and analyzing node performance across multiple base stations. The system provides real-time data visualization, historical analysis, and automated reporting capabilities.
 
 ![BSI Telemetry Dashboard](https://img.shields.io/badge/Status-Active-success)
-![Version](https://img.shields.io/badge/Version-2.0.0-blue)
+![Version](https://img.shields.io/badge/Version-2.1.0-blue)
 ![Node.js](https://img.shields.io/badge/Node.js-22.x-339933?logo=node.js)
 ![React](https://img.shields.io/badge/React-19.1.0-61DAFB?logo=react)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql)
@@ -11,10 +11,17 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 ## 🚀 Key Features
 
-### 📊 Dynamic Metric Mapping System (NEW)
+### 📊 Dynamic Metric Mapping System (v2.1.0)
 
 - **Grafana-Style Visualization Configuration**: Admins can dynamically map database columns to custom metric names per node/base station
+- **Intelligent Column Analysis**: Real-time detection of which columns contain data for each node
+  - Automatic analysis shows percentage of records with data
+  - Statistical summaries (min, max, avg values)
+  - "Has Data" / "No Data" badges in column selector
+  - Disabled state for empty columns
 - **48 Available Columns**: Map Analog1-16, Digital1-16, and Output1-16 values to meaningful metric names
+- **Custom Metric Names**: Dashboard displays your exact metric names (e.g., "MILELE FM Forward Power")
+- **Dynamic SQL Queries**: Backend automatically builds queries based on your configured mappings
 - **Custom Units & Display Order**: Configure units (dBm, W, dB, etc.) and control graph display order
 - **Enforcement Mode**: Only nodes with configured metric mappings display telemetry data
 - **Role-Based Messaging**:

@@ -26,12 +26,17 @@ The main dashboard shows:
 1. Click **"Add Metric Mapping"** button
 2. Fill in the configuration form:
    - **Node Name**: Select from dropdown (e.g., MediaMax1)
-   - **Base Station**: Select from dropdown (e.g., NYERI)
-   - **Database Column**: Choose from 48 available columns
-   - **Metric Name**: Enter custom display name (e.g., "Forward Power")
+   - **Base Station**: Select from dropdown (e.g., MERU)
+   - **Database Column**: Choose from 48 available columns with data indicators
+     - Columns with data show: **"Has Data"** badge with percentage and record count
+     - Columns without data show: **"No Data"** badge and are disabled
+     - The system automatically analyzes which columns have non-null/non-zero values
+   - **Metric Name**: Enter custom display name (e.g., "MILELE FM Forward Power")
    - **Unit**: Optional unit (e.g., dBm, W, dB, V, A, °C, %)
    - **Display Order**: Number to control graph ordering (1, 2, 3...)
 3. Click **"Save"**
+
+**Note**: The column dropdown automatically loads data indicators when you select a node/base station, showing you which columns actually contain data for that specific location.
 
 ### 4. Verify Configuration
 
@@ -177,11 +182,48 @@ curl -H "Authorization: Bearer YOUR_TOKEN" \
 ### Get All Available Columns
 
 ```http
-GET /api/metric-mappings/columns
+GET /api/metric-mappings/columns?nodeName=MediaMax1&baseStation=MERU
 Authorization: Bearer <token>
 ```
 
-Returns all 48 database columns with categories.
+Returns all 48 database columns with categories and data indicators.
+
+**Query Parameters:**
+
+- `nodeName` (optional): Filter analysis to specific node
+- `baseStation` (optional): Filter analysis to specific base station
+
+**Response includes:**
+
+- Column name and category (analog/digital/output)
+- `hasData`: Boolean indicating if column has non-null/non-zero values
+- `recordCount`: Number of records with data
+- `percentage`: Percentage of total records with data
+- `minValue`, `maxValue`, `avgValue`: Statistical summary of values
+
+**Example Response:**
+
+```json
+{
+  "analog": [
+    {
+      "name": "Analog1Value",
+      "hasData": true,
+      "recordCount": 31323,
+      "percentage": 100.0,
+      "minValue": 161,
+      "maxValue": 1119,
+      "avgValue": 875.90
+    }
+  ],
+  "totalRows": 31323,
+  "summary": {
+    "analogWithData": 5,
+    "digitalWithData": 0,
+    "outputWithData": 0
+  }
+}
+```
 
 ### List All Metric Mappings
 
@@ -359,14 +401,27 @@ CREATE TABLE metric_mapping_audit (
 **Symptoms:**
 
 - Seeing graphs you didn't configure
-- Old hardcoded graphs still appearing
+- Generic metric names (e.g., "forward power", "vswr") instead of your custom names
+- Dashboard shows metrics like "temperature", "return loss" that you didn't assign
+
+**Root Cause:**
+
+The system previously used hardcoded metric mappings. This has been replaced with a fully dynamic system that uses only your configured metric_mappings.
 
 **Solutions:**
 
-1. **Clear browser cache** completely
-2. **Check for multiple mappings** - May have duplicates
-3. **Verify column mapping** - Ensure correct column selected
-4. **Check display order** - Graphs may be out of expected order
+1. **Restart backend server** - Ensure latest code is running
+2. **Clear browser cache** and hard refresh (Ctrl+Shift+R / Cmd+Shift+R)
+3. **Verify your mappings** in Visualization Settings
+4. **Check backend logs** - Should see "Found metric mappings: [...]" when loading dashboard
+5. **Verify telemetry API** returns your custom metric names:
+
+   ```bash
+   curl -H "Authorization: Bearer TOKEN" \
+     http://localhost:5000/api/telemetry/MediaMax1/MERU?timeFilter=1h
+   ```
+
+   Response should contain your metric names as keys (e.g., "MILELE FM Forward Power")
 
 ### Cannot Create Mapping
 

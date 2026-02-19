@@ -12,6 +12,11 @@ High-performance Node.js/Express backend for the BSI Telemetry Reports system. P
 ### Core Features
 
 - **RESTful API** with JWT authentication and role-based access control (RBAC)
+- **Dynamic Metric Mapping System (v2.1.0)** - Grafana-style configuration for custom visualizations
+  - Intelligent column data analysis with node-specific filtering
+  - Real-time detection of columns with data (percentage, count, statistics)
+  - Dynamic SQL query building based on user-configured mappings
+  - Custom metric names displayed on dashboard
 - **User Management System** with admin, manager, and viewer roles
 - **Node Assignment** for granular access control
 - **Comprehensive Error Handling** with custom middleware
@@ -236,8 +241,11 @@ All API routes require authentication:
 
 - `GET /api/nodes` - Get all nodes
 - `GET /api/basestations/:nodeName` - Get base stations for a node
-- `GET /api/telemetry/:nodeName/:baseStation` - Get telemetry data
+- `GET /api/telemetry/:nodeName/:baseStation` - Get telemetry data (dynamically filtered by metric mappings)
 - `GET /api/basestations-map` - Get base stations with coordinates
+- `GET /api/metric-mappings/columns` - Get available columns with data analysis
+- `GET /api/metric-mappings` - Get/Create/Update/Delete metric mappings (Admin only)
+- `GET /api/telemetry-mappings/:nodeName/:baseStation` - Get metric mappings for a node
 
 ### Authentication Middleware
 
