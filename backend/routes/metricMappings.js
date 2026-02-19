@@ -30,9 +30,11 @@ const requireAdminOrManager = (req, res, next) => {
   next();
 };
 
-// GET /api/metric-mappings/columns - Get available columns for mapping
+// GET /api/metric-mappings/columns - Get available columns for mapping with data usage stats
 router.get('/columns', requireAdminOrManager, async (req, res) => {
   try {
+    const { nodeName, baseStation } = req.query;
+
     // Get all columns from node_status_table
     const [columns] = await db.query(
       `SELECT COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION
@@ -42,6 +44,18 @@ router.get('/columns', requireAdminOrManager, async (req, res) => {
        ORDER BY ORDINAL_POSITION`,
       [process.env.DB_NAME || 'horiserverlive']
     );
+
+    // Get total row count for percentage calculation (node-specific if provided)
+    let totalQuery = 'SELECT COUNT(*) as total FROM node_status_table';
+    const totalParams = [];
+    
+    if (nodeName && baseStation) {
+      totalQuery += ' WHERE NodeName = ? AND NodeBaseStationName = ?';
+      totalParams.push(nodeName, baseStation);
+    }
+    
+    const [totalRows] = await db.query(totalQuery, totalParams);
+    const total = totalRows[0].total;
 
     // Categorize columns
     const analogColumns = columns.filter(c => 
@@ -56,12 +70,108 @@ router.get('/columns', requireAdminOrManager, async (req, res) => {
       c.COLUMN_NAME.match(/^Output\d+Value$/i)
     ).map(c => c.COLUMN_NAME);
 
-    res.json({
-      analog: analogColumns,
-      digital: digitalColumns,
-      output: outputColumns,
-      all: [...analogColumns, ...digitalColumns, ...outputColumns]
-    });
+    // Analyze data usage for each column type (node-specific if provided)
+    const analyzeColumns = async (columnList) => {
+      const results = [];
+      
+      for (const columnName of columnList) {
+        try {
+          let query = `SELECT 
+              COUNT(*) as count,
+              MIN(??) as min_value,
+              MAX(??) as max_value,
+              AVG(??) as avg_value
+             FROM node_status_table 
+             WHERE ?? IS NOT NULL AND ?? != 0`;
+          
+          const params = [columnName, columnName, columnName, columnName, columnName];
+          
+          // Add node-specific filter if provided
+          if (nodeName && baseStation) {
+            query += ' AND NodeName = ? AND NodeBaseStationName = ?';
+            params.push(nodeName, baseStation);
+          }
+          
+          const [stats] = await db.query(query, params);
+          
+          // Debug logging
+          if (nodeName === 'MediaMax1' && baseStation === 'MERU' && columnName === 'Analog1Value') {
+            console.log('Debug MediaMax1/MERU Analog1Value:');
+            console.log('Query:', query);
+            console.log('Params:', params);
+            console.log('Stats:', stats[0]);
+            console.log('Total rows for node:', total);
+            console.log('About to calculate hasData...');
+          }
+          
+          const hasData = stats[0].count > 0;
+          const percentage = total > 0 ? ((stats[0].count / total) * 100).toFixed(1) : 0;
+          
+          if (nodeName === 'MediaMax1' && baseStation === 'MERU' && columnName === 'Analog1Value') {
+            console.log('hasData calculated:', hasData);
+            console.log('percentage calculated:', percentage);
+          }
+          
+          const result = {
+            name: columnName,
+            hasData: hasData,
+            recordCount: stats[0].count,
+            percentage: parseFloat(percentage),
+            minValue: hasData ? parseFloat(parseFloat(stats[0].min_value).toFixed(2)) : null,
+            maxValue: hasData ? parseFloat(parseFloat(stats[0].max_value).toFixed(2)) : null,
+            avgValue: hasData ? parseFloat(parseFloat(stats[0].avg_value).toFixed(2)) : null
+          };
+          
+          // Debug logging
+          if (nodeName === 'MediaMax1' && baseStation === 'MERU' && columnName === 'Analog1Value') {
+            console.log('Result object being pushed:', result);
+          }
+          
+          results.push(result);
+        } catch (err) {
+          // Column might not exist, skip it
+          console.error(`Error analyzing column ${columnName}:`, err.message);
+          results.push({
+            name: columnName,
+            hasData: false,
+            recordCount: 0,
+            percentage: 0,
+            minValue: null,
+            maxValue: null,
+            avgValue: null
+          });
+        }
+      }
+      
+      return results;
+    };
+
+    // Analyze all column types
+    const [analogStats, digitalStats, outputStats] = await Promise.all([
+      analyzeColumns(analogColumns),
+      analyzeColumns(digitalColumns),
+      analyzeColumns(outputColumns)
+    ]);
+
+    const response = {
+      analog: analogStats,
+      digital: digitalStats,
+      output: outputStats,
+      totalRows: total,
+      summary: {
+        analogWithData: analogStats.filter(c => c.hasData).length,
+        digitalWithData: digitalStats.filter(c => c.hasData).length,
+        outputWithData: outputStats.filter(c => c.hasData).length
+      }
+    };
+    
+    // Debug logging
+    if (nodeName === 'MediaMax1' && baseStation === 'MERU') {
+      console.log('Final response analog[0]:', response.analog[0]);
+      console.log('Summary:', response.summary);
+    }
+    
+    res.json(response);
 
   } catch (error) {
     console.error('Error fetching columns:', error);

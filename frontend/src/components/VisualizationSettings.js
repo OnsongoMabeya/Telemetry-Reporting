@@ -50,6 +50,7 @@ const VisualizationSettings = () => {
   const [unmappedNodes, setUnmappedNodes] = useState([]);
   const [availableColumns, setAvailableColumns] = useState({ analog: [], digital: [], output: [] });
   const [loading, setLoading] = useState(true);
+  const [loadingColumns, setLoadingColumns] = useState(false);
   const [error, setError] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingMapping, setEditingMapping] = useState(null);
@@ -92,7 +93,7 @@ const VisualizationSettings = () => {
     }
   };
 
-  const handleOpenDialog = (mapping = null) => {
+  const handleOpenDialog = async (mapping = null) => {
     if (mapping) {
       setEditingMapping(mapping);
       setSelectedNode(mapping.node_name);
@@ -103,6 +104,8 @@ const VisualizationSettings = () => {
         unit: mapping.unit || '',
         display_order: mapping.display_order
       });
+      // Fetch node-specific columns
+      await fetchNodeSpecificColumns(mapping.node_name, mapping.base_station_name);
     } else {
       setEditingMapping(null);
       setSelectedNode('');
@@ -115,6 +118,33 @@ const VisualizationSettings = () => {
       });
     }
     setOpenDialog(true);
+  };
+
+  const fetchNodeSpecificColumns = async (nodeName, baseStation) => {
+    if (!nodeName || !baseStation) {
+      console.log('fetchNodeSpecificColumns: Missing nodeName or baseStation', { nodeName, baseStation });
+      return;
+    }
+    
+    console.log('Fetching columns for:', nodeName, '/', baseStation);
+    setLoadingColumns(true);
+    
+    try {
+      const url = `${API_BASE_URL}/api/metric-mappings/columns?nodeName=${encodeURIComponent(nodeName)}&baseStation=${encodeURIComponent(baseStation)}`;
+      console.log('API URL:', url);
+      
+      const columnsRes = await axios.get(url);
+      console.log('Columns received:', columnsRes.data);
+      console.log('Sample analog column:', columnsRes.data.analog[0]);
+      console.log('Sample analog column hasData:', columnsRes.data.analog[0]?.hasData);
+      setAvailableColumns(columnsRes.data);
+    } catch (err) {
+      console.error('Error fetching node-specific columns:', err);
+      setError('Failed to load column data for selected node');
+    } finally {
+      setLoadingColumns(false);
+      console.log('Loading complete');
+    }
   };
 
   const handleCloseDialog = () => {
@@ -425,7 +455,10 @@ const VisualizationSettings = () => {
                       <MenuItem
                         key={`${node.node_name}-${node.base_station_name}`}
                         value={node.node_name}
-                        onClick={() => setSelectedBaseStation(node.base_station_name)}
+                        onClick={() => {
+                          setSelectedBaseStation(node.base_station_name);
+                          fetchNodeSpecificColumns(node.node_name, node.base_station_name);
+                        }}
                       >
                         {node.node_name} / {node.base_station_name}
                       </MenuItem>
@@ -444,25 +477,146 @@ const VisualizationSettings = () => {
               helperText="Custom name to display in graphs"
             />
 
+            {loadingColumns && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={16} />
+                  <Typography variant="body2">
+                    Analyzing column data for {selectedNode} / {selectedBaseStation}...
+                  </Typography>
+                </Box>
+              </Alert>
+            )}
+
             <FormControl fullWidth>
               <InputLabel>Database Column</InputLabel>
               <Select
                 value={formData.column_name}
                 onChange={(e) => setFormData({ ...formData, column_name: e.target.value })}
                 label="Database Column"
+                disabled={loadingColumns || !selectedNode || !selectedBaseStation}
               >
-                <MenuItem disabled><em>Analog Columns</em></MenuItem>
-                {availableColumns.analog.map((col) => (
-                  <MenuItem key={col} value={col}>{col}</MenuItem>
-                ))}
-                <MenuItem disabled><em>Digital Columns</em></MenuItem>
-                {availableColumns.digital.map((col) => (
-                  <MenuItem key={col} value={col}>{col}</MenuItem>
-                ))}
-                <MenuItem disabled><em>Output Columns</em></MenuItem>
-                {availableColumns.output.map((col) => (
-                  <MenuItem key={col} value={col}>{col}</MenuItem>
-                ))}
+                {loadingColumns ? (
+                  <MenuItem disabled>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, py: 2 }}>
+                      <CircularProgress size={20} />
+                      <Typography>Loading column data...</Typography>
+                    </Box>
+                  </MenuItem>
+                ) : !selectedNode || !selectedBaseStation ? (
+                  <MenuItem disabled>
+                    <Typography color="text.secondary">Please select a node first</Typography>
+                  </MenuItem>
+                ) : [
+                    <MenuItem key="analog-header" disabled><em>Analog Columns</em></MenuItem>,
+                    ...availableColumns.analog.map((col) => (
+                  <MenuItem 
+                    key={col.name || col} 
+                    value={col.name || col}
+                    disabled={col.hasData === false}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{col.name || col}</span>
+                      {col.hasData !== undefined && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+                          {col.hasData ? (
+                            <>
+                              <Chip 
+                                label={`${col.percentage}%`} 
+                                size="small" 
+                                color="success" 
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                              />
+                              <Typography variant="caption" color="text.secondary">
+                                ({col.recordCount} records)
+                              </Typography>
+                            </>
+                          ) : (
+                            <Chip 
+                              label="No Data" 
+                              size="small" 
+                              color="default" 
+                              sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                  </MenuItem>
+                )),
+                    <MenuItem key="digital-header" disabled><em>Digital Columns</em></MenuItem>,
+                    ...availableColumns.digital.map((col) => (
+                  <MenuItem 
+                    key={col.name || col} 
+                    value={col.name || col}
+                    disabled={col.hasData === false}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{col.name || col}</span>
+                      {col.hasData !== undefined && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+                          {col.hasData ? (
+                            <>
+                              <Chip 
+                                label={`${col.percentage}%`} 
+                                size="small" 
+                                color="success" 
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                              />
+                              <Typography variant="caption" color="text.secondary">
+                                ({col.recordCount} records)
+                              </Typography>
+                            </>
+                          ) : (
+                            <Chip 
+                              label="No Data" 
+                              size="small" 
+                              color="default" 
+                              sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                  </MenuItem>
+                )),
+                    <MenuItem key="output-header" disabled><em>Output Columns</em></MenuItem>,
+                    ...availableColumns.output.map((col) => (
+                  <MenuItem 
+                    key={col.name || col} 
+                    value={col.name || col}
+                    disabled={col.hasData === false}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      <span>{col.name || col}</span>
+                      {col.hasData !== undefined && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, ml: 2 }}>
+                          {col.hasData ? (
+                            <>
+                              <Chip 
+                                label={`${col.percentage}%`} 
+                                size="small" 
+                                color="success" 
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                              />
+                              <Typography variant="caption" color="text.secondary">
+                                ({col.recordCount} records)
+                              </Typography>
+                            </>
+                          ) : (
+                            <Chip 
+                              label="No Data" 
+                              size="small" 
+                              color="default" 
+                              sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                          )}
+                        </Box>
+                      )}
+                    </Box>
+                  </MenuItem>
+                ))
+                  ]}
               </Select>
             </FormControl>
 
