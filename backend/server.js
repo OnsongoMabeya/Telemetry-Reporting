@@ -46,8 +46,10 @@ app.use((req, res, next) => {
     process.env.ALLOWED_ORIGINS.split(',') : [];
     
   const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
+  
+  // Allow requests from configured origins OR from nginx proxy (no origin header)
+  if (allowedOrigins.includes(origin) || !origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin || '*');
   }
   
   // Allow all methods
