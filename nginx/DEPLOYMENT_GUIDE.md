@@ -4,7 +4,7 @@ Complete step-by-step guide for deploying BSI Telemetry with nginx reverse proxy
 
 ## Architecture Overview
 
-```
+```bash
 External Users → http://197.156.145.121:80 (nginx)
                 ↓
                 HTTPS redirect to :443
@@ -15,6 +15,7 @@ External Users → http://197.156.145.121:80 (nginx)
 ```
 
 **Benefits:**
+
 - ✅ Only port 80/443 exposed externally (port 5000 stays internal)
 - ✅ SSL/TLS encryption for all traffic
 - ✅ Single entry point for security
@@ -30,12 +31,13 @@ External Users → http://197.156.145.121:80 (nginx)
 The frontend needs to use relative API URLs so nginx can proxy them.
 
 **Already done - files updated in this session:**
+
 - `frontend/.env.production`
 - `frontend/vite.config.js`
 
 ### Step 2: Update Backend CORS
 
-**Already done - backend will accept requests from nginx proxy**
+- Already done - backend will accept requests from nginx proxy
 
 ### Step 3: Build Frontend for Production
 
@@ -106,6 +108,7 @@ copy nginx\nginx-windows.conf C:\nginx\conf\nginx.conf
 **Verify paths in the configuration:**
 
 Edit `C:\nginx\conf\nginx.conf` and confirm:
+
 - `root C:/Users/BSI/Documents/telemetry_reporting/Telemetry-Reporting/frontend/build;`
 - `proxy_pass http://192.168.1.69:5000;`
 
@@ -117,7 +120,8 @@ nginx -t
 ```
 
 Expected output:
-```
+
+```bash
 nginx: the configuration file C:\nginx/conf/nginx.conf syntax is ok
 nginx: configuration file C:\nginx/conf/nginx.conf test is successful
 ```
@@ -184,6 +188,7 @@ curl http://197.156.145.121/api/health
 ```
 
 **Open in browser:**
+
 - External: http://197.156.145.121
 - Should see BSI Telemetry login page
 - Login and verify dashboard loads
@@ -219,12 +224,14 @@ nginx -s reload
 ```
 
 **Configure router to forward port 443:**
+
 - External Port: 443
 - Internal IP: 192.168.1.69
 - Internal Port: 443
 - Protocol: TCP
 
 **Access via HTTPS:**
+
 - https://197.156.145.121
 - Browser will show security warning (accept it for self-signed cert)
 
@@ -233,6 +240,7 @@ nginx -s reload
 Follow `nginx/SSL_SETUP_GUIDE.md` - Option 2
 
 **Requirements:**
+
 - Domain name (e.g., telemetry.bsi.co.ke)
 - DNS pointing to 197.156.145.121
 - Port 80 accessible from internet
@@ -383,6 +391,7 @@ curl http://192.168.1.69
 ```
 
 **If local works but external doesn't:**
+
 - Check router port forwarding rules
 - Verify ISP doesn't block port 80
 - Check Windows Firewall rules
@@ -467,6 +476,7 @@ mysqldump -u root -p horiserverdatalive > backup_$(Get-Date -Format 'yyyy-MM-dd'
 ## Support
 
 For issues:
+
 1. Check nginx error logs
 2. Check backend logs
 3. Verify network connectivity

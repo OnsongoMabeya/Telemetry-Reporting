@@ -28,7 +28,7 @@ This directory contains nginx configuration files for deploying BSI Telemetry wi
 
 ## Architecture
 
-```
+```bash
 External Users
     ↓
 http://197.156.145.121:80 (nginx)
