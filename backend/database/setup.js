@@ -43,6 +43,13 @@ async function importMetricMappings(connection) {
     await fs.access(exportFile);
     
     console.log('\n📦 Importing metric mappings...');
+    
+    // Clear existing sample data to avoid duplicates
+    console.log('   Clearing sample data...');
+    await connection.query('DELETE FROM metric_mappings');
+    
+    // Import the exported mappings
+    console.log('   Loading exported configurations...');
     const sql = await fs.readFile(exportFile, 'utf8');
     await connection.query(sql);
     
@@ -56,7 +63,7 @@ async function importMetricMappings(connection) {
   } catch (error) {
     if (error.code === 'ENOENT') {
       console.log('\n⚠️  No metric mappings export file found');
-      console.log('   Run "node database/migrate_mappings.js" to create one\n');
+      console.log('   Keeping sample data from migration\n');
       return false;
     }
     console.error(`\n❌ Failed to import metric mappings: ${error.message}\n`);
