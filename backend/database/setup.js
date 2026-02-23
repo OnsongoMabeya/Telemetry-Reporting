@@ -35,6 +35,35 @@ async function runMigration(connection, migrationFile) {
   }
 }
 
+async function importMetricMappings(connection) {
+  const exportFile = path.join(__dirname, 'metric_mappings_export.sql');
+  
+  try {
+    // Check if export file exists
+    await fs.access(exportFile);
+    
+    console.log('\n📦 Importing metric mappings...');
+    const sql = await fs.readFile(exportFile, 'utf8');
+    await connection.query(sql);
+    
+    // Count imported mappings
+    const [result] = await connection.query(
+      'SELECT COUNT(*) as count FROM metric_mappings WHERE is_active = 1'
+    );
+    
+    console.log(`✅ Imported ${result[0].count} metric mapping(s)\n`);
+    return true;
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      console.log('\n⚠️  No metric mappings export file found');
+      console.log('   Run "node database/migrate_mappings.js" to create one\n');
+      return false;
+    }
+    console.error(`\n❌ Failed to import metric mappings: ${error.message}\n`);
+    return false;
+  }
+}
+
 async function setupDatabase() {
   let connection;
   
@@ -137,6 +166,10 @@ async function setupDatabase() {
       
       if (allTablesExist) {
         console.log('\n✅ All tables verified successfully!\n');
+        
+        // Import metric mappings if export file exists
+        await importMetricMappings(connection);
+        
         console.log('📝 Default admin account:');
         console.log('   Username: BSI');
         console.log('   Password: Reporting2026\n');
