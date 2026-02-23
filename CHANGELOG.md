@@ -5,6 +5,47 @@ All notable changes to the BSI Telemetry Reporting System will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] - 2026-02-23
+
+### Added - Metric Mappings Migration Tools
+
+#### Backend Tools V 2.1.1
+
+- `migrate_mappings.js` - Export metric mappings from development to production
+- Automated export of all active metric mappings to SQL file
+- Export summary showing configured nodes and metric counts
+- `setup.js` enhanced with automatic metric mappings import
+- Detects and imports `metric_mappings_export.sql` during database setup
+- Shows import summary with count of imported mappings
+
+#### Deployment V 2.1.1
+
+- Simplified deployment workflow for new environments
+- One-command database setup with automatic configuration import
+- Consistent metric mappings across development, staging, and production
+- Version-controlled metric configurations (optional)
+
+#### Documentation V 2.1.1
+
+- Updated `METRIC_MAPPING_GUIDE.md` with migration workflow
+- Added "Migrating Configurations Between Environments" section
+- Updated `backend/README.md` with deployment instructions
+- Updated main `README.md` with "Deploying to New Environments" section
+- Step-by-step migration guide with example outputs
+
+### Changed V 2.1.1
+
+- Database setup now automatically imports metric mappings if export file exists
+- `setup.js` provides clear feedback on import status
+- Deployment process streamlined from manual SQL to automated script
+
+### Benefits V 2.1.1
+
+- No manual reconfiguration when deploying to new servers
+- Consistent metric configurations across all environments
+- Faster deployment with fewer manual steps
+- Reduced risk of configuration errors
+
 ## [2.1.0] - 2026-02-19
 
 ### Added - Intelligent Column Data Analysis

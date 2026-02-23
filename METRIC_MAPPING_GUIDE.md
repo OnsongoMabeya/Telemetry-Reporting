@@ -487,6 +487,106 @@ The migration includes sample mappings for MediaMax1/Nairobi:
 
 Use these as templates for other nodes.
 
+### Migrating Configurations Between Environments
+
+When deploying to a new server or computer, you can migrate your existing metric mappings automatically:
+
+#### Step 1: Export from Source Environment
+
+On your development/source computer:
+
+```bash
+cd backend
+node database/migrate_mappings.js
+```
+
+This creates `backend/database/metric_mappings_export.sql` containing all your active metric mappings.
+
+**Export Summary Example:**
+
+```text
+✅ Found 21 metric mapping(s)
+
+Configured nodes:
+- Genset02/KISUMU: 5 metric(s)
+- Kameme FM/LIMURU: 3 metric(s)
+- MediaMax1/MERU: 7 metric(s)
+- MediaMax1/Nairobi: 4 metric(s)
+- MediaMax1/NYERI: 2 metric(s)
+```
+
+#### Step 2: Sync Code to Target Environment
+
+On the target computer:
+
+```bash
+git pull origin main
+```
+
+This ensures you have:
+
+- Latest `setup.js` with auto-import feature
+- The `metric_mappings_export.sql` file (if committed to Git)
+
+If you didn't commit the export file, manually copy it to:
+
+```text
+backend/database/metric_mappings_export.sql
+```
+
+#### Step 3: Run Database Setup
+
+On the target computer:
+
+```bash
+cd backend
+node database/setup.js
+```
+
+The setup script will:
+
+1. ✅ Create all required database tables
+2. ✅ Verify tables exist
+3. ✅ **Automatically import metric mappings** from the export file
+4. ✅ Show import summary
+
+**Expected Output:**
+
+```text
+✅ All tables verified successfully!
+
+📦 Importing metric mappings...
+✅ Imported 21 metric mapping(s)
+
+📝 Default admin account:
+   Username: BSI
+   Password: Reporting2026
+```
+
+#### Step 4: Verify Import
+
+1. Start the backend server
+2. Login to the dashboard
+3. Go to Visualization Settings
+4. Verify all your metric mappings are present
+
+**Benefits:**
+
+- ✅ No manual reconfiguration needed
+- ✅ Consistent metrics across all environments
+- ✅ Version-controlled configurations (if export file is committed)
+- ✅ Fast deployment to multiple servers
+
+#### Manual Import (Alternative)
+
+If you prefer to import manually:
+
+```bash
+mysql -u username -p database_name < backend/database/metric_mappings_export.sql
+```
+
+**Note:** The automated `setup.js` approach is recommended as it handles table creation and import in one step.
+
 ## Support
 
 For issues or questions:

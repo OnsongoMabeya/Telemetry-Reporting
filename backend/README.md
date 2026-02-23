@@ -76,12 +76,16 @@ High-performance Node.js/Express backend for the BSI Telemetry Reports system. P
 4. **Database setup**
 
    ```bash
-   # Run migrations
-   npx knex migrate:latest
+   # Automated setup (recommended) - creates tables and imports metric mappings
+   node database/setup.js
    
-   # Seed initial data (optional)
-   npx knex seed:run
+   # Manual migration (alternative)
+   mysql -u username -p database_name < database/migrations/001_create_users_table.sql
+   mysql -u username -p database_name < database/migrations/002_create_user_node_assignments.sql
+   mysql -u username -p database_name < database/migrations/003_create_metric_mappings.sql
    ```
+
+   **Note:** The automated `setup.js` script will automatically import metric mappings from `database/metric_mappings_export.sql` if the file exists.
 
 5. **Start the server**
 
@@ -540,7 +544,60 @@ To view the API documentation:
 - `npm run db:setup` - Run automated database setup and migrations
 - `npm run db:migrate` - Alias for db:setup
 
-## 🔧 Troubleshooting
+## � Deploying to New Environments
+
+### Migrating Metric Mappings
+
+When deploying to a new server or computer, you can migrate your existing metric mapping configurations:
+
+#### 1. Export from Source Environment
+
+On your development/source computer:
+
+```bash
+cd backend
+node database/migrate_mappings.js
+```
+
+This creates `database/metric_mappings_export.sql` with all your configured metrics.
+
+#### 2. Sync Code to Target Environment
+
+On the target computer:
+
+```bash
+git pull origin main
+```
+
+If the export file wasn't committed, manually copy `metric_mappings_export.sql` to `backend/database/`.
+
+#### 3. Run Automated Setup
+
+On the target computer:
+
+```bash
+cd backend
+node database/setup.js
+```
+
+The script will:
+
+- Create all required database tables
+- Automatically import metric mappings from the export file
+- Show a summary of imported configurations
+
+**Example Output:**
+
+```text
+✅ All tables verified successfully!
+
+📦 Importing metric mappings...
+✅ Imported 21 metric mapping(s)
+```
+
+This ensures consistent metric configurations across all environments without manual reconfiguration.
+
+## �🔧 Troubleshooting
 
 ### Node Filtering Issues
 

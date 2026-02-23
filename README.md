@@ -286,8 +286,14 @@ The map includes coordinates for major Kenya locations:
 
    ```bash
    cd backend
-   npm run db:setup
+   node database/setup.js
    ```
+
+   This automated script will:
+   - Create all required database tables
+   - Verify table structure
+   - **Automatically import metric mappings** from `database/metric_mappings_export.sql` (if present)
+   - Show a summary of the setup
 
    **Option B: Manual Setup**
 
@@ -479,6 +485,89 @@ The system automatically adjusts data sampling based on the selected time range 
 | 1w         | 2 hours         | 84          | 2h         | Weekly summary        |
 | 2w         | 4 hours         | 84          | 4h         | Bi-weekly review      |
 | 30d        | 1 day           | 30          | 12h        | Monthly reporting     |
+
+## 🚀 Deploying to New Environments
+
+### Migrating Metric Mappings Between Servers
+
+When deploying to a new server or computer, you can migrate your existing metric mapping configurations automatically:
+
+#### 1. Export from Development Environment
+
+On your development/source computer:
+
+```bash
+cd backend
+node database/migrate_mappings.js
+```
+
+This creates `database/metric_mappings_export.sql` containing all your configured metrics.
+
+**Example Output:**
+
+```text
+✅ Found 21 metric mapping(s)
+
+Configured nodes:
+- Genset02/KISUMU: 5 metric(s)
+- Kameme FM/LIMURU: 3 metric(s)
+- MediaMax1/MERU: 7 metric(s)
+- MediaMax1/Nairobi: 4 metric(s)
+- MediaMax1/NYERI: 2 metric(s)
+```
+
+#### 2. Sync Code to Production
+
+On the production/target computer:
+
+```bash
+git pull origin main
+```
+
+This ensures you have the latest code including the export file (if committed).
+
+If you didn't commit the export file, manually copy it to `backend/database/metric_mappings_export.sql`.
+
+#### 3. Run Automated Setup
+
+On the production computer:
+
+```bash
+cd backend
+node database/setup.js
+```
+
+The script will automatically:
+
+- Create all required database tables
+- Import your metric mappings from the export file
+- Show a summary of imported configurations
+
+**Expected Output:**
+
+```text
+✅ All tables verified successfully!
+
+📦 Importing metric mappings...
+✅ Imported 21 metric mapping(s)
+
+📝 Default admin account:
+   Username: BSI
+   Password: Reporting2026
+```
+
+#### 4. Start the Application
+
+```bash
+# Start backend
+npm start
+
+# In another terminal, start frontend
+cd ../frontend
+npm start
+```
+
+Your metric mappings will be ready without manual reconfiguration!
 
 ## 🤝 Contributing
 
