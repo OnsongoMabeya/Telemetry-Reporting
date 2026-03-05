@@ -49,6 +49,9 @@ mysql -u your_user -p your_database < database/migrations/002_create_user_node_a
 
 # Run metric mappings migration
 mysql -u your_user -p your_database < database/migrations/003_create_metric_mappings.sql
+
+# Add optional graph color support (metric_mappings.color)
+mysql -u your_user -p your_database < database/migrations/004_add_color_to_metric_mappings.sql
 ```
 
 Replace `your_user` and `your_database` with your MySQL credentials.
@@ -120,6 +123,7 @@ The setup creates the following tables:
 1. **`metric_mappings`** - Dynamic visualization configuration
    - Maps database columns to custom metric names per node/base station
    - Stores units and display order
+   - Stores optional graph color (`metric_mappings.color`) configured by admins
    - Supports 48 columns: Analog1-16, Digital1-16, Output1-16
 
 2. **`metric_mapping_audit`** - Complete audit trail

@@ -68,6 +68,7 @@ Get all metric mappings with optional filtering.
       "column_name": "Analog1Value",
       "unit": "dBm",
       "display_order": 1,
+      "color": "#114521",
       "is_active": true,
       "created_by": 1,
       "created_at": "2026-02-13T09:00:00.000Z",
@@ -150,12 +151,13 @@ Create a new metric mapping for a node/base station.
 
 ```json
 {
-  "nodeName": "MediaMax1",
-  "baseStationName": "Nairobi",
-  "metricName": "Forward Power",
-  "columnName": "Analog1Value",
+  "node_name": "MediaMax1",
+  "base_station_name": "Nairobi",
+  "metric_name": "Forward Power",
+  "column_name": "Analog1Value",
   "unit": "dBm",
-  "displayOrder": 1
+  "display_order": 1,
+  "color": "#114521"
 }
 ```
 
@@ -188,9 +190,10 @@ Update an existing metric mapping.
 
 ```json
 {
-  "metricName": "Forward Power (Updated)",
+  "metric_name": "Forward Power (Updated)",
   "unit": "W",
-  "displayOrder": 2
+  "display_order": 2,
+  "color": "#114521"
 }
 ```
 
@@ -268,16 +271,20 @@ Retrieve metric mappings for a specific node/base station combination. Used by t
   "hasMappings": true,
   "mappings": [
     {
+      "id": 1,
       "metric_name": "Forward Power",
       "column_name": "Analog1Value",
       "unit": "dBm",
-      "display_order": 1
+      "display_order": 1,
+      "color": "#114521"
     },
     {
+      "id": 2,
       "metric_name": "VSWR",
       "column_name": "Analog3Value",
       "unit": "",
-      "display_order": 2
+      "display_order": 2,
+      "color": null
     }
   ],
   "message": "Custom metric mappings loaded successfully."

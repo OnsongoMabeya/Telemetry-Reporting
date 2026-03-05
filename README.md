@@ -652,7 +652,7 @@ nvm use 22
 
 If you encounter 401 Unauthorized errors after login:
 
-1. **Clear browser localStorage**:
+1. **Clear browser localStorage** (this will remove the saved auth token):
 
    ```javascript
    // In browser console (F12)
@@ -836,6 +836,7 @@ The Dynamic Metric Mapping System allows administrators to configure custom visu
 - **Units Configuration**: Set appropriate units (dBm, W, dB, V, A, °C, etc.)
 - **Display Order Control**: Define the order graphs appear on dashboard
 - **Per-Node Configuration**: Each node/base station has independent mappings
+- **Admin-Configured Graph Colors**: Admins can set an optional line color per metric (applies to all users)
 - **Enforcement**: Telemetry graphs only display when mappings are configured
 - **Audit Trail**: Complete history of all mapping changes
 
@@ -854,6 +855,7 @@ The Dynamic Metric Mapping System allows administrators to configure custom visu
    - Enter custom metric name
    - Set unit (optional)
    - Set display order
+   - Set graph color (optional)
 5. **Save and Verify**: Return to dashboard to see configured graphs
 
 ### Verification
@@ -883,10 +885,16 @@ Output shows:
 - `column_name`: Database column (Analog1Value, etc.)
 - `unit`: Measurement unit (optional)
 - `display_order`: Graph ordering
+- `color`: Optional hex color for the graph line (e.g. `#114521`). When set, the area under the line is rendered as a lighter shade via opacity.
 - `is_active`: Soft delete flag
 - `created_by`: User who created mapping
 - `created_at`: Creation timestamp
 - `updated_at`: Last update timestamp
+
+**Dashboard graph styling defaults:**
+
+- **Default**: Black line with no fill under the line.
+- **When `color` is configured**: Solid line in the configured color, with a lighter shaded fill under the line.
 
 **metric_mapping_audit table:**
 
@@ -918,6 +926,7 @@ BSI-telemetry-reporting/
 │   │   │   ├── 001_create_users_table.sql
 │   │   │   ├── 002_create_user_node_assignments.sql
 │   │   │   └── 003_create_metric_mappings.sql
+│   │   │   └── 004_add_color_to_metric_mappings.sql
 │   │   └── setup.js      # Database setup script
 │   ├── routes/           # API routes
 │   │   ├── metricMappings.js      # Metric mapping CRUD API

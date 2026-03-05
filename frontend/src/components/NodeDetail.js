@@ -78,20 +78,6 @@ const getGraphColor = (dataKey) => {
 
 // Telemetry Graph Component
 const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter, lineColor }) => {
-  // Debug logging
-  console.log(`TelemetryGraph ${dataKey}:`, { lineColor, title });
-  
-  // Generate lighter shade for area fill (30% opacity)
-  const areaColor = useMemo(() => {
-    if (!lineColor) return 'rgba(0, 0, 0, 0)'; // Transparent by default
-    // Convert hex to rgba with 30% opacity
-    const hex = lineColor.replace('#', '');
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, 0.3)`;
-  }, [lineColor, dataKey]);
-
   // Format x-axis tick values based on time range with timezone support
   const formatXAxis = (tickItem) => {
     if (!tickItem) return '';

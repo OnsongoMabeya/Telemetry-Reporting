@@ -34,6 +34,7 @@ The main dashboard shows:
    - **Metric Name**: Enter custom display name (e.g., "MILELE FM Forward Power")
    - **Unit**: Optional unit (e.g., dBm, W, dB, V, A, °C, %)
    - **Display Order**: Number to control graph ordering (1, 2, 3...)
+   - **Graph Color (Optional)**: Hex color for the graph line (e.g. `#114521`)
 3. Click **"Save"**
 
 **Note**: The column dropdown automatically loads data indicators when you select a node/base station, showing you which columns actually contain data for that specific location.
@@ -96,6 +97,14 @@ You can map any column to any metric name based on your specific hardware config
 - Each node/base station combination has independent metric mappings
 - Different nodes can use the same column for different purposes
 - Example: Analog1Value could be "Forward Power" for one node and "Temperature" for another
+
+### Admin-Configured Graph Colors
+
+- Graph colors are configured **only by Admin users** inside **Visualization Settings**.
+- Colors are stored in the database on `metric_mappings.color` and apply to **all users**.
+- Dashboard defaults:
+  - If `color` is **not set**: black line with no fill under the line.
+  - If `color` **is set**: solid line in that color with a lighter shaded fill under the line.
 
 ### Display Order Control
 

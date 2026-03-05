@@ -5,6 +5,19 @@ All notable changes to the BSI Telemetry Reporting System will be documented in 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Admin-configurable graph colors stored in `metric_mappings.color`.
+- Database migration `004_add_color_to_metric_mappings.sql`.
+
+### Changed
+
+- Dashboard graphs now use the database-configured metric color for all users.
+- Default graph styling is now black line with no fill when `color` is not set.
+- `/api/telemetry-mappings/:nodeName/:baseStation` now returns `color` in mappings.
+
 ## [2.1.1] - 2026-02-23
 
 ### Added - Metric Mappings Migration Tools

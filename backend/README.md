@@ -83,6 +83,7 @@ High-performance Node.js/Express backend for the BSI Telemetry Reports system. P
    mysql -u username -p database_name < database/migrations/001_create_users_table.sql
    mysql -u username -p database_name < database/migrations/002_create_user_node_assignments.sql
    mysql -u username -p database_name < database/migrations/003_create_metric_mappings.sql
+   mysql -u username -p database_name < database/migrations/004_add_color_to_metric_mappings.sql
    ```
 
    **Note:** The automated `setup.js` script will automatically import metric mappings from `database/metric_mappings_export.sql` if the file exists.
