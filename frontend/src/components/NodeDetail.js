@@ -32,7 +32,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import ReportGenerator from './reports/ReportGenerator';
 import KenyaMap from './KenyaMap';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
 
@@ -71,30 +71,27 @@ class ErrorBoundary extends React.Component {
 
 // Helper functions
 const getGraphColor = (dataKey) => {
-  switch (dataKey) {
-    case 'forwardPower':
-      return '#4CAF50'; // Green
-    case 'reflectedPower':
-      return '#F44336'; // Red
-    case 'vswr':
-      return '#2196F3'; // Blue
-    case 'returnLoss':
-      return '#FF9800'; // Orange
-    case 'temperature':
-      return '#E91E63'; // Pink
-    case 'voltage':
-      return '#9C27B0'; // Purple
-    case 'current':
-      return '#795548'; // Brown
-    case 'power':
-      return '#607D8B'; // Blue Grey
-    default:
-      return '#000000'; // Black
-  }
+  // Default to black for all graphs
+  // Users can customize colors per node/base station in visualization settings
+  return '#000000';
 };
 
 // Telemetry Graph Component
-const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter }) => {
+const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter, lineColor }) => {
+  // Debug logging
+  console.log(`TelemetryGraph ${dataKey}:`, { lineColor, title });
+  
+  // Generate lighter shade for area fill (30% opacity)
+  const areaColor = useMemo(() => {
+    if (!lineColor) return 'rgba(0, 0, 0, 0)'; // Transparent by default
+    // Convert hex to rgba with 30% opacity
+    const hex = lineColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, 0.3)`;
+  }, [lineColor, dataKey]);
+
   // Format x-axis tick values based on time range with timezone support
   const formatXAxis = (tickItem) => {
     if (!tickItem) return '';
@@ -182,40 +179,44 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
     return data.filter((_, index) => index % step === 0);
   }, [data]);
 
-  const getYAxisDomain = useCallback(() => {
-    if (!data || data.length === 0) return [0, 1];
-    
-    // Get all valid values for the current data key
-    const values = data
-      .map(item => typeof item[dataKey] === 'number' ? item[dataKey] : null)
-      .filter(val => val !== null && !isNaN(val));
-      
-    if (values.length === 0) return [0, 1];
-    
-    // Calculate min and max with some smart padding
-    let min = Math.min(...values);
-    let max = Math.max(...values);
-    
-    // Handle case where all values are the same
-    if (min === max) {
-      // For zero values, use a default range
-      if (min === 0) return [0, 1];
-      
-      // For non-zero values, create a range around the value
-      const padding = Math.max(0.1, Math.abs(min * 0.1));
-      return [min - padding, max + padding];
+  const getYAxisScale = useCallback(() => {
+    if (!data || data.length === 0) {
+      return { domain: [0, 1], ticks: [0, 0.25, 0.5, 0.75, 1] };
     }
-    
-    // Calculate dynamic padding based on the value range
-    const range = max - min;
-    const padding = range * 0.1; // 10% padding
-    
-    // Ensure we don't go below zero for metrics that can't be negative
-    const minDomain = ['vswr', 'returnLoss', 'forwardPower', 'reflectedPower'].includes(dataKey) 
-      ? Math.max(0, min - padding) 
-      : min - padding;
-      
-    return [minDomain, max + padding];
+
+    const values = data
+      .map(item => (typeof item[dataKey] === 'number' ? item[dataKey] : null))
+      .filter(val => val !== null && !isNaN(val));
+
+    if (values.length === 0) {
+      return { domain: [0, 1], ticks: [0, 0.25, 0.5, 0.75, 1] };
+    }
+
+    let max = Math.max(...values);
+
+    // Handle case where all values are zero
+    if (max === 0) {
+      return { domain: [0, 1], ticks: [0, 0.25, 0.5, 0.75, 1] };
+    }
+
+    // Always start from 0 for Y-axis
+    const targetTicks = 6;
+    const range = Math.max(1e-12, max);
+
+    const roughStep = range / (targetTicks - 1);
+    const magnitude = Math.pow(10, Math.floor(Math.log10(Math.abs(roughStep) || 1)));
+    const residual = roughStep / magnitude;
+    const niceResidual = residual <= 1 ? 1 : residual <= 2 ? 2 : residual <= 5 ? 5 : 10;
+    const step = niceResidual * magnitude;
+
+    const niceMax = Math.ceil(max / step) * step;
+
+    const ticks = [];
+    for (let t = 0; t <= niceMax + step / 2; t += step) {
+      ticks.push(Number(t.toFixed(12)));
+    }
+
+    return { domain: [0, niceMax], ticks };
   }, [data, dataKey]);
 
   if (isLoading) {
@@ -324,7 +325,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
           <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
             <Tooltip title="Refresh data">
               <IconButton size="small">
-                <Refresh sx={{ color: getGraphColor(dataKey) }} />
+                <Refresh sx={{ color: lineColor || getGraphColor(dataKey) }} />
               </IconButton>
             </Tooltip>
           </motion.div>
@@ -339,14 +340,14 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
           }}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
+            <ComposedChart
               data={downsampledData}
               margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
             >
               <defs>
                 <linearGradient id={`gradient-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={getGraphColor(dataKey)} stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor={getGraphColor(dataKey)} stopOpacity={0.1}/>
+                  <stop offset="5%" stopColor={lineColor} stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor={lineColor} stopOpacity={0.05}/>
                 </linearGradient>
               </defs>
               <CartesianGrid 
@@ -366,7 +367,8 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
               <YAxis 
                 stroke="#666"
                 tick={{ fontSize: 12 }}
-                domain={getYAxisDomain()}
+                domain={getYAxisScale().domain}
+                ticks={getYAxisScale().ticks}
                 tickFormatter={(value) => {
                   if (dataKey === 'vswr') {
                     return value.toFixed(2);
@@ -416,23 +418,30 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
                   paddingTop: '20px'
                 }}
               />
+              <Area
+                type="monotone"
+                dataKey={dataKey}
+                stroke="none"
+                fill={lineColor || 'transparent'}
+                fillOpacity={lineColor ? 0.2 : 0}
+                isAnimationActive={false}
+              />
               <Line
                 type="monotone"
                 dataKey={dataKey}
-                stroke={getGraphColor(dataKey)}
-                strokeWidth={1.5}
+                stroke={lineColor || getGraphColor(dataKey)}
+                strokeWidth={2}
                 dot={false}
                 activeDot={{
                   r: 6,
-                  fill: getGraphColor(dataKey),
+                  fill: lineColor || getGraphColor(dataKey),
                   stroke: '#fff',
                   strokeWidth: 2
                 }}
-                fill={`url(#gradient-${dataKey})`}
                 animationDuration={1500}
                 animationEasing="ease-in-out"
               />
-            </LineChart>
+            </ComposedChart>
           </ResponsiveContainer>
         </Box>
       </Paper>
@@ -1182,6 +1191,7 @@ const NodeDetail = () => {
                       unit={mapping.unit || ''}
                       isLoading={isLoading}
                       timeFilter={timeFilter}
+                      lineColor={mapping.color}
                     />
                   </motion.div>
                 );

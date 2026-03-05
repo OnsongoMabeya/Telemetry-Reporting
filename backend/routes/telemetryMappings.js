@@ -20,7 +20,8 @@ router.get('/:nodeName/:baseStation', async (req, res) => {
         metric_name,
         column_name,
         unit,
-        display_order
+        display_order,
+        color
        FROM metric_mappings
        WHERE node_name = ? 
          AND base_station_name = ?

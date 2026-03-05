@@ -60,7 +60,8 @@ const VisualizationSettings = () => {
     metric_name: '',
     column_name: '',
     unit: '',
-    display_order: 0
+    display_order: 0,
+    color: null
   });
 
   const isAdmin = hasRole('admin');
@@ -102,7 +103,8 @@ const VisualizationSettings = () => {
         metric_name: mapping.metric_name,
         column_name: mapping.column_name,
         unit: mapping.unit || '',
-        display_order: mapping.display_order
+        display_order: mapping.display_order,
+        color: mapping.color || null
       });
       // Fetch node-specific columns
       await fetchNodeSpecificColumns(mapping.node_name, mapping.base_station_name);
@@ -114,7 +116,8 @@ const VisualizationSettings = () => {
         metric_name: '',
         column_name: '',
         unit: '',
-        display_order: 0
+        display_order: 0,
+        color: null
       });
     }
     setOpenDialog(true);
@@ -637,6 +640,53 @@ const VisualizationSettings = () => {
               fullWidth
               helperText="Order in which metrics appear in graphs (lower numbers first)"
             />
+
+            <Box>
+              <Typography variant="subtitle2" gutterBottom>
+                Graph Color (Optional)
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box
+                  component="input"
+                  type="color"
+                  value={formData.color || '#000000'}
+                  onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                  sx={{
+                    width: 80,
+                    height: 50,
+                    padding: 0,
+                    border: '2px solid rgba(0, 0, 0, 0.2)',
+                    borderRadius: 1,
+                    cursor: 'pointer',
+                    '&:hover': {
+                      borderColor: 'rgba(0, 0, 0, 0.4)',
+                    }
+                  }}
+                />
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {formData.color ? (
+                      <>
+                        Selected: <strong>{formData.color}</strong>
+                        <br />
+                        Line will be solid, area fill will be lighter shade
+                      </>
+                    ) : (
+                      'Default: Black line with no fill'
+                    )}
+                  </Typography>
+                  {formData.color && (
+                    <Button
+                      size="small"
+                      onClick={() => setFormData({ ...formData, color: null })}
+                      sx={{ mt: 1 }}
+                    >
+                      Reset to Default
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+            </Box>
           </Box>
         </DialogContent>
         <DialogActions>

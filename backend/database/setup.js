@@ -132,6 +132,22 @@ async function setupDatabase() {
       }
     }
     
+    // Check for color column in metric_mappings table
+    if (await checkTableExists(connection, 'metric_mappings')) {
+      const [columns] = await connection.query(
+        `SELECT COUNT(*) as count FROM information_schema.columns 
+         WHERE table_schema = ? AND table_name = 'metric_mappings' AND column_name = 'color'`,
+        [dbConfig.database]
+      );
+      
+      if (columns[0].count === 0) {
+        console.log('❌ Column: metric_mappings.color (missing)');
+        migrationsToRun.add('004_add_color_to_metric_mappings.sql');
+      } else {
+        console.log('✅ Column: metric_mappings.color');
+      }
+    }
+    
     console.log('\n================================\n');
     
     if (migrationsToRun.size === 0) {
