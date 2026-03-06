@@ -44,8 +44,8 @@ async function importMetricMappings(connection) {
     
     console.log('\n📦 Importing metric mappings...');
     
-    // Clear existing sample data to avoid duplicates
-    console.log('   Clearing sample data...');
+    // Clear existing data only if we have an export file to import
+    console.log('   Clearing existing mappings...');
     await connection.query('DELETE FROM metric_mappings');
     
     // Import the exported mappings
@@ -63,7 +63,7 @@ async function importMetricMappings(connection) {
   } catch (error) {
     if (error.code === 'ENOENT') {
       console.log('\n⚠️  No metric mappings export file found');
-      console.log('   Keeping sample data from migration\n');
+      console.log('   Keeping existing metric mappings intact\n');
       return false;
     }
     console.error(`\n❌ Failed to import metric mappings: ${error.message}\n`);

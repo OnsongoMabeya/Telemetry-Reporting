@@ -433,8 +433,12 @@ See `nginx/SSL_SETUP_GUIDE.md` for detailed SSL troubleshooting.
 cd C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting
 git pull origin main
 
+# Run database migrations (preserves existing metric mappings)
+cd backend
+node database/setup.js
+
 # Rebuild frontend
-cd frontend
+cd ..\frontend
 npm install
 npm run build
 
@@ -444,6 +448,42 @@ nssm restart bsi-backend
 # Reload nginx (no downtime)
 nginx -s reload
 ```
+
+### Migrate Metric Mappings Between Servers
+
+If you need to copy metric mappings from one server to another:
+
+**On the source server (where metrics are configured):**
+
+```bash
+# Export metric mappings
+cd backend
+node database/export_metrics.js
+```
+
+This creates `backend/database/metric_mappings_export.sql` with all your configured metrics.
+
+**Transfer the file to the target server:**
+
+```powershell
+# Copy the export file to the target server
+# Example: via git, USB, or network share
+```
+
+**On the target server:**
+
+```powershell
+# Place the export file in backend/database/
+# Then run setup.js - it will automatically import the mappings
+cd backend
+node database/setup.js
+```
+
+**Important:** The `setup.js` script will:
+
+- ✅ Preserve existing metric mappings if no export file is present
+- ✅ Import and replace mappings if `metric_mappings_export.sql` exists
+- ✅ Run any missing database migrations (including the color column)
 
 ### Monitor Logs
 
