@@ -11,12 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Admin-configurable graph colors stored in `metric_mappings.color`.
 - Database migration `004_add_color_to_metric_mappings.sql`.
+- `export_metrics.js` script to export metric mappings with color column for deployment.
+- Trust proxy configuration for nginx reverse proxy compatibility.
+- Rate limiter configuration optimized for proxy environments.
 
 ### Changed
 
 - Dashboard graphs now use the database-configured metric color for all users.
 - Default graph styling is now black line with no fill when `color` is not set.
 - `/api/telemetry-mappings/:nodeName/:baseStation` now returns `color` in mappings.
+- `setup.js` now preserves existing metric mappings when no export file is present.
+- Backend `server.js` enables `trust proxy` for proper IP detection behind nginx.
+- Rate limiter disables `trustProxy` validation to prevent errors with nginx proxy.
+
+### Fixed
+
+- Fixed `setup.js` deleting existing metric mappings on servers without export file.
+- Fixed express-rate-limit `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` error with nginx.
+- Fixed express-rate-limit `ERR_ERL_PERMISSIVE_TRUST_PROXY` validation error.
 
 ## [2.1.1] - 2026-02-23
 

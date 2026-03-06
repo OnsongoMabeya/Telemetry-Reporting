@@ -11,7 +11,7 @@ External Users → http://197.156.145.121:80 (nginx)
                 ↓
                 nginx serves frontend + proxies /api
                 ↓
-                Backend at http://192.168.1.69:5000 (local network only)
+                Backend at http://192.168.1.237:5000 (local network only)
 ```
 
 **Benefits:**
@@ -110,7 +110,7 @@ copy nginx\nginx-windows.conf C:\nginx\conf\nginx.conf
 Edit `C:\nginx\conf\nginx.conf` and confirm:
 
 - `root C:/Users/BSI/Documents/telemetry_reporting/Telemetry-Reporting/frontend/build;`
-- `proxy_pass http://192.168.1.69:5000;`
+- `proxy_pass http://192.168.1.237:5000;`
 
 ### Step 5: Test Nginx Configuration
 
@@ -149,7 +149,7 @@ You should see 2 nginx.exe processes (master + worker).
 2. Go to Port Forwarding settings
 3. Add rule:
    - External Port: 80
-   - Internal IP: 192.168.1.69 (your Windows server)
+   - Internal IP: 192.168.1.237 (your Windows server)
    - Internal Port: 80
    - Protocol: TCP
 4. Save and apply
@@ -163,7 +163,7 @@ cd C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\backend
 npm start
 ```
 
-Backend should start on `http://192.168.1.69:5000` (local network only).
+Backend should start on `http://192.168.1.237:5000` (local network only).
 
 ### Step 9: Test the Setup
 
@@ -348,7 +348,7 @@ type C:\nginx\logs\error.log
 **Check backend is running:**
 
 ```powershell
-curl http://192.168.1.69:5000/health
+curl http://192.168.1.237:5000/api/nodes
 ```
 
 **Check nginx proxy configuration:**
@@ -384,15 +384,15 @@ type C:\nginx\conf\nginx.conf | findstr "root"
 
 ```powershell
 # From Windows server
-curl http://192.168.1.69
+curl http://192.168.1.237
 
 # From another computer on same network
-curl http://192.168.1.69
+curl http://192.168.1.237
 ```
 
 **If local works but external doesn't:**
 
-- Check router port forwarding rules
+- Check router port forwarding rules (ensure forwarding to 192.168.1.237, not 192.168.1.69)
 - Verify ISP doesn't block port 80
 - Check Windows Firewall rules
 

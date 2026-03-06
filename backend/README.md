@@ -33,6 +33,8 @@ High-performance Node.js/Express backend for the BSI Telemetry Reports system. P
 - **JWT Authentication** with bcrypt password hashing (10 salt rounds)
 - **Role-Based Access Control (RBAC)** with three permission levels
 - **CORS** configuration with dynamic origin support
+- **Trust Proxy** enabled for nginx reverse proxy compatibility
+- **Rate Limiting** optimized for proxy environments (60 requests per minute)
 - **Input Sanitization** and validation
 - **Activity Logging** for security audit trails
 - **Account Status Management** (active/inactive users)
@@ -192,6 +194,16 @@ The backend is configured to handle requests from specific origins defined in th
 - **Credentials**: Enabled (cookies, HTTP authentication)
 - **Preflight Cache**: 24 hours
 - **Max Age**: 86400 seconds
+
+#### Nginx Reverse Proxy Configuration
+
+When deploying behind nginx, the backend is configured to:
+
+- **Trust Proxy**: Enabled (`app.set('trust proxy', true)`) to correctly identify client IPs from `X-Forwarded-For` headers
+- **Rate Limiter**: Configured with `validate: {trustProxy: false}` to prevent validation errors while still using proxy headers
+- **Standard Headers**: Rate limit info returned in `RateLimit-*` headers for better client feedback
+
+This configuration ensures proper IP-based rate limiting and logging when the backend is accessed through nginx reverse proxy.
 
 ## � Authentication
 

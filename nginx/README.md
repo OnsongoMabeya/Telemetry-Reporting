@@ -35,7 +35,7 @@ http://197.156.145.121:80 (nginx)
     ↓
 Serves frontend + proxies /api requests
     ↓
-http://192.168.1.69:5000 (backend - local network only)
+http://192.168.1.237:5000 (backend - local network only)
 ```
 
 ## Support

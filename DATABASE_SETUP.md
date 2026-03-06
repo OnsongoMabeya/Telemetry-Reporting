@@ -56,6 +56,17 @@ mysql -u your_user -p your_database < database/migrations/004_add_color_to_metri
 
 Replace `your_user` and `your_database` with your MySQL credentials.
 
+**Note:** The automated `setup.js` script preserves existing metric mappings when no export file is present. To migrate metric mappings between servers, use:
+
+```bash
+# On source server: Export metric mappings
+node database/export_metrics.js
+
+# Transfer metric_mappings_export.sql to target server
+# On target server: Run setup.js (automatically imports if export file exists)
+node database/setup.js
+```
+
 ## Prerequisites
 
 Before running the setup, ensure:
