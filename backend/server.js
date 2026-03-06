@@ -39,6 +39,9 @@ const app = express();
 // Load environment variables
 require('dotenv').config();
 
+// Trust proxy - required when behind nginx reverse proxy
+app.set('trust proxy', true);
+
 // Enable CORS for all routes
 app.use((req, res, next) => {
   // Get allowed origins from environment variable
