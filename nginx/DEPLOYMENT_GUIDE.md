@@ -5,9 +5,7 @@ Complete step-by-step guide for deploying BSI Telemetry with nginx reverse proxy
 ## Architecture Overview
 
 ```bash
-External Users → http://197.156.145.121:80 (nginx)
-                ↓
-                HTTPS redirect to :443
+External Users → http://197.156.145.121:3010 (nginx)
                 ↓
                 nginx serves frontend + proxies /api
                 ↓
@@ -16,11 +14,12 @@ External Users → http://197.156.145.121:80 (nginx)
 
 **Benefits:**
 
-- ✅ Only port 80/443 exposed externally (port 5000 stays internal)
-- ✅ SSL/TLS encryption for all traffic
+- ✅ Only port 3010 exposed externally (port 5000 stays internal)
+- ✅ Coexists with other applications on the server (multi-tenant setup)
 - ✅ Single entry point for security
 - ✅ Static file caching for better performance
 - ✅ Easy to add rate limiting and security headers
+- ✅ Backend remains secure on local network
 
 ---
 
@@ -148,13 +147,15 @@ You should see 2 nginx.exe processes (master + worker).
 1. Login to router admin panel
 2. Go to Port Forwarding settings
 3. Add rule:
-   - External Port: 80
+   - External Port: 3010
    - Internal IP: 192.168.1.237 (your Windows server)
-   - Internal Port: 80
+   - Internal Port: 3010
    - Protocol: TCP
 4. Save and apply
 
 **Do NOT forward port 5000** - this keeps your backend secure on the local network.
+
+**Note:** Port 3010 is used instead of port 80 to allow BSI Telemetry to coexist with other applications on the server.
 
 ### Step 8: Start Backend Server
 
@@ -181,15 +182,15 @@ curl http://localhost/api/health
 
 ```bash
 # Test from any computer outside your network
-curl http://197.156.145.121
+curl http://197.156.145.121:3010
 
 # Test API
-curl http://197.156.145.121/api/health
+curl http://197.156.145.121:3010/api/health
 ```
 
 **Open in browser:**
 
-- External: http://197.156.145.121
+- External: http://197.156.145.121:3010
 - Should see BSI Telemetry login page
 - Login and verify dashboard loads
 
@@ -384,23 +385,22 @@ type C:\nginx\conf\nginx.conf | findstr "root"
 
 ```powershell
 # From Windows server
-curl http://192.168.1.237
+curl http://192.168.1.237:3010
 
 # From another computer on same network
-curl http://192.168.1.237
+curl http://192.168.1.237:3010
 ```
 
 **If local works but external doesn't:**
 
-- Check router port forwarding rules (ensure forwarding to 192.168.1.237, not 192.168.1.69)
-- Verify ISP doesn't block port 80
+- Check router port forwarding rules (ensure forwarding port 3010 to 192.168.1.237:3010)
+- Verify ISP doesn't block port 3010
 - Check Windows Firewall rules
 
 **Allow nginx through firewall:**
 
 ```powershell
-New-NetFirewallRule -DisplayName "Nginx HTTP" -Direction Inbound -LocalPort 80 -Protocol TCP -Action Allow
-New-NetFirewallRule -DisplayName "Nginx HTTPS" -Direction Inbound -LocalPort 443 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "BSI Telemetry Nginx" -Direction Inbound -LocalPort 3010 -Protocol TCP -Action Allow
 ```
 
 ### SSL Certificate Issues

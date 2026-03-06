@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `export_metrics.js` script to export metric mappings with color column for deployment.
 - Trust proxy configuration for nginx reverse proxy compatibility.
 - Rate limiter configuration optimized for proxy environments.
+- Nginx configuration for port 3010 to support multi-tenant server deployments.
 
 ### Changed
 
@@ -23,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `setup.js` now preserves existing metric mappings when no export file is present.
 - Backend `server.js` enables `trust proxy` for proper IP detection behind nginx.
 - Rate limiter disables `trustProxy` validation to prevent errors with nginx proxy.
+- **Nginx now listens on port 3010** instead of port 80 for multi-tenant server compatibility.
+- Updated all deployment documentation to reflect port 3010 configuration.
 
 ### Fixed
 

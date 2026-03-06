@@ -35,8 +35,12 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 - **Flexible Deployment**: Access from multiple interfaces
   - Local Development: `http://localhost:3010`
-  - Network Access: `http://[YOUR_IP]:3010`
-  - Backend API: `http://[YOUR_IP]:5000`
+  - Production (Nginx): `http://[YOUR_IP]:3010`
+  - Backend API: `http://[YOUR_IP]:5000` (local network only)
+- **Production Setup**: Nginx reverse proxy on port 3010
+  - Serves optimized frontend build
+  - Proxies `/api` requests to backend internally
+  - Backend port 5000 stays secure on local network
 - **Automatic Configuration**: Dynamic API endpoint detection
 - **Cross-Origin Ready**: Pre-configured CORS settings
 

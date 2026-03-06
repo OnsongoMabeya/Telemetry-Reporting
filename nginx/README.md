@@ -31,12 +31,14 @@ This directory contains nginx configuration files for deploying BSI Telemetry wi
 ```bash
 External Users
     ↓
-http://197.156.145.121:80 (nginx)
+http://197.156.145.121:3010 (nginx)
     ↓
 Serves frontend + proxies /api requests
     ↓
 http://192.168.1.237:5000 (backend - local network only)
 ```
+
+**Note:** Port 3010 is used to allow BSI Telemetry to coexist with other applications on the server.
 
 ## Support
 
