@@ -332,15 +332,16 @@ const NodeList = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              <Grid container spacing={{ xs: 2, md: 3 }}>
+              <Grid container spacing={{ xs: 2, sm: 2.5, md: 3, lg: 3.5 }}>
                 <AnimatePresence>
                   {nodes.map((node, index) => (
                     <Grid 
                       item 
-                      xs={12} 
-                      sm={6} 
-                      md={4} 
-                      lg={3} 
+                      xs={12}              // Mobile portrait: 1 column
+                      sm={6}               // Mobile landscape/small tablet: 2 columns
+                      md={4}               // Tablet: 3 columns
+                      lg={3}               // Desktop: 4 columns
+                      xl={2.4}             // Large desktop: 5 columns
                       key={node.name} 
                       sx={{ display: 'flex' }}
                     >
@@ -405,8 +406,8 @@ const NodeList = () => {
                               display: 'flex',
                               flexDirection: 'column',
                               alignItems: 'flex-start',
-                              p: 3,
-                              gap: 2
+                              p: { xs: 2, sm: 2.5, md: 3 },
+                              gap: { xs: 1.5, sm: 2 }
                             }}
                           >
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>

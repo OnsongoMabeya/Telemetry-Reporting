@@ -116,9 +116,9 @@ const Navbar = () => {
                 src="/bsilogo512.png"
                 alt="BSI Logo"
                 sx={{
-                  height: { xs: 32, md: 40 },
+                  height: { xs: 28, sm: 32, md: 36, lg: 40 },
                   width: 'auto',
-                  marginRight: { xs: 1.5, md: 2 },
+                  marginRight: { xs: 1, sm: 1.5, md: 2 },
                   filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
                   transition: 'transform 0.3s ease'
                 }}
@@ -138,11 +138,32 @@ const Navbar = () => {
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
                   fontWeight: 800,
-                  fontSize: { xs: '1.2rem', md: '1.5rem' },
-                  letterSpacing: '-0.5px'
+                  fontSize: { xs: '1rem', sm: '1.2rem', md: '1.4rem', lg: '1.5rem' },
+                  letterSpacing: '-0.5px',
+                  display: { xs: 'none', sm: 'block' }
                 }}
               >
                 BSI Telemetry
+              </Typography>
+              
+              <Typography
+                variant="h6"
+                component={motion.div}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                sx={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  letterSpacing: '-0.3px',
+                  display: { xs: 'block', sm: 'none' }
+                }}
+              >
+                BSI
               </Typography>
               
               <Typography
@@ -155,7 +176,8 @@ const Navbar = () => {
                   color: 'rgba(255, 255, 255, 0.7)',
                   marginLeft: 1,
                   fontWeight: 500,
-                  fontSize: { xs: '0.75rem', md: '0.875rem' }
+                  fontSize: { xs: '0.75rem', md: '0.875rem' },
+                  display: { xs: 'none', md: 'block' }
                 }}
               >
                 Real-time Monitoring

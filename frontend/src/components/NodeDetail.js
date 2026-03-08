@@ -789,10 +789,11 @@ const NodeDetail = () => {
 
   return (
     <ErrorBoundary>
-      <Container maxWidth="false" sx={{ 
-        px: { xs: 2, sm: 3 }, 
-        py: { xs: 2, sm: 3 },
-        pt: { xs: 10, sm: 11, md: 12 } // Add top padding to account for fixed navbar
+      <Container maxWidth="xl" sx={{ 
+        px: { xs: 1.5, sm: 2, md: 3, lg: 4 }, 
+        py: { xs: 2, sm: 2.5, md: 3 },
+        pt: { xs: 10, sm: 11, md: 12 }, // Add top padding to account for fixed navbar
+        maxWidth: { xs: '100%', sm: '100%', md: '100%', lg: '1600px', xl: '1800px' }
       }}>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -1120,25 +1121,39 @@ const NodeDetail = () => {
           <Box sx={{ 
             display: 'grid', 
             gridTemplateColumns: { 
-              xs: '1fr', 
-              sm: '1fr 1fr', 
-              md: '1fr 1fr',
-              lg: '1fr 1fr 1fr'
+              xs: '1fr',                    // Mobile: 1 column
+              sm: '1fr',                    // Mobile landscape: 1 column
+              md: 'repeat(2, 1fr)',         // Tablet: 2 columns
+              lg: 'repeat(3, 1fr)',         // Desktop: 3 columns
+              xl: 'repeat(4, 1fr)'          // Large desktop: 4 columns
             }, 
-            gap: { xs: 2, sm: 2.5 },
+            gap: { xs: 2, sm: 2.5, md: 3 },
             mb: 3 
           }}>
             
-            {/* Kenya Map - Compact size in grid */}
+            {/* Kenya Map - Responsive size in grid */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.5 }}
+              style={{ 
+                gridColumn: { 
+                  xs: '1', 
+                  md: '1 / -1',              // Tablet: span full width
+                  lg: '1 / 2'                // Desktop: span 1 column
+                } 
+              }}
             >
               <Paper
                 elevation={8}
                 sx={{
-                  height: { xs: '300px', sm: '350px' },
+                  height: { 
+                    xs: '280px',             // Mobile portrait
+                    sm: '320px',             // Mobile landscape
+                    md: '400px',             // Tablet
+                    lg: '350px',             // Desktop
+                    xl: '380px'              // Large desktop
+                  },
                   borderRadius: 3,
                   overflow: 'hidden',
                   background: 'rgba(255, 255, 255, 0.95)',

@@ -216,22 +216,44 @@ const KenyaMap = ({ selectedNode }) => {
           elevation={4}
           sx={{
             position: 'absolute',
-            top: 16,
-            left: 16,
-            right: 16,
+            top: { xs: 8, sm: 12, md: 16 },
+            left: { xs: 8, sm: 12, md: 16 },
+            right: { xs: 8, sm: 12, md: 16 },
             zIndex: 1000,
             background: 'rgba(255, 255, 255, 0.95)',
             backdropFilter: 'blur(20px)',
-            borderRadius: 3,
-            p: 2,
+            borderRadius: { xs: 2, md: 3 },
+            p: { xs: 1.5, sm: 2 },
             border: '1px solid rgba(255, 255, 255, 0.2)'
           }}
         >
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: '#1a1a1a' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between', 
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            gap: { xs: 1, sm: 0 },
+            mb: { xs: 1.5, sm: 2 }
+          }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 700, 
+                color: '#1a1a1a',
+                fontSize: { xs: '1rem', sm: '1.25rem' }
+              }}
+            >
               Kenya Base Stations
               {selectedNode && (
-                <Typography component="span" variant="caption" sx={{ ml: 1, color: '#666' }}>
+                <Typography 
+                  component="span" 
+                  variant="caption" 
+                  sx={{ 
+                    ml: 1, 
+                    color: '#666',
+                    display: { xs: 'block', sm: 'inline' }
+                  }}
+                >
                   • {selectedNode}
                 </Typography>
               )}
@@ -243,7 +265,7 @@ const KenyaMap = ({ selectedNode }) => {
             </motion.div>
           </Box>
           
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 }, flexWrap: 'wrap' }}>
             <motion.div whileHover={{ scale: 1.05 }}>
               <Chip
                 icon={<Wifi />}
@@ -342,8 +364,15 @@ const KenyaMap = ({ selectedNode }) => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <Box sx={{ p: 1, minWidth: 200 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>
+                    <Box sx={{ p: { xs: 0.5, sm: 1 }, minWidth: { xs: 150, sm: 200 } }}>
+                      <Typography 
+                        variant="h6" 
+                        sx={{ 
+                          fontWeight: 700, 
+                          mb: 1,
+                          fontSize: { xs: '0.95rem', sm: '1.25rem' }
+                        }}
+                      >
                         {station.name}
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>

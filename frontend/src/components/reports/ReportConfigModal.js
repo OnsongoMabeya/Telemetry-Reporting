@@ -108,17 +108,25 @@ const ReportConfigModal = ({ open, onClose, onGenerate, onSendEmail, isSending, 
   };
 
   return (
-    <StyledDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <StyledDialog 
+      open={open} 
+      onClose={handleClose} 
+      maxWidth="sm" 
+      fullWidth
+      fullScreen={window.innerWidth < 600}
+    >
       <StyledDialogTitle>
         <Box display="flex" justifyContent="space-between" alignItems="center">
-          <span>Generate Report</span>
+          <Typography variant="h6" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+            Generate Report
+          </Typography>
           <IconButton edge="end" color="inherit" onClick={handleClose} aria-label="close">
             <CloseIcon />
           </IconButton>
         </Box>
       </StyledDialogTitle>
-      <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2, mb: 2 }}>
+      <DialogContent sx={{ px: { xs: 2, sm: 3 } }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 }, mt: 2, mb: 2 }}>
           <Typography variant="subtitle1" gutterBottom>
             <strong>Node:</strong> {currentNode || 'None selected'}
           </Typography>
@@ -182,11 +190,18 @@ const ReportConfigModal = ({ open, onClose, onGenerate, onSendEmail, isSending, 
           </Collapse>
         </Box>
       </DialogContent>
-      <DialogActions sx={{ padding: 3, gap: 2 }}>
+      <DialogActions sx={{ 
+        padding: { xs: 2, sm: 3 }, 
+        gap: { xs: 1, sm: 2 },
+        flexDirection: { xs: 'column', sm: 'row' }
+      }}>
         <Button 
           onClick={handleClose} 
           variant="outlined" 
-          sx={{ borderRadius: '8px' }}
+          sx={{ 
+            borderRadius: '8px',
+            width: { xs: '100%', sm: 'auto' }
+          }}
           disabled={isSending}
         >
           Cancel
@@ -194,7 +209,12 @@ const ReportConfigModal = ({ open, onClose, onGenerate, onSendEmail, isSending, 
         <Button
           onClick={handleSubmit}
           variant="contained"
-          sx={{ borderRadius: '8px', px: 3, minWidth: 150 }}
+          sx={{ 
+            borderRadius: '8px', 
+            px: 3, 
+            minWidth: { xs: '100%', sm: 150 },
+            width: { xs: '100%', sm: 'auto' }
+          }}
           disabled={!currentNode || !currentTimeRange || isSending}
           startIcon={isSending ? <CircularProgress size={20} color="inherit" /> : null}
         >
