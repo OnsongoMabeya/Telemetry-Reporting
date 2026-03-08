@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Comprehensive Responsive Design System** - Mobile-first implementation
+  - 6 responsive breakpoints (480px, 768px, 1024px, 1440px, 1920px)
+  - Fluid typography using CSS `clamp()` function (14px - 18px)
+  - Responsive spacing variables (`--spacing-xs` through `--spacing-xl`)
+  - Utility classes for containers, grids, flex layouts, and visibility
+  - Adaptive grid layouts: 1 → 2 → 3 → 4 → 5 columns based on screen size
+  - Touch-optimized mobile interface with larger targets
+  - Full-screen modals on mobile devices (<600px)
 - Admin-configurable graph colors stored in `metric_mappings.color`.
 - Database migration `004_add_color_to_metric_mappings.sql`.
 - `export_metrics.js` script to export metric mappings with color column for deployment.
@@ -18,6 +26,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **NodeDetail.js** - Enhanced dashboard grid layout
+  - Adaptive columns: 1 (mobile) → 2 (tablet) → 3 (desktop) → 4 (large desktop)
+  - Responsive map heights: 280px (mobile) → 400px (tablet) → 350px (desktop)
+  - Improved container constraints with responsive max-width
+  - Mobile-optimized padding and spacing
+- **KenyaMap.js** - Responsive map component
+  - Adaptive info panel positioning and padding
+  - Mobile-optimized header that stacks on small screens
+  - Smaller popup content on mobile devices
+  - Better touch targets for mobile interaction
+- **NodeList.js** - Responsive grid layout
+  - Enhanced grid: 1 → 2 → 3 → 4 → 5 columns across breakpoints
+  - Responsive card padding: 2 (mobile) → 2.5 (tablet) → 3 (desktop)
+  - Adaptive spacing between cards
+- **Navbar.js** - Mobile-first navigation
+  - Responsive logo sizing: 28px (mobile) → 40px (desktop)
+  - Adaptive branding: "BSI" on mobile, "BSI Telemetry" on desktop
+  - Hidden subtitle on mobile for cleaner appearance
+- **ReportConfigModal.js** - Responsive modal design
+  - Full-screen modal on mobile (<600px)
+  - Stacked buttons on mobile (full width)
+  - Side-by-side buttons on desktop
+  - Responsive typography and padding
 - Dashboard graphs now use the database-configured metric color for all users.
 - Default graph styling is now black line with no fill when `color` is not set.
 - `/api/telemetry-mappings/:nodeName/:baseStation` now returns `color` in mappings.

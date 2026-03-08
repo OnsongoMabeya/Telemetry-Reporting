@@ -51,7 +51,7 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 - **User Management**: Role-based access control with admin, manager, and viewer roles
 - **Node Assignment**: Granular access control - assign specific nodes to users
 - **Comprehensive Reporting**: Generate and export reports in multiple formats
-- **Responsive Design**: Works seamlessly on all device sizes
+- **Responsive Design**: Mobile-first design with comprehensive breakpoint support (see [Responsive Design](#-responsive-design) section)
 - **Dark/Light Mode**: Optimized viewing in any lighting condition
 
 ### 🔐 Authentication & Security
@@ -111,7 +111,87 @@ The system implements comprehensive JWT-based authentication with role-based acc
 - **API Documentation**: Swagger/OpenAPI
 - **Caching**: node-cache
 
-## 🗺️ Geographic Visualization
+## � Responsive Design
+
+The application implements a comprehensive mobile-first responsive design system ensuring optimal user experience across all device sizes and aspect ratios.
+
+### Responsive Breakpoints
+
+The system uses 6 responsive breakpoints for precise control:
+
+| Breakpoint        | Screen Size      | Target Devices         | Grid Columns |
+| ----------------- | ---------------- | ---------------------- | ------------ |
+| Mobile Portrait   | ≤480px           | Phones (portrait)      | 1 column     |
+| Mobile Landscape  | 481px - 767px    | Phones (landscape)     | 1-2 columns  |
+| Tablet            | 768px - 1023px   | Tablets, small laptops | 2-3 columns  |
+| Desktop           | 1024px - 1439px  | Laptops, desktops      | 3-4 columns  |
+| Large Desktop     | 1440px - 1919px  | Large monitors         | 4-5 columns  |
+| Ultra-wide        | ≥1920px          | Ultra-wide displays    | 4-5 columns  |
+
+### Key Responsive Features
+
+**Fluid Typography:**
+
+- Automatic font scaling using CSS `clamp()` function (14px - 18px)
+- Smooth transitions between breakpoints
+- Optimized readability on all screen sizes
+
+**Adaptive Layouts:**
+
+- **Dashboard Grids**: 1 → 2 → 3 → 4 columns based on screen size
+- **Node List**: 1 → 2 → 3 → 4 → 5 columns for optimal card display
+- **Map Heights**: 280px (mobile) → 400px (tablet) → 350px (desktop)
+- **Container Constraints**: Max-width limits prevent over-stretching on ultra-wide displays
+
+**Component-Specific Optimizations:**
+
+- **Navbar**: Abbreviated branding on mobile ("BSI" vs "BSI Telemetry"), hidden subtitle, responsive logo sizing
+- **Kenya Map**: Stacked info panel on mobile, adaptive popup content, touch-optimized controls
+- **Report Modals**: Full-screen on mobile (<600px), stacked buttons, responsive padding
+- **Cards & Papers**: Adaptive padding and spacing based on screen size
+
+**Touch-Friendly:**
+
+- Larger touch targets on mobile devices
+- Full-width buttons on small screens
+- Optimized spacing for finger navigation
+- Improved mobile menu interactions
+
+### Testing Recommendations
+
+Test the application at these common breakpoints:
+
+**Mobile:**
+
+- 375px × 667px (iPhone SE, 8)
+- 414px × 896px (iPhone 11, XR)
+- 360px × 740px (Android phones)
+
+**Tablet:**
+
+- 768px × 1024px (iPad portrait)
+- 1024px × 768px (iPad landscape)
+- 820px × 1180px (iPad Air)
+
+**Desktop:**
+
+- 1366px × 768px (Laptop)
+- 1440px × 900px (MacBook)
+- 1920px × 1080px (Full HD)
+- 2560px × 1440px (2K)
+- 3440px × 1440px (Ultra-wide)
+
+### Responsive Utilities
+
+The `global.css` file includes utility classes for responsive development:
+
+- **Container Classes**: `.container-responsive` with max-width constraints
+- **Grid Classes**: `.grid-responsive` with adaptive columns
+- **Flex Classes**: `.flex-responsive` with direction changes
+- **Visibility Classes**: `.hide-mobile`, `.hide-tablet`, `.hide-desktop`, `.show-mobile-only`
+- **Spacing Variables**: `--spacing-xs` through `--spacing-xl` for consistent spacing
+
+## ��️ Geographic Visualization
 
 ### Interactive Kenya Map
 
