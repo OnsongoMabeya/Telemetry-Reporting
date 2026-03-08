@@ -145,7 +145,7 @@ where.exe node
 
 ```powershell
 # Install backend service (adjust node.exe path if different)
-nssm install bsi-backend "C:\Program Files\nodejs\node.exe" "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\backend\server.js"
+nssm install bsi-telemetry-reporting-backend "C:\Program Files\nodejs\node.exe" "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\backend\server.js"
 ```
 
 **Expected output:** `Service 'bsi-backend' installed successfully!`
@@ -154,40 +154,40 @@ nssm install bsi-backend "C:\Program Files\nodejs\node.exe" "C:\Users\BSI\Docume
 
 ```powershell
 # Set working directory
-nssm set bsi-backend AppDirectory "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\backend"
+nssm set bsi-telemetry-reporting-backend AppDirectory "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\backend"
 
 # Set display name and description
-nssm set bsi-backend DisplayName "BSI Telemetry Backend"
-nssm set bsi-backend Description "BSI Telemetry Backend API Server (Port 5000)"
+nssm set bsi-telemetry-reporting-backend DisplayName "BSI Telemetry Backend"
+nssm set bsi-telemetry-reporting-backend Description "BSI Telemetry Backend API Server (Port 5000)"
 
 # Set to auto-start on boot
-nssm set bsi-backend Start SERVICE_AUTO_START
+nssm set bsi-telemetry-reporting-backend Start SERVICE_AUTO_START
 
 # Configure logging
-nssm set bsi-backend AppStdout "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\backend\logs\service-stdout.log"
-nssm set bsi-backend AppStderr "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\backend\logs\service-stderr.log"
+nssm set bsi-telemetry-reporting-backend AppStdout "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\backend\logs\service-stdout.log"
+nssm set bsi-telemetry-reporting-backend AppStderr "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\backend\logs\service-stderr.log"
 
 # Rotate logs (prevents log files from growing too large)
-nssm set bsi-backend AppStdoutCreationDisposition 4
-nssm set bsi-backend AppStderrCreationDisposition 4
+nssm set bsi-telemetry-reporting-backend AppStdoutCreationDisposition 4
+nssm set bsi-telemetry-reporting-backend AppStderrCreationDisposition 4
 
 # Set restart behavior (auto-restart on failure)
-nssm set bsi-backend AppExit Default Restart
-nssm set bsi-backend AppRestartDelay 5000
+nssm set bsi-telemetry-reporting-backend AppExit Default Restart
+nssm set bsi-telemetry-reporting-backend AppRestartDelay 5000
 ```
 
 ### Step 4: Start the Backend Service
 
 ```powershell
 # Start the service
-nssm start bsi-backend
+nssm start bsi-telemetry-reporting-backend
 
 # Check status
-nssm status bsi-backend
+nssm status bsi-telemetry-reporting-backend
 # Should show: SERVICE_RUNNING
 
 # Verify via Windows Services
-Get-Service bsi-backend
+Get-Service bsi-telemetry-reporting-backend
 ```
 
 ### Step 5: Test Backend
@@ -211,7 +211,7 @@ curl http://localhost:5000/api/nodes
 
 ```powershell
 # Install nginx service
-nssm install bsi-nginx "C:\nginx\current\nginx.exe"
+nssm install bsi-telemetry-reporting-nginx "C:\nginx\current\nginx.exe"
 ```
 
 **Expected output:** `Service 'bsi-nginx' installed successfully!`
@@ -220,40 +220,40 @@ nssm install bsi-nginx "C:\nginx\current\nginx.exe"
 
 ```powershell
 # Set working directory
-nssm set bsi-nginx AppDirectory "C:\nginx\current"
+nssm set bsi-telemetry-reporting-nginx AppDirectory "C:\nginx\current"
 
 # Set display name and description
-nssm set bsi-nginx DisplayName "BSI Telemetry Nginx"
-nssm set bsi-nginx Description "BSI Telemetry Nginx Reverse Proxy (Port 3010)"
+nssm set bsi-telemetry-reporting-nginx DisplayName "BSI Telemetry Nginx"
+nssm set bsi-telemetry-reporting-nginx Description "BSI Telemetry Nginx Reverse Proxy (Port 3010)"
 
 # Set to auto-start on boot
-nssm set bsi-nginx Start SERVICE_AUTO_START
+nssm set bsi-telemetry-reporting-nginx Start SERVICE_AUTO_START
 
 # Configure logging
-nssm set bsi-nginx AppStdout "C:\nginx\current\logs\service-stdout.log"
-nssm set bsi-nginx AppStderr "C:\nginx\current\logs\service-stderr.log"
+nssm set bsi-telemetry-reporting-nginx AppStdout "C:\nginx\current\logs\service-stdout.log"
+nssm set bsi-telemetry-reporting-nginx AppStderr "C:\nginx\current\logs\service-stderr.log"
 
 # Rotate logs
-nssm set bsi-nginx AppStdoutCreationDisposition 4
-nssm set bsi-nginx AppStderrCreationDisposition 4
+nssm set bsi-telemetry-reporting-nginx AppStdoutCreationDisposition 4
+nssm set bsi-telemetry-reporting-nginx AppStderrCreationDisposition 4
 
 # Set restart behavior
-nssm set bsi-nginx AppExit Default Restart
-nssm set bsi-nginx AppRestartDelay 5000
+nssm set bsi-telemetry-reporting-nginx AppExit Default Restart
+nssm set bsi-telemetry-reporting-nginx AppRestartDelay 5000
 ```
 
 ### Step 3: Start the Nginx Service
 
 ```powershell
 # Start the service
-nssm start bsi-nginx
+nssm start bsi-telemetry-reporting-nginx
 
 # Check status
-nssm status bsi-nginx
+nssm status bsi-telemetry-reporting-nginx
 # Should show: SERVICE_RUNNING
 
 # Verify via Windows Services
-Get-Service bsi-nginx
+Get-Service bsi-telemetry-reporting-nginx
 ```
 
 ### Step 4: Test Nginx
@@ -281,24 +281,24 @@ curl http://localhost:3010/api/nodes
 
 ```powershell
 # List both services
-Get-Service bsi-backend, bsi-nginx | Format-Table -AutoSize
+Get-Service bsi-telemetry-reporting-backend, bsi-telemetry-reporting-nginx | Format-Table -AutoSize
 ```
 
 **Expected output:**
 
 ```text
-Status  Name         DisplayName
-------  ----         -----------
-Running bsi-backend  BSI Telemetry Backend
-Running bsi-nginx    BSI Telemetry Nginx
+Status  Name                             DisplayName
+------  ----                             -----------
+Running bsi-telemetry-reporting-backend  BSI Telemetry Backend
+Running bsi-telemetry-reporting-nginx    BSI Telemetry Nginx
 ```
 
 ### Step 2: Verify Auto-Start is Enabled
 
 ```powershell
 # Check startup type
-Get-Service bsi-backend | Select-Object Name, StartType, Status
-Get-Service bsi-nginx | Select-Object Name, StartType, Status
+Get-Service bsi-telemetry-reporting-backend | Select-Object Name, StartType, Status
+Get-Service bsi-telemetry-reporting-nginx | Select-Object Name, StartType, Status
 ```
 
 **Both should show:**
@@ -326,60 +326,60 @@ start http://192.168.1.237:3010
 
 ```powershell
 # Check if services are running
-nssm status bsi-backend
-nssm status bsi-nginx
+nssm status bsi-telemetry-reporting-backend
+nssm status bsi-telemetry-reporting-nginx
 
 # Or use Windows Services
-Get-Service bsi-backend, bsi-nginx
+Get-Service bsi-telemetry-reporting-backend, bsi-telemetry-reporting-nginx
 ```
 
 ### Start Services
 
 ```powershell
-nssm start bsi-backend
-nssm start bsi-nginx
+nssm start bsi-telemetry-reporting-backend
+nssm start bsi-telemetry-reporting-nginx
 
 # Or use Windows Services
-Start-Service bsi-backend
-Start-Service bsi-nginx
+Start-Service bsi-telemetry-reporting-backend
+Start-Service bsi-telemetry-reporting-nginx
 ```
 
 ### Stop Services
 
 ```powershell
-nssm stop bsi-backend
-nssm stop bsi-nginx
+nssm stop bsi-telemetry-reporting-backend
+nssm stop bsi-telemetry-reporting-nginx
 
 # Or use Windows Services
-Stop-Service bsi-backend
-Stop-Service bsi-nginx
+Stop-Service bsi-telemetry-reporting-backend
+Stop-Service bsi-telemetry-reporting-nginx
 ```
 
 ### Restart Services
 
 ```powershell
-nssm restart bsi-backend
-nssm restart bsi-nginx
+nssm restart bsi-telemetry-reporting-backend
+nssm restart bsi-telemetry-reporting-nginx
 
 # Or use Windows Services
-Restart-Service bsi-backend
-Restart-Service bsi-nginx
+Restart-Service bsi-telemetry-reporting-backend
+Restart-Service bsi-telemetry-reporting-nginx
 ```
 
 ### View Service Configuration
 
 ```powershell
 # View all settings for a service
-nssm dump bsi-backend
-nssm dump bsi-nginx
+nssm dump bsi-telemetry-reporting-backend
+nssm dump bsi-telemetry-reporting-nginx
 ```
 
 ### Edit Service (GUI)
 
 ```powershell
 # Open NSSM GUI to edit service settings
-nssm edit bsi-backend
-nssm edit bsi-nginx
+nssm edit bsi-telemetry-reporting-backend
+nssm edit bsi-telemetry-reporting-nginx
 ```
 
 This opens a graphical interface where you can modify all service settings.
@@ -420,7 +420,7 @@ Look for:
 Restart-Computer
 
 # After reboot, verify services started automatically
-Get-Service bsi-backend, bsi-nginx
+Get-Service bsi-telemetry-reporting-backend, bsi-telemetry-reporting-nginx
 curl http://localhost:3010/
 ```
 
@@ -428,18 +428,18 @@ curl http://localhost:3010/
 
 ```powershell
 # Stop both services
-nssm stop bsi-backend
-nssm stop bsi-nginx
+nssm stop bsi-telemetry-reporting-backend
+nssm stop bsi-telemetry-reporting-nginx
 
 # Verify they're stopped
-Get-Service bsi-backend, bsi-nginx
+Get-Service bsi-telemetry-reporting-backend, bsi-telemetry-reporting-nginx
 
 # Start them again (simulates boot)
-nssm start bsi-backend
-nssm start bsi-nginx
+nssm start bsi-telemetry-reporting-backend
+nssm start bsi-telemetry-reporting-nginx
 
 # Verify they're running
-Get-Service bsi-backend, bsi-nginx
+Get-Service bsi-telemetry-reporting-backend, bsi-telemetry-reporting-nginx
 curl http://localhost:3010/
 ```
 
@@ -464,8 +464,8 @@ Get-Content "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\back
    where.exe node
    
    # Update service if needed
-   nssm set bsi-backend Application "C:\Program Files\nodejs\node.exe"
-   nssm restart bsi-backend
+   nssm set bsi-telemetry-reporting-backend Application "C:\Program Files\nodejs\node.exe"
+   nssm restart bsi-telemetry-reporting-backend
    ```
 
 2. **Missing .env file**
@@ -529,15 +529,15 @@ Get-Content "C:\nginx\current\logs\error.log" -Tail 50
 **Check startup type:**
 
 ```powershell
-Get-Service bsi-backend | Select-Object Name, StartType
-Get-Service bsi-nginx | Select-Object Name, StartType
+Get-Service bsi-telemetry-reporting-backend | Select-Object Name, StartType
+Get-Service bsi-telemetry-reporting-nginx | Select-Object Name, StartType
 ```
 
 **Fix if not Automatic:**
 
 ```powershell
-nssm set bsi-backend Start SERVICE_AUTO_START
-nssm set bsi-nginx Start SERVICE_AUTO_START
+nssm set bsi-telemetry-reporting-backend Start SERVICE_AUTO_START
+nssm set bsi-telemetry-reporting-nginx Start SERVICE_AUTO_START
 ```
 
 ### Remove and Reinstall a Service
@@ -546,12 +546,12 @@ nssm set bsi-nginx Start SERVICE_AUTO_START
 
 ```powershell
 # Stop and remove backend service
-nssm stop bsi-backend
-nssm remove bsi-backend confirm
+nssm stop bsi-telemetry-reporting-backend
+nssm remove bsi-telemetry-reporting-backend confirm
 
 # Stop and remove nginx service
-nssm stop bsi-nginx
-nssm remove bsi-nginx confirm
+nssm stop bsi-telemetry-reporting-nginx
+nssm remove bsi-telemetry-reporting-nginx confirm
 
 # Then reinstall following the steps in Part 3 and Part 4
 ```
@@ -560,8 +560,8 @@ nssm remove bsi-nginx confirm
 
 ```powershell
 # Check if services have dependencies
-Get-Service bsi-backend | Select-Object -ExpandProperty DependentServices
-Get-Service bsi-backend | Select-Object -ExpandProperty ServicesDependedOn
+Get-Service bsi-telemetry-reporting-backend | Select-Object -ExpandProperty DependentServices
+Get-Service bsi-telemetry-reporting-backend | Select-Object -ExpandProperty ServicesDependedOn
 ```
 
 ### Check Windows Event Logs
@@ -608,28 +608,28 @@ After completing this guide, you will have:
 
 ```powershell
 # Start services
-nssm start bsi-backend
-nssm start bsi-nginx
+nssm start bsi-telemetry-reporting-backend
+nssm start bsi-telemetry-reporting-nginx
 
 # Stop services
-nssm stop bsi-backend
-nssm stop bsi-nginx
+nssm stop bsi-telemetry-reporting-backend
+nssm stop bsi-telemetry-reporting-nginx
 
 # Restart services
-nssm restart bsi-backend
-nssm restart bsi-nginx
+nssm restart bsi-telemetry-reporting-backend
+nssm restart bsi-telemetry-reporting-nginx
 
 # Check status
-nssm status bsi-backend
-nssm status bsi-nginx
+nssm status bsi-telemetry-reporting-backend
+nssm status bsi-telemetry-reporting-nginx
 
 # View configuration
-nssm dump bsi-backend
-nssm dump bsi-nginx
+nssm dump bsi-telemetry-reporting-backend
+nssm dump bsi-telemetry-reporting-nginx
 
 # Edit service (GUI)
-nssm edit bsi-backend
-nssm edit bsi-nginx
+nssm edit bsi-telemetry-reporting-backend
+nssm edit bsi-telemetry-reporting-nginx
 ```
 
 ---
