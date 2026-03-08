@@ -26,13 +26,14 @@ import {
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useThemeMode } from '../context/ThemeContext';
 
 const Navbar = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [scrolled, setScrolled] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const { user, logout } = useAuth();
+  const { mode, toggleTheme } = useThemeMode();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -65,10 +66,6 @@ const Navbar = () => {
     await logout();
   };
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
-
   const menuItems = [
     { icon: <Home />, label: 'Dashboard', path: '/' }
   ];
@@ -78,9 +75,13 @@ const Navbar = () => {
       <AppBar 
         position="fixed"
         sx={{
-          background: scrolled 
-            ? 'rgba(17, 25, 40, 0.95)' 
-            : 'rgba(17, 25, 40, 0.85)',
+          background: (theme) => scrolled 
+            ? (theme.palette.mode === 'dark' 
+                ? 'rgba(15, 23, 42, 0.95)' 
+                : 'rgba(17, 25, 40, 0.95)')
+            : (theme.palette.mode === 'dark'
+                ? 'rgba(15, 23, 42, 0.85)'
+                : 'rgba(17, 25, 40, 0.85)'),
           backdropFilter: 'blur(16px) saturate(180%)',
           WebkitBackdropFilter: 'blur(16px) saturate(180%)',
           border: scrolled 
@@ -237,22 +238,24 @@ const Navbar = () => {
                 ))}
                 
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                  <IconButton
-                    onClick={toggleDarkMode}
-                    sx={{
-                      ml: 2,
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      '&:hover': {
-                        background: 'rgba(255, 255, 255, 0.2)'
-                      }
-                    }}
-                  >
-                    {darkMode ? (
-                      <Brightness7 sx={{ color: 'rgba(255, 255, 255, 0.9)' }} />
-                    ) : (
-                      <Brightness4 sx={{ color: 'rgba(255, 255, 255, 0.9)' }} />
-                    )}
-                  </IconButton>
+                  <Tooltip title={mode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}>
+                    <IconButton
+                      onClick={toggleTheme}
+                      sx={{
+                        ml: 2,
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        '&:hover': {
+                          background: 'rgba(255, 255, 255, 0.2)'
+                        }
+                      }}
+                    >
+                      {mode === 'dark' ? (
+                        <Brightness7 sx={{ color: 'rgba(255, 255, 255, 0.9)' }} />
+                      ) : (
+                        <Brightness4 sx={{ color: 'rgba(255, 255, 255, 0.9)' }} />
+                      )}
+                    </IconButton>
+                  </Tooltip>
                 </motion.div>
 
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>

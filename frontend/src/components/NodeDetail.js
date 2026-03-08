@@ -78,6 +78,8 @@ const getGraphColor = (dataKey) => {
 
 // Telemetry Graph Component
 const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter, lineColor }) => {
+  const theme = useTheme();
+  
   // Format x-axis tick values based on time range with timezone support
   const formatXAxis = (tickItem) => {
     if (!tickItem) return '';
@@ -256,10 +258,10 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
           p: { xs: 2, sm: 2.5 },
           mb: 2,
           borderRadius: 3,
-          background: 'rgba(255, 255, 255, 0.95)',
+          bgcolor: 'background.paper',
           backdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+          border: (theme) => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)'}`,
+          boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 8px 32px rgba(0, 0, 0, 0.4)' : '0 8px 32px rgba(0, 0, 0, 0.1)',
           transition: 'all 0.3s ease',
           '&:hover': {
             boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
@@ -297,13 +299,13 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
                 variant="h6"
                 sx={{
                   fontWeight: 700,
-                  color: '#1a1a1a',
+                  color: 'text.primary',
                   fontSize: '1.1rem'
                 }}
               >
                 {title}
               </Typography>
-              <Typography variant="caption" sx={{ color: '#666' }}>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                 Real-time telemetry data
               </Typography>
             </Box>
@@ -320,7 +322,9 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
         <Box 
           height={250} 
           sx={{ 
-            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4))',
+            bgcolor: (theme) => theme.palette.mode === 'dark' 
+              ? 'rgba(30, 41, 59, 0.6)' 
+              : 'rgba(255, 255, 255, 0.8)',
             borderRadius: 2,
             p: 1
           }}
@@ -338,21 +342,21 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
               </defs>
               <CartesianGrid 
                 strokeDasharray="3 3" 
-                stroke="rgba(0, 0, 0, 0.1)"
-                strokeOpacity={0.3}
+                stroke={theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}
+                strokeOpacity={theme.palette.mode === 'dark' ? 0.5 : 0.3}
               />
               <XAxis 
                 dataKey="timestamp" 
                 tickFormatter={formatXAxis}
-                stroke="#666"
-                tick={{ fontSize: 12 }}
+                stroke={theme.palette.mode === 'dark' ? '#94a3b8' : theme.palette.text.secondary}
+                tick={{ fontSize: 12, fill: theme.palette.mode === 'dark' ? '#cbd5e1' : theme.palette.text.secondary }}
                 domain={getTimeDomain()}
                 type="number"
                 scale="time"
               />
               <YAxis 
-                stroke="#666"
-                tick={{ fontSize: 12 }}
+                stroke={theme.palette.mode === 'dark' ? '#94a3b8' : theme.palette.text.secondary}
+                tick={{ fontSize: 12, fill: theme.palette.mode === 'dark' ? '#cbd5e1' : theme.palette.text.secondary }}
                 domain={getYAxisScale().domain}
                 ticks={getYAxisScale().ticks}
                 tickFormatter={(value) => {
@@ -373,10 +377,11 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
               />
               <RechartsTooltip
                 contentStyle={{
-                  background: 'rgba(255, 255, 255, 0.95)',
+                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                   backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(0, 0, 0, 0.1)',
+                  border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
                   borderRadius: 8,
+                  color: theme.palette.text.primary,
                   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)'
                 }}
                 labelFormatter={(value) => {
@@ -401,8 +406,10 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
               />
               <Legend 
                 wrapperStyle={{
-                  paddingTop: '20px'
+                  paddingTop: '20px',
+                  color: theme.palette.text.primary
                 }}
+                iconType="line"
               />
               <Area
                 type="monotone"
@@ -415,13 +422,17 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
               <Line
                 type="monotone"
                 dataKey={dataKey}
-                stroke={lineColor || getGraphColor(dataKey)}
-                strokeWidth={2}
+                stroke={theme.palette.mode === 'dark' 
+                  ? (lineColor || '#60a5fa')  // Brighter blue in dark mode
+                  : (lineColor || getGraphColor(dataKey))}
+                strokeWidth={theme.palette.mode === 'dark' ? 3 : 2}
                 dot={false}
                 activeDot={{
                   r: 6,
-                  fill: lineColor || getGraphColor(dataKey),
-                  stroke: '#fff',
+                  fill: theme.palette.mode === 'dark' 
+                    ? (lineColor || '#60a5fa') 
+                    : (lineColor || getGraphColor(dataKey)),
+                  stroke: theme.palette.mode === 'dark' ? '#1e293b' : '#fff',
                   strokeWidth: 2
                 }}
                 animationDuration={1500}
@@ -448,6 +459,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
 //   return generateRecommendation(dataKey, current, avg, max, min);
 // };
 
+// eslint-disable-next-line no-unused-vars
 const generateRecommendation = (metric, current, avg, max, min) => {
   // Handle null/undefined values
   current = Number(current) || 0;
@@ -874,10 +886,10 @@ const NodeDetail = () => {
               p: { xs: 2, sm: 2.5 },
               mb: 3,
               borderRadius: 3,
-              background: 'rgba(255, 255, 255, 0.95)',
+              bgcolor: 'background.paper',
               backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+              border: (theme) => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)'}`,
+              boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 8px 32px rgba(0, 0, 0, 0.4)' : '0 8px 32px rgba(0, 0, 0, 0.1)'
             }}
           >
             <Box sx={{ 
@@ -889,7 +901,7 @@ const NodeDetail = () => {
               <motion.div whileHover={{ scale: 1.02 }} style={{ flex: 1 }}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
-                    background: 'white',
+                    bgcolor: 'background.paper',
                     px: 1,
                     '&.Mui-focused': {
                       color: '#667eea'
@@ -933,7 +945,7 @@ const NodeDetail = () => {
               <motion.div whileHover={{ scale: 1.02 }} style={{ flex: 1 }}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
-                    background: 'white',
+                    bgcolor: 'background.paper',
                     px: 1,
                     '&.Mui-focused': {
                       color: '#764ba2'
@@ -977,7 +989,7 @@ const NodeDetail = () => {
               <motion.div whileHover={{ scale: 1.02 }} style={{ flex: 1 }}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
-                    background: 'white',
+                    bgcolor: 'background.paper',
                     px: 1,
                     '&.Mui-focused': {
                       color: '#f59e0b'
@@ -1156,10 +1168,10 @@ const NodeDetail = () => {
                   },
                   borderRadius: 3,
                   overflow: 'hidden',
-                  background: 'rgba(255, 255, 255, 0.95)',
+                  bgcolor: 'background.paper',
                   backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+                  border: (theme) => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)'}`,
+                  boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 8px 32px rgba(0, 0, 0, 0.4)' : '0 8px 32px rgba(0, 0, 0, 0.1)',
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
@@ -1211,10 +1223,10 @@ const NodeDetail = () => {
             sx={{
               p: { xs: 2, sm: 3 },
               borderRadius: 3,
-              background: 'rgba(255, 255, 255, 0.95)',
+              bgcolor: 'background.paper',
               backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+              border: (theme) => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)'}`,
+              boxShadow: (theme) => theme.palette.mode === 'dark' ? '0 8px 32px rgba(0, 0, 0, 0.4)' : '0 8px 32px rgba(0, 0, 0, 0.1)'
             }}
           >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -10,13 +10,14 @@ import VisualizationSettings from './components/VisualizationSettings';
 import RootElement from './components/RootElement';
 import LoginModal from './components/LoginModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeModeProvider, useThemeMode } from './context/ThemeContext';
 import { setAuthLogout } from './services/axiosInterceptor';
 import './services/axiosInterceptor';
 import './styles/global.css';
 
-const theme = createTheme({
+const getTheme = (mode) => createTheme({
   palette: {
-    mode: 'light',
+    mode,
     primary: {
       main: '#667eea',
       light: '#8b9aff',
@@ -54,15 +55,15 @@ const theme = createTheme({
       contrastText: '#ffffff',
     },
     background: {
-      default: '#f8fafc',
-      paper: '#ffffff',
+      default: mode === 'light' ? '#f8fafc' : '#0f172a',
+      paper: mode === 'light' ? '#ffffff' : '#1e293b',
     },
     text: {
-      primary: '#1a202c',
-      secondary: '#4a5568',
-      disabled: '#718096',
+      primary: mode === 'light' ? '#1a202c' : '#f1f5f9',
+      secondary: mode === 'light' ? '#4a5568' : '#94a3b8',
+      disabled: mode === 'light' ? '#718096' : '#64748b',
     },
-    divider: 'rgba(0, 0, 0, 0.08)',
+    divider: mode === 'light' ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.12)',
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
@@ -318,6 +319,18 @@ const theme = createTheme({
   },
 });
 
+const ThemedApp = () => {
+  const { mode } = useThemeMode();
+  const theme = useMemo(() => getTheme(mode), [mode]);
+
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AppContent />
+    </ThemeProvider>
+  );
+};
+
 const AppContent = () => {
   const { isAuthenticated, loading, logout } = useAuth();
 
@@ -365,12 +378,11 @@ const AppContent = () => {
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <ThemeModeProvider>
       <AuthProvider>
-        <AppContent />
+        <ThemedApp />
       </AuthProvider>
-    </ThemeProvider>
+    </ThemeModeProvider>
   );
 }
 

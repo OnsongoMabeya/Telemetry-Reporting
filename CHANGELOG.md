@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Dark Mode Support** - Fully functional theme switching
+  - ThemeContext for global theme state management
+  - Toggle between light and dark modes via Navbar button
+  - localStorage persistence for user theme preference
+  - Dynamic color palettes optimized for both modes
+  - Smooth transitions between themes
+  - Accessible tooltips for theme toggle button
 - **Comprehensive Responsive Design System** - Mobile-first implementation
   - 6 responsive breakpoints (480px, 768px, 1024px, 1440px, 1920px)
   - Fluid typography using CSS `clamp()` function (14px - 18px)
@@ -26,6 +33,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **App.js** - Dynamic theme system
+  - Replaced static theme with dynamic `getTheme(mode)` function
+  - Integrated ThemeModeProvider for app-wide theme management
+  - Theme now responds to user preference in real-time
+- **Navbar.js** - Functional dark mode toggle
+  - Connected toggle button to ThemeContext
+  - Added tooltip for better UX
+  - Removed non-functional local state
 - **NodeDetail.js** - Enhanced dashboard grid layout
   - Adaptive columns: 1 (mobile) → 2 (tablet) → 3 (desktop) → 4 (large desktop)
   - Responsive map heights: 280px (mobile) → 400px (tablet) → 350px (desktop)
@@ -60,6 +75,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Dark Mode White Space Issue** - Fixed pages with less content showing white background
+  - Removed hardcoded light background gradient from `global.css` body
+  - Updated `RootElement` to apply theme background to html, body, and root elements
+  - Added full-height wrapper Box with theme-aware background
+  - Ensured proper background coverage across all viewport sizes
+- **Dark Mode Component Backgrounds** - Fixed hardcoded white backgrounds
+  - `NodeDetail.js`: Updated all Paper components to use `bgcolor: 'background.paper'`
+  - `NodeDetail.js`: Made graph tooltips and containers theme-aware
+  - `NodeDetail.js`: Updated InputLabel backgrounds to use theme colors
+  - `KenyaMap.js`: Converted Paper components to use theme backgrounds
+  - `Navbar.js`: Updated AppBar background to adapt to dark/light mode
+  - All components now properly respect theme mode
+- **Dark Mode Graph Legibility** - Fixed unreadable graph text and plot lines in dark mode
+  - XAxis and YAxis: Brighter colors in dark mode (`#cbd5e1` for ticks, `#94a3b8` for axis)
+  - CartesianGrid: Increased opacity (0.5) and brightness (`rgba(255, 255, 255, 0.2)`) in dark mode
+  - Plot lines: Default bright blue (`#60a5fa`) with thicker stroke (3px) in dark mode
+  - Active dots: Dark background stroke (`#1e293b`) for better contrast
+  - Legend text color uses `theme.palette.text.primary`
+  - Graph titles and subtitles use theme-aware text colors
+  - All graph elements now highly visible and readable in both light and dark modes
 - Fixed `setup.js` deleting existing metric mappings on servers without export file.
 - Fixed express-rate-limit `ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` error with nginx.
 - Fixed express-rate-limit `ERR_ERL_PERMISSIVE_TRUST_PROXY` validation error.

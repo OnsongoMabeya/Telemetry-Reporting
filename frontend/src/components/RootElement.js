@@ -1,11 +1,15 @@
 import { useEffect } from 'react';
 import { useTheme } from '@mui/material/styles';
+import { Box } from '@mui/material';
 
 export default function RootElement({ children }) {
   const theme = useTheme();
 
   useEffect(() => {
     const rootElement = document.getElementById('root');
+    const bodyElement = document.body;
+    const htmlElement = document.documentElement;
+    
     if (!rootElement) return;
 
     // Remove any aria-hidden attributes from the root element
@@ -26,9 +30,17 @@ export default function RootElement({ children }) {
       attributeFilter: ['aria-hidden']
     });
 
-    // Ensure proper contrast for accessibility
+    // Apply theme colors to root, body, and html elements for full coverage
     rootElement.style.color = theme.palette.text.primary;
     rootElement.style.backgroundColor = theme.palette.background.default;
+    rootElement.style.minHeight = '100vh';
+    
+    bodyElement.style.backgroundColor = theme.palette.background.default;
+    bodyElement.style.color = theme.palette.text.primary;
+    bodyElement.style.minHeight = '100vh';
+    
+    htmlElement.style.backgroundColor = theme.palette.background.default;
+    htmlElement.style.minHeight = '100vh';
 
     // Clean up the observer when the component unmounts
     return () => {
@@ -36,5 +48,15 @@ export default function RootElement({ children }) {
     };
   }, [theme]);
 
-  return children;
+  return (
+    <Box
+      sx={{
+        minHeight: '100vh',
+        backgroundColor: 'background.default',
+        color: 'text.primary',
+      }}
+    >
+      {children}
+    </Box>
+  );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import { 
@@ -7,23 +7,15 @@ import {
   CircularProgress, 
   Alert, 
   Chip, 
-  IconButton, 
-  Tooltip,
+  IconButton,
   Paper,
-  Avatar,
-  Badge,
-  useTheme,
   alpha
 } from '@mui/material';
 import { 
-  LocationOn, 
   Refresh, 
   Wifi, 
   WifiOff, 
-  HelpOutline,
-  ZoomIn,
-  ZoomOut,
-  MyLocation
+  HelpOutline
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from '../services/axiosInterceptor';
@@ -100,10 +92,9 @@ const KenyaMap = ({ selectedNode }) => {
   const [error, setError] = useState(null);
   const [selectedStation, setSelectedStation] = useState(null);
   const [hoveredStation, setHoveredStation] = useState(null);
-  const theme = useTheme();
   const { isAuthenticated } = useAuth();
 
-  const fetchBaseStations = async () => {
+  const fetchBaseStations = useCallback(async () => {
     try {
       setLoading(true);
       const url = selectedNode 
@@ -121,7 +112,7 @@ const KenyaMap = ({ selectedNode }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedNode]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -131,7 +122,7 @@ const KenyaMap = ({ selectedNode }) => {
     fetchBaseStations();
     const interval = setInterval(fetchBaseStations, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [selectedNode, isAuthenticated]);
+  }, [selectedNode, isAuthenticated, fetchBaseStations]);
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -220,11 +211,11 @@ const KenyaMap = ({ selectedNode }) => {
             left: { xs: 8, sm: 12, md: 16 },
             right: { xs: 8, sm: 12, md: 16 },
             zIndex: 1000,
-            background: 'rgba(255, 255, 255, 0.95)',
+            bgcolor: 'background.paper',
             backdropFilter: 'blur(20px)',
             borderRadius: { xs: 2, md: 3 },
             p: { xs: 1.5, sm: 2 },
-            border: '1px solid rgba(255, 255, 255, 0.2)'
+            border: (theme) => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)'}`
           }}
         >
           <Box sx={{ 
@@ -416,9 +407,9 @@ const KenyaMap = ({ selectedNode }) => {
               elevation={8}
               sx={{
                 p: 2,
-                background: 'rgba(255, 255, 255, 0.95)',
+                bgcolor: 'background.paper',
                 backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                border: (theme) => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)'}`,
                 borderRadius: 2
               }}
             >
