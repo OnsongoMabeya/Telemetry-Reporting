@@ -302,6 +302,7 @@ Get-Service bsi-nginx | Select-Object Name, StartType, Status
 ```
 
 **Both should show:**
+
 - **StartType:** Automatic
 - **Status:** Running
 
@@ -404,6 +405,7 @@ services.msc
 ```
 
 Look for:
+
 - **BSI Telemetry Backend**
 - **BSI Telemetry Nginx**
 
@@ -467,6 +469,7 @@ Get-Content "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\back
    ```
 
 2. **Missing .env file**
+
    ```powershell
    # Check .env exists
    Test-Path "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\backend\.env"
@@ -479,6 +482,7 @@ Get-Content "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\back
    - Test database connection manually
 
 4. **Port 5000 already in use**
+
    ```powershell
    # Check what's using port 5000
    netstat -ano | findstr :5000
@@ -507,12 +511,14 @@ Get-Content "C:\nginx\current\logs\error.log" -Tail 50
    ```
 
 2. **Config syntax error**
+
    ```powershell
    # Test nginx config
    C:\nginx\current\nginx.exe -t
    ```
 
 3. **Missing frontend build**
+
    ```powershell
    # Check frontend build exists
    Test-Path "C:\Users\BSI\Documents\telemetry_reporting\Telemetry-Reporting\frontend\build"
