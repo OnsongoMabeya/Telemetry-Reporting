@@ -3,10 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { Box, CircularProgress } from '@mui/material';
-import Navbar from './components/Navbar';
+import DashboardLayout from './components/layout/DashboardLayout';
 import NodeDetail from './components/NodeDetail';
 import UserManagement from './components/UserManagement';
 import VisualizationSettings from './components/VisualizationSettings';
+import Alerts from './pages/Alerts';
 import RootElement from './components/RootElement';
 import LoginModal from './components/LoginModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -19,15 +20,15 @@ const getTheme = (mode) => createTheme({
   palette: {
     mode,
     primary: {
-      main: '#667eea',
-      light: '#8b9aff',
-      dark: '#4c63d2',
+      main: '#30a1e4',
+      light: '#5bb3e8',
+      dark: '#2891d4',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#764ba2',
-      light: '#9d6fb8',
-      dark: '#5a3a7f',
+      main: '#163d90',
+      light: '#2d5bb8',
+      dark: '#0f2d70',
       contrastText: '#ffffff',
     },
     success: {
@@ -55,7 +56,7 @@ const getTheme = (mode) => createTheme({
       contrastText: '#ffffff',
     },
     background: {
-      default: mode === 'light' ? '#f8fafc' : '#0f172a',
+      default: mode === 'light' ? '#f0f6fc' : '#0f172a',
       paper: mode === 'light' ? '#ffffff' : '#1e293b',
     },
     text: {
@@ -360,15 +361,15 @@ const AppContent = () => {
       {isAuthenticated && (
         <Router>
           <RootElement>
-            <div className="App">
-              <Navbar />
+            <DashboardLayout>
               <Routes>
                 <Route path="/" element={<NodeDetail />} />
                 <Route path="/users" element={<UserManagement />} />
                 <Route path="/visualization-settings" element={<VisualizationSettings />} />
+                <Route path="/alerts" element={<Alerts />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </div>
+            </DashboardLayout>
           </RootElement>
         </Router>
       )}

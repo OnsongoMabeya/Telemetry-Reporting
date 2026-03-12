@@ -492,6 +492,7 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
 
   return {
     data: data[0],
+    metricMappings: mappings,
     total,
     page,
     pageSize,
