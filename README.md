@@ -11,6 +11,60 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 ## 🚀 Key Features
 
+### 🎨 Modern SaaS Dashboard UI (March 2026)
+
+The system features a completely redesigned user interface with a professional SaaS dashboard layout:
+
+#### Layout Structure
+
+- **Fixed Left Sidebar** (220px width, 60px collapsed on mobile)
+  - Dark navy theme (#163d90) with BSI branding
+  - Role-based navigation (Dashboard, Visualization Settings, User Management, Alerts)
+  - Dark mode toggle at bottom
+  - Collapsible with smooth animations
+  - Responsive behavior across all devices
+
+- **Top Header Bar**
+  - User profile menu with logout
+  - Contextual dashboard controls (Node, Base Station, Time Range selectors)
+  - Generate Report button
+  - Clean white background with subtle elevation
+
+- **Main Content Area**
+  - CSS Grid layout with responsive columns (1→2→3→4 based on screen size)
+  - Card-based design with 16px border radius
+  - Light blue background (#f0f6fc) in light mode
+  - Dark background (#0f172a) in dark mode
+
+#### Dashboard Layout
+
+- **2x2 Interactive Map Card**
+  - Kenya map with base station markers
+  - Fully interactive zoom and pan
+  - Real-time base station status
+  - 600px height on desktop, responsive on mobile
+
+- **Dynamic Graph Cards** (1x1 each)
+  - Auto-fit grid (minimum 300px width)
+  - Prevents graph squeezing
+  - Smooth animations and loading states
+  - Theme-aware colors and styling
+
+#### State Management
+
+- **DashboardContext** - Centralized state management
+  - Shared state between header controls and dashboard content
+  - Manages nodes, base stations, filters, telemetry data
+  - Loading states and error handling
+  - Report modal state
+
+#### Brand Colors
+
+- Primary Blue: #30a1e4 (buttons, accents, graph lines)
+- Dark Navy: #163d90 (sidebar, secondary elements)
+- Light Background: #f0f6fc (page background)
+- Card Border Radius: 16px with subtle shadows
+
 ### 📊 Dynamic Metric Mapping System (v2.1.0)
 
 - **Grafana-Style Visualization Configuration**: Admins can dynamically map database columns to custom metric names per node/base station

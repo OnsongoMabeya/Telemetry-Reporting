@@ -7,6 +7,133 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Modern SaaS Dashboard UI Redesign
+
+#### Layout Components (March 2026)
+
+- **Fixed Left Sidebar** - Professional navigation structure
+  - Dark navy theme (#163d90) with 220px width (60px collapsed on mobile)
+  - Role-based navigation items (Dashboard, Visualization Settings, User Management, Alerts)
+  - BSI logo integration at top
+  - Dark mode toggle at bottom
+  - Collapsible with smooth transitions
+  - Responsive behavior for mobile/tablet/desktop
+- **Top Header Bar** - Contextual controls and user menu
+  - User profile menu with logout functionality
+  - Conditional rendering of dashboard controls on dashboard route
+  - Node, Base Station, and Time Range selectors in header
+  - Generate Report button in header
+  - Clean white background with subtle shadow
+- **DashboardLayout Wrapper** - Unified layout system
+  - Integrates sidebar, header, and main content area
+  - Provides DashboardContext to all child components
+  - Responsive padding and spacing
+  - Theme-aware background colors
+- **DashboardContext** - Centralized state management
+  - Global state for nodes, base stations, filters, telemetry data
+  - Shared state between header controls and dashboard content
+  - Loading states and error handling
+  - Report modal state management
+- **CSS Grid Dashboard Layout** - Modern card-based design
+  - 2x2 interactive map card (600px height, fully functional)
+  - Auto-fit grid for graph cards (minimum 300px width)
+  - Responsive columns: 1 (mobile) → 2 (tablet) → 3 (desktop) → 4 (large screens)
+  - 300px row height for consistent card sizing
+  - 24px gap between cards
+  - White rounded cards (16px border radius) with subtle shadows
+- **Alerts Page** - Placeholder for future alerts functionality
+- **Empty State Messaging** - User-friendly configuration prompts
+  - Professional message card when no metrics configured
+  - Actionable "Configure Metrics" button for admins
+  - Displays alongside map instead of blocking entire view
+
+#### Component Structure (March 2026)
+
+- `components/layout/Sidebar.js` - Navigation sidebar component
+- `components/layout/TopHeader.js` - Header with user menu and controls
+- `components/layout/DashboardLayout.js` - Main layout wrapper
+- `components/dashboard/DashboardControls.js` - Filter controls component
+- `components/dashboard/GenerateReportButton.js` - Report generation component
+- `context/DashboardContext.js` - Dashboard state management
+- `pages/Alerts.js` - Alerts page placeholder
+
+#### Brand Colors (March 2026)
+
+- Primary Blue: #30a1e4 (buttons, accents, graph lines)
+- Dark Navy: #163d90 (sidebar, secondary elements)
+- Light Background: #f0f6fc (page background in light mode)
+- Dark Background: #0f172a (page background in dark mode)
+- Card Background: white (light mode), #1e293b (dark mode)
+- Card Border Radius: 16px with subtle shadows
+
+### Changed - UI/UX Overhaul (March 2026)
+
+- **App.js** - Integrated new layout system
+  - Replaced Navbar with DashboardLayout wrapper
+  - Updated theme colors to brand palette
+  - Added Alerts route
+  - Removed old Navbar component
+- **NodeDetail.js** - Complete redesign with card grid
+  - Removed header section (moved to TopHeader)
+  - Removed controls section (moved to DashboardControls in header)
+  - Removed report button (moved to GenerateReportButton in header)
+  - Implemented CSS Grid layout with 2x2 map and 1x1 graph cards
+  - Data transformation: `sample_time` → `timestamp` for graph compatibility
+  - Dynamic graph rendering based on metric mappings
+  - Empty state card instead of full-page blocking message
+  - Maintains all existing functionality and interactivity
+- **Backend server.js** - Enhanced telemetry API response
+  - Added `metricMappings` to telemetry endpoint response
+  - Frontend can now dynamically render graphs based on mappings
+  - Fixes issue where mappings were fetched but not returned
+
+### Fixed - Data Flow and Display (March 2026)
+
+- **Metric Mappings Not Displaying** - Backend was fetching but not returning mappings
+  - `getTelemetryData()` now includes `metricMappings` in return object
+  - Frontend receives mappings array in API response
+  - Graphs render dynamically based on received mappings
+- **Timestamp Format Mismatch** - API returns `sample_time`, graphs expect `timestamp`
+  - Added data transformation in NodeDetail to convert `sample_time` to Unix timestamp
+  - Graphs now render correctly with proper time axis
+- **Empty State Blocking Dashboard** - Full-page message prevented map viewing
+  - Changed to inline card message that displays alongside map
+  - Users can still interact with map while metrics are being configured
+
+### Removed (March 2026)
+
+- **Navbar.js** - Replaced by Sidebar and TopHeader components
+- **Inline Dashboard Controls** - Moved to TopHeader for cleaner layout
+- **Inline Report Button** - Moved to TopHeader for consistency
+
+### Technical Details (March 2026)
+
+- **Responsive Breakpoints:**
+  - Mobile: < 600px (1 column, collapsed sidebar)
+  - Tablet: 600-960px (2 columns)
+  - Desktop: 960-1280px (3 columns)
+  - Large: > 1280px (4 columns)
+- **Grid Configuration:**
+  - `display: grid`
+  - `gridTemplateColumns: repeat(auto-fit, minmax(300px, 1fr))`
+  - `gridAutoRows: 300px`
+  - `gap: 24px`
+- **Map Card Spanning:**
+  - `gridColumn: span 2` (takes 2 columns)
+  - `gridRow: span 2` (takes 2 rows)
+  - Results in 2x2 card (600x600px on desktop)
+- **Dark Mode Compatibility:**
+  - All new components fully support dark mode
+  - Theme-aware colors throughout
+  - Proper contrast ratios maintained
+
+### Migration Notes (March 2026)
+
+- **No Breaking Changes** - All existing functionality preserved
+- **Backward Compatible** - Existing data and configurations work as-is
+- **Visual Changes Only** - No database schema changes required
+- **Backup Available** - Original NodeDetail.js saved as NodeDetail.backup.js
+
 ### Added
 
 - **Dark Mode Support** - Fully functional theme switching

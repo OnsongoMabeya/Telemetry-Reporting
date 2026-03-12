@@ -393,10 +393,6 @@ const NodeDetail = () => {
         { params: { timeFilter } }
       );
 
-      console.log('Telemetry response:', response.data);
-      console.log('Metric mappings:', response.data.metricMappings);
-      console.log('Telemetry data points:', response.data.data?.length);
-
       if (response.data && Array.isArray(response.data.data)) {
         // Transform data: convert sample_time to timestamp
         const transformedData = response.data.data.map(item => {
@@ -407,15 +403,8 @@ const NodeDetail = () => {
           };
         });
         
-        console.log('Raw API response:', response.data);
-        console.log('Metric mappings received:', response.data.metricMappings);
-        console.log('Number of mappings:', response.data.metricMappings?.length);
-        console.log('Transformed data sample:', transformedData[0]);
-        console.log('Transformed data length:', transformedData.length);
-        
         setTelemetryData(transformedData);
         const mappings = response.data.metricMappings || [];
-        console.log('Setting metric mappings:', mappings);
         setMetricMappings(mappings);
         setHasMappings(mappings.length > 0);
       } else {
@@ -451,12 +440,6 @@ const NodeDetail = () => {
     const intervalId = setInterval(fetchTelemetryData, getRefreshInterval());
     return () => clearInterval(intervalId);
   }, [fetchTelemetryData, timeFilter]);
-
-  // Debug logging
-  console.log('NodeDetail render - metricMappings:', metricMappings);
-  console.log('NodeDetail render - metricMappings.length:', metricMappings.length);
-  console.log('NodeDetail render - isLoading:', isLoading);
-  console.log('NodeDetail render - selectedBaseStation:', selectedBaseStation);
 
   return (
     <ErrorBoundary>
