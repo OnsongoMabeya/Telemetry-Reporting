@@ -1,13 +1,12 @@
 import React, { useState, useCallback } from 'react';
 import axios from 'axios';
-import { Button, Box, Snackbar, Alert } from '@mui/material';
+import { Snackbar, Alert } from '@mui/material';
 import ReportConfigModal from './ReportConfigModal';
 import { generateHTMLReport } from './HTMLReport';
 import { generatePDFReport } from './PDFReport';
 import { API_BASE_URL } from '../../config/api';
 
-const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+const ReportGenerator = ({ open, onClose, selectedNode, selectedBaseStation, timeFilter, telemetryData, metricMappings }) => {
   const [isSending, setIsSending] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -63,17 +62,16 @@ const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
       
       showSnackbar('Report generated successfully!');
       setProgress(100);
-      setIsModalOpen(false);
+      onClose();
     } catch (error) {
       console.error('Error generating report:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to generate report';
-      onError(errorMessage);
       showSnackbar(errorMessage, 'error');
     } finally {
       setIsGenerating(false);
       setProgress(0);
     }
-  }, [onError]);
+  }, [onClose]);
 
   const handleSendEmail = useCallback(async (config) => {
     setIsSending(true);
@@ -89,14 +87,14 @@ const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
       formData.append('message', config.message || 'Please find the attached telemetry report.');
       
       // Send email with attachment
-      const response = await axios.post(`${API_BASE_URL}/api/send-report`, formData, {
+      await axios.post(`${API_BASE_URL}/api/send-report`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       
       showSnackbar('Report sent successfully!');
-      setIsModalOpen(false);
+      onClose();
     } catch (error) {
       console.error('Error sending email:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to send email';
@@ -104,7 +102,7 @@ const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
     } finally {
       setIsSending(false);
     }
-  }, []);
+  }, [onClose]);
   
   const generateReportBlob = async (config) => {
     // Fetch base stations for the selected node
@@ -117,61 +115,17 @@ const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
   };
 
   return (
-    <Box sx={{ position: 'relative' }}>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={() => setIsModalOpen(true)}
-        disabled={isGenerating}
-      >
-        {isGenerating ? 'Generating...' : 'Generate Report'}
-      </Button>
-      {isGenerating && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '100%',
-            left: 0,
-            right: 0,
-            mt: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 1
-          }}
-        >
-          <Box
-            sx={{
-              width: '100%',
-              height: 4,
-              bgcolor: 'background.paper',
-              borderRadius: 1,
-              overflow: 'hidden'
-            }}
-          >
-            <Box
-              sx={{
-                width: `${progress}%`,
-                height: '100%',
-                bgcolor: 'primary.main',
-                transition: 'width 0.3s ease-in-out'
-              }}
-            />
-          </Box>
-          <Box sx={{ typography: 'caption', color: 'text.secondary' }}>
-          </Box>
-        </Box>
-      )}
+    <>
       <ReportConfigModal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        open={open}
+        onClose={onClose}
         onGenerate={handleGenerateReport}
         onSendEmail={handleSendEmail}
         isSending={isSending}
         isGenerating={isGenerating}
         progress={progress}
-        currentNode={currentNode}
-        currentTimeRange={currentTimeRange}
+        currentNode={selectedNode}
+        currentTimeRange={timeFilter}
       />
       <Snackbar
         open={snackbar.open}
@@ -187,7 +141,7 @@ const ReportGenerator = ({ nodes, onError, currentNode, currentTimeRange }) => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Box>
+    </>
   );
 };
 

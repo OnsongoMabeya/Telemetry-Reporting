@@ -34,11 +34,13 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isTabletOrPhone = useMediaQuery(theme.breakpoints.down('lg')); // < 960px
   const { user } = useAuth();
   const { mode, toggleTheme } = useThemeMode();
   
+  // Auto-collapse on tablet and phone
   const [collapsed, setCollapsed] = useState(false);
+  const isCollapsed = isTabletOrPhone || collapsed;
 
   const hasRole = (role) => {
     if (!user || !user.role) return false;
@@ -81,10 +83,12 @@ const Sidebar = () => {
   };
 
   const toggleCollapse = () => {
-    setCollapsed(!collapsed);
+    if (!isTabletOrPhone) {
+      setCollapsed(!collapsed);
+    }
   };
 
-  const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH;
+  const sidebarWidth = isCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH;
 
   return (
     <Drawer
@@ -108,7 +112,7 @@ const Sidebar = () => {
       {/* Logo Section */}
       <Box
         sx={{
-          p: collapsed ? 1 : 2,
+          p: isCollapsed ? 1 : 2,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -122,7 +126,7 @@ const Sidebar = () => {
           src="/bsilogo512.png"
           alt="BSI Logo"
           sx={{
-            height: collapsed ? 32 : 48,
+            height: isCollapsed ? 32 : 48,
             width: 'auto',
             maxWidth: '100%',
             objectFit: 'contain',
@@ -143,7 +147,7 @@ const Sidebar = () => {
           return (
             <Tooltip
               key={item.path}
-              title={collapsed ? item.title : ''}
+              title={isCollapsed ? item.title : ''}
               placement="right"
               arrow
             >
@@ -168,13 +172,13 @@ const Sidebar = () => {
                   <ListItemIcon
                     sx={{
                       color: isActive ? '#30a1e4' : 'rgba(255, 255, 255, 0.7)',
-                      minWidth: collapsed ? 0 : 40,
+                      minWidth: isCollapsed ? 0 : 40,
                       justifyContent: 'center',
                     }}
                   >
                     {item.icon}
                   </ListItemIcon>
-                  {!collapsed && (
+                  {!isCollapsed && (
                     <ListItemText
                       primary={item.title}
                       sx={{
@@ -211,7 +215,7 @@ const Sidebar = () => {
             }}
           >
             {mode === 'dark' ? <Brightness7 /> : <Brightness4 />}
-            {!collapsed && (
+            {!isCollapsed && (
               <Box component="span" sx={{ ml: 1, fontSize: '0.875rem' }}>
                 {mode === 'dark' ? 'Light Mode' : 'Dark Mode'}
               </Box>
@@ -219,8 +223,8 @@ const Sidebar = () => {
           </IconButton>
         </Tooltip>
 
-        {!isMobile && (
-          <Tooltip title={collapsed ? 'Expand' : 'Collapse'} placement="right" arrow>
+        {!isTabletOrPhone && (
+          <Tooltip title={isCollapsed ? 'Expand' : 'Collapse'} placement="right" arrow>
             <IconButton
               onClick={toggleCollapse}
               sx={{
@@ -232,7 +236,7 @@ const Sidebar = () => {
                 },
               }}
             >
-              {collapsed ? <ChevronRight /> : <ChevronLeft />}
+              {isCollapsed ? <ChevronRight /> : <ChevronLeft />}
             </IconButton>
           </Tooltip>
         )}

@@ -18,13 +18,8 @@ const DashboardLayout = ({ children }) => {
           component="main"
           sx={{
             flexGrow: 1,
-            ml: { xs: '60px', md: '220px' },
             minHeight: '100vh',
             backgroundColor: theme.palette.mode === 'dark' ? '#0f172a' : '#f0f6fc',
-            transition: theme.transitions.create('margin', {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.leavingScreen,
-            }),
           }}
         >
           {/* Top Header */}

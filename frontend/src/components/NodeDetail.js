@@ -54,7 +54,7 @@ const getGraphColor = (dataKey) => {
 };
 
 // Telemetry Graph Component
-const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter, lineColor }) => {
+const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter, lineColor = '#30a1e4' }) => {
   const theme = useTheme();
   
   const formatXAxis = (tickItem) => {
@@ -126,25 +126,22 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
       return { domain: [0, 100], ticks: [0, 25, 50, 75, 100] };
     }
 
-    const min = Math.min(...values);
     const max = Math.max(...values);
-    const range = max - min;
-    const padding = range * 0.1;
+    const padding = max * 0.1;
     
-    const domainMin = Math.max(0, min - padding);
     const domainMax = max + padding;
     
-    const step = (domainMax - domainMin) / 4;
+    const step = domainMax / 4;
     const ticks = [
-      domainMin,
-      domainMin + step,
-      domainMin + step * 2,
-      domainMin + step * 3,
+      0,
+      step,
+      step * 2,
+      step * 3,
       domainMax
     ];
 
     return {
-      domain: [domainMin, domainMax],
+      domain: [0, domainMax],
       ticks: ticks
     };
   }, [data, dataKey]);
@@ -194,8 +191,8 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
           >
             <defs>
               <linearGradient id={`gradient-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={lineColor} stopOpacity={0.3}/>
-                <stop offset="95%" stopColor={lineColor} stopOpacity={0.05}/>
+                <stop offset="5%" stopColor={lineColor} stopOpacity={0.6}/>
+                <stop offset="95%" stopColor={lineColor} stopOpacity={0}/>
               </linearGradient>
             </defs>
             <CartesianGrid 
@@ -465,12 +462,12 @@ const NodeDetail = () => {
             gridAutoRows: '300px',
           }}
         >
-          {/* Map Card - 2x2 */}
+          {/* Map Card - 2x2 on desktop, 1x1 on tablet/phone */}
           <Paper
             elevation={3}
             sx={{
-              gridColumn: { xs: 'span 1', sm: 'span 2', md: 'span 2' },
-              gridRow: { xs: 'span 1', sm: 'span 2', md: 'span 2' },
+              gridColumn: { xs: 'span 1', lg: 'span 2' },
+              gridRow: { xs: 'span 1', lg: 'span 2' },
               borderRadius: 4,
               overflow: 'hidden',
               backgroundColor: 'background.paper',
@@ -509,7 +506,7 @@ const NodeDetail = () => {
                     unit={mapping.unit}
                     isLoading={isLoading}
                     timeFilter={timeFilter}
-                    lineColor="#30a1e4"
+                    lineColor={mapping.color || "#30a1e4"}
                   />
                 </Paper>
               );

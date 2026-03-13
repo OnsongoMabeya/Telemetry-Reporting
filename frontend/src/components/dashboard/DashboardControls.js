@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   FormControl,
@@ -9,11 +9,17 @@ import {
   useTheme,
   useMediaQuery,
   CircularProgress,
+  Drawer,
+  IconButton,
+  Typography,
+  Fab,
 } from '@mui/material';
 import {
   Wifi,
   LocationOn,
   DateRange,
+  FilterList,
+  Close,
 } from '@mui/icons-material';
 import { useDashboard } from '../../context/DashboardContext';
 
@@ -34,7 +40,9 @@ const TIME_FILTERS = [
 
 const DashboardControls = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTabletOrPhone = useMediaQuery(theme.breakpoints.down('lg'));
+  const [drawerOpen, setDrawerOpen] = useState(false);
   
   const {
     nodes,
@@ -52,7 +60,7 @@ const DashboardControls = () => {
     return null; // Hide controls on mobile to save space
   }
 
-  return (
+  const controlsContent = (
     <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
       {/* Node Selector */}
       <FormControl 
@@ -154,6 +162,63 @@ const DashboardControls = () => {
       )}
     </Box>
   );
+
+  // Show bottom sheet on tablet/phone
+  if (isTabletOrPhone) {
+    return (
+      <>
+        {/* Floating Action Button */}
+        <Fab
+          color="primary"
+          onClick={() => setDrawerOpen(true)}
+          sx={{
+            position: 'fixed',
+            bottom: 24,
+            right: 24,
+            zIndex: 1000,
+            background: 'linear-gradient(135deg, #30a1e4 0%, #163d90 100%)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, #2891d4 0%, #0f2d70 100%)',
+            },
+          }}
+        >
+          <FilterList />
+        </Fab>
+
+        {/* Bottom Sheet Drawer */}
+        <Drawer
+          anchor="bottom"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+          PaperProps={{
+            sx: {
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              maxHeight: '70vh',
+              backgroundColor: theme.palette.mode === 'dark' ? '#1e293b' : '#ffffff',
+            },
+          }}
+        >
+          <Box sx={{ p: 3 }}>
+            {/* Header */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Dashboard Filters
+              </Typography>
+              <IconButton onClick={() => setDrawerOpen(false)} size="small">
+                <Close />
+              </IconButton>
+            </Box>
+
+            {/* Controls in vertical layout */}
+            {controlsContent}
+          </Box>
+        </Drawer>
+      </>
+    );
+  }
+
+  return controlsContent;
 };
 
 export default DashboardControls;

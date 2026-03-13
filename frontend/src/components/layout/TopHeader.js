@@ -45,8 +45,8 @@ const TopHeader = () => {
       position="fixed"
       elevation={0}
       sx={{
-        left: { xs: 60, md: 220 },
-        width: { xs: 'calc(100% - 60px)', md: 'calc(100% - 220px)' },
+        left: { xs: 60, lg: 220 },
+        width: { xs: 'calc(100% - 60px)', lg: 'calc(100% - 220px)' },
         backgroundColor: theme.palette.mode === 'dark' ? '#1e293b' : '#ffffff',
         color: theme.palette.mode === 'dark' ? '#f1f5f9' : '#1a202c',
         borderBottom: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)'}`,
