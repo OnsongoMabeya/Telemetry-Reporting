@@ -9,6 +9,7 @@ This document tracks the progress of the UI redesign to a modern SaaS dashboard 
 ## ✅ Completed (Phase 1)
 
 ### 1. Core Layout Components
+
 - **Sidebar.js** - Fixed 220px sidebar with:
   - Logo with dark background
   - Role-based navigation (Dashboard, Visualization Settings, User Management, Alerts)
@@ -24,12 +25,14 @@ This document tracks the progress of the UI redesign to a modern SaaS dashboard 
 - **DashboardLayout.js** - Main wrapper component combining sidebar + header + content
 
 ### 2. App.js Updates
+
 - Updated theme colors to brand colors (#30a1e4 primary, #163d90 secondary)
 - Changed background to #f0f6fc for light mode
 - Replaced Navbar with DashboardLayout
 - Added /alerts route
 
 ### 3. Placeholder Pages
+
 - **Alerts.js** - Placeholder for future functionality
 
 ## 🚧 In Progress (Phase 2)
@@ -37,6 +40,7 @@ This document tracks the progress of the UI redesign to a modern SaaS dashboard 
 ### NodeDetail Redesign Plan
 
 **Current Structure:**
+
 - Header with title and refresh button
 - Controls section (Node, Base Station, Time Range selectors)
 - Map section
@@ -44,6 +48,7 @@ This document tracks the progress of the UI redesign to a modern SaaS dashboard 
 - Reports section
 
 **New Structure:**
+
 1. **Controls** → Move to TopHeader (visible only on dashboard route)
    - Node selector
    - Base Station selector  
@@ -58,7 +63,8 @@ This document tracks the progress of the UI redesign to a modern SaaS dashboard 
    - Each card: white background, 16px border radius, subtle shadow
 
 **Grid Layout:**
-```
+
+```bash
 [Map  ][Map  ][Graph][Graph]
 [Map  ][Map  ][Graph][Graph]
 [Graph][Graph][Graph][Graph]
@@ -76,6 +82,7 @@ This document tracks the progress of the UI redesign to a modern SaaS dashboard 
 7. Test responsive behavior
 
 ## 🎨 Brand Colors Applied
+
 - Primary: #30a1e4
 - Secondary: #163d90  
 - Background: #f0f6fc (light), #0f172a (dark)

@@ -165,24 +165,46 @@ The system implements comprehensive JWT-based authentication with role-based acc
 - **API Documentation**: Swagger/OpenAPI
 - **Caching**: node-cache
 
-## � Responsive Design
+## 📱 Responsive Design
 
 The application implements a comprehensive mobile-first responsive design system ensuring optimal user experience across all device sizes and aspect ratios.
 
 ### Responsive Breakpoints
 
-The system uses 6 responsive breakpoints for precise control:
+The system uses Material-UI breakpoints for precise control:
 
-| Breakpoint        | Screen Size      | Target Devices         | Grid Columns |
-| ----------------- | ---------------- | ---------------------- | ------------ |
-| Mobile Portrait   | ≤480px           | Phones (portrait)      | 1 column     |
-| Mobile Landscape  | 481px - 767px    | Phones (landscape)     | 1-2 columns  |
-| Tablet            | 768px - 1023px   | Tablets, small laptops | 2-3 columns  |
-| Desktop           | 1024px - 1439px  | Laptops, desktops      | 3-4 columns  |
-| Large Desktop     | 1440px - 1919px  | Large monitors         | 4-5 columns  |
-| Ultra-wide        | ≥1920px          | Ultra-wide displays    | 4-5 columns  |
+| Breakpoint        | Screen Size      | Target Devices         | Sidebar | Filters | Map Size |
+| ----------------- | ---------------- | ---------------------- | ------- | ------- | -------- |
+| Phone             | <600px           | Phones (all)           | 60px    | FAB     | 1x1      |
+| Tablet            | 600px - 959px    | Tablets, small laptops | 60px    | FAB     | 1x1      |
+| Desktop           | 960px - 1279px   | Laptops, desktops      | 220px   | Inline  | 2x2      |
+| Large Desktop     | 1280px - 1919px  | Large monitors         | 220px   | Inline  | 2x2      |
+| Ultra-wide        | ≥1920px          | Ultra-wide displays    | 220px   | Inline  | 2x2      |
 
 ### Key Responsive Features
+
+**Adaptive Sidebar (NEW):**
+
+- **Desktop (≥960px)**: Full 220px sidebar with labels, manually collapsible
+- **Tablet/Phone (<960px)**: Auto-collapsed to 60px icon-only view
+- Smooth transitions between states
+- Tooltips show labels on hover in collapsed state
+- Collapse button hidden on mobile (auto-collapse only)
+
+**Bottom Sheet Filters (NEW):**
+
+- **Desktop (≥960px)**: Inline filter controls in top header
+- **Tablet/Phone (<960px)**: Floating Action Button (FAB) triggers bottom sheet
+- Bottom sheet contains all dashboard filters (Node, Base Station, Time Range)
+- Rounded top corners with smooth slide-up animation
+- Touch-optimized controls and spacing
+
+**Responsive Map Sizing (NEW):**
+
+- **Desktop (≥960px)**: 2x2 grid card (600px height)
+- **Tablet/Phone (<960px)**: 1x1 grid card (300px height)
+- Maintains interactivity at all sizes
+- Auto-adjusts zoom level for optimal viewing
 
 **Fluid Typography:**
 
@@ -194,22 +216,23 @@ The system uses 6 responsive breakpoints for precise control:
 
 - **Dashboard Grids**: 1 → 2 → 3 → 4 columns based on screen size
 - **Node List**: 1 → 2 → 3 → 4 → 5 columns for optimal card display
-- **Map Heights**: 280px (mobile) → 400px (tablet) → 350px (desktop)
 - **Container Constraints**: Max-width limits prevent over-stretching on ultra-wide displays
 
 **Component-Specific Optimizations:**
 
-- **Navbar**: Abbreviated branding on mobile ("BSI" vs "BSI Telemetry"), hidden subtitle, responsive logo sizing
-- **Kenya Map**: Stacked info panel on mobile, adaptive popup content, touch-optimized controls
+- **Sidebar**: Auto-collapse on tablet/phone, manual toggle on desktop
+- **Dashboard Controls**: Bottom sheet on mobile, inline on desktop
+- **Kenya Map**: Responsive sizing (1x1 mobile, 2x2 desktop)
 - **Report Modals**: Full-screen on mobile (<600px), stacked buttons, responsive padding
 - **Cards & Papers**: Adaptive padding and spacing based on screen size
 
 **Touch-Friendly:**
 
-- Larger touch targets on mobile devices
+- Larger touch targets on mobile devices (48px minimum)
 - Full-width buttons on small screens
 - Optimized spacing for finger navigation
-- Improved mobile menu interactions
+- FAB positioned for easy thumb access (bottom-right)
+- Swipe-friendly bottom sheet drawer
 
 ### Testing Recommendations
 

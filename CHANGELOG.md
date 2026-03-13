@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - UI Refinements & Responsive Improvements (March 13, 2026)
+
+#### Dashboard Enhancements
+
+- **Graph Improvements**
+  - Y-axis now always starts from 0 for consistent data visualization
+  - Dynamic graph colors from `metric_mappings` database table
+  - 60% opacity gradient fill for better visual hierarchy
+  - Fallback to default blue (#30a1e4) when no color specified
+  - Removed debug console.log statements
+
+- **Layout Refinements**
+  - Removed gap between sidebar and main content for edge-to-edge layout
+  - Fixed TopHeader positioning to appear correctly to the right of sidebar
+  - Removed duplicate "Generate Report" button (kept functional purple button)
+  - Cleaner, more professional appearance
+
+#### Responsive Mobile/Tablet Features
+
+- **Adaptive Sidebar**
+  - Auto-collapses to 60px icon-only view on tablet and phone (< 960px)
+  - Full 220px width with labels on desktop (≥ 960px)
+  - Smooth transitions between states
+  - Tooltips show labels on hover in collapsed state
+  - Collapse button hidden on mobile (auto-collapse only)
+
+- **Bottom Sheet Filters**
+  - Floating Action Button (FAB) on tablet/phone triggers filter drawer
+  - Bottom sheet contains all dashboard controls (Node, Base Station, Time Range)
+  - Rounded top corners with smooth slide-up animation
+  - Touch-optimized spacing and controls
+  - Inline filters remain on desktop for quick access
+
+- **Responsive Map Sizing**
+  - 2x2 grid card (600px height) on desktop (≥ 960px)
+  - 1x1 grid card (300px height) on tablet/phone (< 960px)
+  - Maintains full interactivity at all sizes
+  - Auto-adjusts for optimal viewing
+
+#### Backend Updates
+
+- Added `color` field to metric_mappings query for dynamic graph styling
+- Enhanced telemetry data response with color information
+
+#### Bug Fixes
+
+- Fixed compilation errors in ReportGenerator.js (removed unused imports, fixed undefined variables)
+- Removed unused variables in NodeDetail.js and Sidebar.js
+- Fixed theme hook usage in TelemetryGraph component
+- Resolved ESLint warnings for cleaner codebase
+
 ### Added - Modern SaaS Dashboard UI Redesign
 
 #### Layout Components (March 2026)
