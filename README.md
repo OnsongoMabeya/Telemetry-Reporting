@@ -1046,7 +1046,7 @@ Output shows:
 - `column_name`: Database column (Analog1Value, etc.)
 - `unit`: Measurement unit (optional)
 - `display_order`: Graph ordering
-- `color`: Optional hex color for the graph line (e.g. `#114521`). When set, the area under the line is rendered as a lighter shade via opacity.
+- `color`: Optional hex color for the graph line (e.g. `#114521`). When set, the area under the line is filled with the same color at 30% opacity.
 - `is_active`: Soft delete flag
 - `created_by`: User who created mapping
 - `created_at`: Creation timestamp
@@ -1054,8 +1054,8 @@ Output shows:
 
 **Dashboard graph styling defaults:**
 
-- **Default**: Black line with no fill under the line.
-- **When `color` is configured**: Solid line in the configured color, with a lighter shaded fill under the line.
+- **Default (no color configured)**: Blue line (#30a1e4) with no area fill.
+- **When `color` is configured**: Solid line in the configured color + area fill at 30% opacity of the same color.
 
 **metric_mapping_audit table:**
 

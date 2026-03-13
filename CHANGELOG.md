@@ -14,9 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Graph Improvements**
   - Y-axis now always starts from 0 for consistent data visualization
   - Dynamic graph colors from `metric_mappings` database table
-  - 60% opacity gradient fill for better visual hierarchy
+  - **Conditional area fill**: Only displays when database color is specified
+    - Graphs with custom colors: colored line + 30% opacity colored fill
+    - Graphs with default colors: line only, no area fill
+  - Direct fill rendering with `fillOpacity` for reliable color display
   - Fallback to default blue (#30a1e4) when no color specified
-  - Removed debug console.log statements
 
 - **Layout Refinements**
   - Removed gap between sidebar and main content for edge-to-edge layout
