@@ -14,7 +14,7 @@ import {
   Settings
 } from '@mui/icons-material';
 import KenyaMap from './KenyaMap';
-import { ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
+import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
 
@@ -54,8 +54,18 @@ const getGraphColor = (dataKey) => {
 };
 
 // Telemetry Graph Component
-const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter, lineColor = '#30a1e4' }) => {
+const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter, lineColor = '#30a1e4', hasCustomColor = false }) => {
   const theme = useTheme();
+  
+  // Determine the actual color to use for line and area
+  const actualLineColor = hasCustomColor 
+    ? lineColor 
+    : (theme.palette.mode === 'dark' ? '#60a5fa' : getGraphColor(dataKey));
+  
+  // Debug: log color info
+  if (hasCustomColor) {
+    console.log(`Graph ${dataKey}: hasCustomColor=${hasCustomColor}, lineColor=${lineColor}, actualLineColor=${actualLineColor}`);
+  }
   
   const formatXAxis = (tickItem) => {
     if (!tickItem) return '';
@@ -189,12 +199,6 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
             data={downsampledData}
             margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
           >
-            <defs>
-              <linearGradient id={`gradient-${dataKey}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={lineColor} stopOpacity={0.6}/>
-                <stop offset="95%" stopColor={lineColor} stopOpacity={0}/>
-              </linearGradient>
-            </defs>
             <CartesianGrid 
               strokeDasharray="3 3" 
               stroke={theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}
@@ -260,19 +264,26 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
                 unit ? `${name} (${unit})` : name
               ]}
             />
+            {hasCustomColor && (
+              <Area
+                type="monotone"
+                dataKey={dataKey}
+                fill={actualLineColor}
+                fillOpacity={0.3}
+                stroke="none"
+                animationDuration={1500}
+                animationEasing="ease-in-out"
+              />
+            )}
             <Line
               type="monotone"
               dataKey={dataKey}
-              stroke={theme.palette.mode === 'dark' 
-                ? (lineColor || '#60a5fa')
-                : (lineColor || getGraphColor(dataKey))}
+              stroke={actualLineColor}
               strokeWidth={theme.palette.mode === 'dark' ? 3 : 2}
               dot={false}
               activeDot={{
                 r: 6,
-                fill: theme.palette.mode === 'dark' 
-                  ? (lineColor || '#60a5fa') 
-                  : (lineColor || getGraphColor(dataKey)),
+                fill: actualLineColor,
                 stroke: theme.palette.mode === 'dark' ? '#1e293b' : '#fff',
                 strokeWidth: 2
               }}
@@ -507,6 +518,7 @@ const NodeDetail = () => {
                     isLoading={isLoading}
                     timeFilter={timeFilter}
                     lineColor={mapping.color || "#30a1e4"}
+                    hasCustomColor={!!mapping.color}
                   />
                 </Paper>
               );
