@@ -19,6 +19,26 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
+// Analog columns to check
+const ANALOG_COLUMNS = [
+  'Analog1Value',
+  'Analog2Value',
+  'Analog3Value',
+  'Analog4Value',
+  'Analog5Value',
+  'Analog6Value',
+  'Analog7Value',
+  'Analog8Value',
+  'Analog9Value',
+  'Analog10Value',
+  'Analog11Value',
+  'Analog12Value',
+  'Analog13Value',
+  'Analog14Value',
+  'Analog15Value',
+  'Analog16Value'
+];
+
 // Helper function to ask yes/no questions
 function askQuestion(question) {
   return new Promise((resolve) => {
@@ -56,26 +76,18 @@ function formatTable(data, headers) {
 }
 
 // Export to CSV
-function exportToCSV(mappedData, unmappedData, filename) {
+function exportToCSV(data, filename) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
   const filepath = path.join(__dirname, `${filename}_${timestamp}.csv`);
 
   let csvContent = '';
 
-  // Mapped configurations
-  csvContent += 'MAPPED CONFIGURATIONS\n';
-  csvContent += 'Node,Base Station,Database Column,Metric Name,Unit,Display Order,Color\n';
-  mappedData.forEach(row => {
-    csvContent += `"${row[0]}","${row[1]}","${row[2]}","${row[3]}","${row[4] || ''}",${row[5]},"${row[6] || ''}"\n`;
-  });
-
-  csvContent += '\n\n';
-
-  // Unmapped nodes
-  csvContent += 'UNMAPPED NODE/BASE STATION COMBINATIONS\n';
-  csvContent += 'Node,Base Station\n';
-  unmappedData.forEach(row => {
-    csvContent += `"${row[0]}","${row[1]}"\n`;
+  // Header
+  csvContent += 'Node,Base Station,Database Column,Metric Name,Has Been Mapped\n';
+  
+  // Data rows
+  data.forEach(row => {
+    csvContent += `"${row[0]}","${row[1]}","${row[2]}","${row[3] || ''}","${row[4]}"\n`;
   });
 
   fs.writeFileSync(filepath, csvContent);
@@ -86,67 +98,32 @@ async function checkMappings() {
   let connection;
 
   try {
-    console.log('\n🔍 Checking Metric Mappings Configuration...\n');
+    console.log('\n🔍 Checking Analog Columns with Data and Mapping Status...\n');
 
     // Connect to database
     connection = await mysql.createConnection(dbConfig);
     console.log('✅ Connected to database\n');
 
-    // 1. Get all mapped configurations
-    console.log('📊 MAPPED CONFIGURATIONS:\n');
+    // 1. Get all metric mappings
     const [mappedRows] = await connection.execute(`
       SELECT 
         node_name,
         base_station_name,
         column_name,
-        metric_name,
-        unit,
-        display_order,
-        color
+        metric_name
       FROM metric_mappings
       WHERE is_active = 1
-      ORDER BY node_name, base_station_name, display_order
     `);
 
-    if (mappedRows.length === 0) {
-      console.log('⚠️  No metric mappings configured yet!\n');
-    } else {
-      const mappedData = mappedRows.map(row => [
-        row.node_name,
-        row.base_station_name,
-        row.column_name,
-        row.metric_name,
-        row.unit || '',
-        row.display_order,
-        row.color || 'default'
-      ]);
-
-      const mappedTable = formatTable(
-        mappedData,
-        ['Node', 'Base Station', 'Database Column', 'Metric Name', 'Unit', 'Order', 'Color']
-      );
-
-      console.log(mappedTable);
-      console.log(`\n✅ Total mapped configurations: ${mappedRows.length}\n`);
-
-      // Show summary by node/base station
-      const summary = {};
-      mappedRows.forEach(row => {
-        const key = `${row.node_name}/${row.base_station_name}`;
-        summary[key] = (summary[key] || 0) + 1;
-      });
-
-      console.log('📈 Summary by Node/Base Station:');
-      Object.entries(summary).forEach(([key, count]) => {
-        console.log(`   - ${key}: ${count} metric(s)`);
-      });
-      console.log('');
-    }
+    // Create a map for quick lookup: "NodeName|BaseStation|ColumnName" -> metric_name
+    const mappingLookup = new Map();
+    mappedRows.forEach(row => {
+      const key = `${row.node_name}|${row.base_station_name}|${row.column_name}`;
+      mappingLookup.set(key, row.metric_name);
+    });
 
     // 2. Get all unique Node/Base Station combinations from node_status_table
-    console.log('\n🔍 Checking for unmapped Node/Base Station combinations...\n');
-
-    const [allCombinations] = await connection.execute(`
+    const [nodeCombinations] = await connection.execute(`
       SELECT DISTINCT NodeName, NodeBaseStationName
       FROM node_status_table
       WHERE NodeName IS NOT NULL 
@@ -156,58 +133,94 @@ async function checkMappings() {
       ORDER BY NodeName, NodeBaseStationName
     `);
 
-    // Get mapped combinations
-    const mappedCombinations = new Set(
-      mappedRows.map(row => `${row.node_name}|${row.base_station_name}`)
-    );
+    console.log(`📊 Found ${nodeCombinations.length} Node/Base Station combinations\n`);
+    console.log('🔍 Checking which analog columns have data...\n');
 
-    // Find unmapped combinations
-    const unmappedCombinations = allCombinations.filter(row => 
-      !mappedCombinations.has(`${row.NodeName}|${row.NodeBaseStationName}`)
-    );
+    // 3. For each Node/Base Station combination, check which analog columns have data
+    const results = [];
+    let totalChecked = 0;
+    let totalWithData = 0;
 
-    if (unmappedCombinations.length === 0) {
-      console.log('✅ All Node/Base Station combinations have been mapped!\n');
-    } else {
-      console.log('⚠️  UNMAPPED NODE/BASE STATION COMBINATIONS:\n');
-      
-      const unmappedData = unmappedCombinations.map(row => [
-        row.NodeName,
-        row.NodeBaseStationName
-      ]);
+    for (const combo of nodeCombinations) {
+      const nodeName = combo.NodeName;
+      const baseStation = combo.NodeBaseStationName;
 
-      const unmappedTable = formatTable(
-        unmappedData,
-        ['Node', 'Base Station']
-      );
+      // Check each analog column for this Node/Base Station
+      for (const analogColumn of ANALOG_COLUMNS) {
+        totalChecked++;
+        
+        // Check if this column has any non-null data
+        const [dataCheck] = await connection.execute(`
+          SELECT COUNT(*) as count
+          FROM node_status_table
+          WHERE NodeName = ?
+            AND NodeBaseStationName = ?
+            AND ${analogColumn} IS NOT NULL
+            AND ${analogColumn} != ''
+          LIMIT 1
+        `, [nodeName, baseStation]);
 
-      console.log(unmappedTable);
-      console.log(`\n⚠️  Total unmapped combinations: ${unmappedCombinations.length}\n`);
+        if (dataCheck[0].count > 0) {
+          totalWithData++;
+          
+          // Check if this combination is mapped
+          const lookupKey = `${nodeName}|${baseStation}|${analogColumn}`;
+          const metricName = mappingLookup.get(lookupKey) || '';
+          const isMapped = metricName !== '';
+
+          results.push({
+            node: nodeName,
+            baseStation: baseStation,
+            column: analogColumn,
+            metricName: metricName,
+            mapped: isMapped ? 'Yes' : 'No'
+          });
+        }
+      }
     }
 
-    // Ask if user wants to export to CSV
-    const answer = await askQuestion('\n💾 Would you like to export this data to CSV? (y/n): ');
-    
-    if (answer === 'y' || answer === 'yes') {
-      const mappedData = mappedRows.map(row => [
-        row.node_name,
-        row.base_station_name,
-        row.column_name,
-        row.metric_name,
-        row.unit || '',
-        row.display_order,
-        row.color || ''
-      ]);
+    console.log(`✅ Checked ${totalChecked} combinations, found ${totalWithData} with data\n`);
 
-      const unmappedData = unmappedCombinations.map(row => [
-        row.NodeName,
-        row.NodeBaseStationName
-      ]);
-
-      const filepath = exportToCSV(mappedData, unmappedData, 'metric_mappings_report');
-      console.log(`\n✅ Data exported to: ${filepath}\n`);
+    // 4. Display results in table
+    if (results.length === 0) {
+      console.log('⚠️  No analog columns with data found!\n');
     } else {
-      console.log('\n📋 Export skipped.\n');
+      console.log('📊 ANALOG COLUMNS WITH DATA:\n');
+      
+      const tableData = results.map(row => [
+        row.node,
+        row.baseStation,
+        row.column,
+        row.metricName,
+        row.mapped
+      ]);
+
+      const table = formatTable(
+        tableData,
+        ['Node', 'Base Station', 'Database Column', 'Metric Name', 'Has Been Mapped']
+      );
+
+      console.log(table);
+      
+      // Summary statistics
+      const mappedCount = results.filter(r => r.mapped === 'Yes').length;
+      const unmappedCount = results.filter(r => r.mapped === 'No').length;
+      
+      console.log(`\n📈 Summary:`);
+      console.log(`   - Total analog columns with data: ${results.length}`);
+      console.log(`   - Mapped: ${mappedCount} (${((mappedCount/results.length)*100).toFixed(1)}%)`);
+      console.log(`   - Unmapped: ${unmappedCount} (${((unmappedCount/results.length)*100).toFixed(1)}%)`);
+      console.log('');
+
+      // Ask if user wants to export to CSV
+      const answer = await askQuestion('\n💾 Would you like to export this data to CSV? (y/n): ');
+      
+      if (answer === 'y' || answer === 'yes') {
+        const filepath = exportToCSV(tableData, 'analog_columns_mapping_status');
+        console.log(`\n✅ Data exported to: ${filepath}\n`);
+      } else {
+        console.log('\n📋 Export skipped.\n');
+      }
     }
 
   } catch (error) {
