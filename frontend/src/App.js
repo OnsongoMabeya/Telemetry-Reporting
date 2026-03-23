@@ -8,6 +8,8 @@ import NodeDetail from './components/NodeDetail';
 import UserManagement from './components/UserManagement';
 import VisualizationSettings from './components/VisualizationSettings';
 import Alerts from './pages/Alerts';
+import MySites from './components/MySites';
+import MySitesCustomization from './components/MySitesCustomization';
 import RootElement from './components/RootElement';
 import LoginModal from './components/LoginModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -364,6 +366,8 @@ const AppContent = () => {
             <DashboardLayout>
               <Routes>
                 <Route path="/" element={<NodeDetail />} />
+                <Route path="/my-sites" element={<MySites />} />
+                <Route path="/my-sites-customization" element={<MySitesCustomization />} />
                 <Route path="/users" element={<UserManagement />} />
                 <Route path="/visualization-settings" element={<VisualizationSettings />} />
                 <Route path="/alerts" element={<Alerts />} />

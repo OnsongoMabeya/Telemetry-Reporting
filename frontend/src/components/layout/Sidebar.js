@@ -19,6 +19,8 @@ import {
   Settings as SettingsIcon,
   People as PeopleIcon,
   Notifications as NotificationsIcon,
+  LocationOn as LocationOnIcon,
+  Tune as TuneIcon,
   Brightness4,
   Brightness7,
   ChevronLeft,
@@ -53,6 +55,18 @@ const Sidebar = () => {
       icon: <DashboardIcon />,
       path: '/',
       roles: ['admin', 'manager', 'viewer'],
+    },
+    {
+      title: 'My Sites',
+      icon: <LocationOnIcon />,
+      path: '/my-sites',
+      roles: ['admin', 'manager', 'viewer'],
+    },
+    {
+      title: 'My Sites Customization',
+      icon: <TuneIcon />,
+      path: '/my-sites-customization',
+      roles: ['admin'],
     },
     {
       title: 'Visualization Settings',
