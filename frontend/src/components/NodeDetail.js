@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, memo, useCallback } from 'react';
+import React, { useEffect, useMemo, memo, useCallback, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useDashboard } from '../context/DashboardContext';
 import { 
@@ -14,6 +14,7 @@ import {
   Settings
 } from '@mui/icons-material';
 import KenyaMap from './KenyaMap';
+import StatusCard from './StatusCard';
 import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
@@ -239,7 +240,6 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
                 backgroundColor: theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                 backdropFilter: 'blur(20px)',
                 border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
-                borderRadius: 8,
                 color: theme.palette.text.primary,
                 boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
                 fontSize: '0.75rem'
@@ -320,6 +320,17 @@ const NodeDetail = () => {
     setMetricMappings,
     setHasMappings,
   } = useDashboard();
+
+  // State for map status counts
+  const [statusCounts, setStatusCounts] = useState({
+    onlineCount: 0,
+    offlineCount: 0,
+    unknownCount: 0
+  });
+
+  const handleStatusUpdate = useCallback((counts) => {
+    setStatusCounts(counts);
+  }, []);
 
   // Fetch available nodes
   useEffect(() => {
@@ -479,15 +490,23 @@ const NodeDetail = () => {
             sx={{
               gridColumn: { xs: 'span 1', lg: 'span 2' },
               gridRow: { xs: 'span 1', lg: 'span 2' },
-              borderRadius: 4,
               overflow: 'hidden',
               backgroundColor: 'background.paper',
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
               position: 'relative',
             }}
           >
-            <KenyaMap selectedNode={selectedNode} />
+            <KenyaMap selectedNode={selectedNode} onStatusUpdate={handleStatusUpdate} />
           </Paper>
+
+          {/* Status Card - 1x1 grid size */}
+          <StatusCard
+            selectedNode={selectedNode}
+            selectedBaseStation={selectedBaseStation}
+            onlineCount={statusCounts.onlineCount}
+            offlineCount={statusCounts.offlineCount}
+            unknownCount={statusCounts.unknownCount}
+          />
 
           {/* Graph Cards - Dynamic */}
           {metricMappings.length > 0 ? (
@@ -501,7 +520,6 @@ const NodeDetail = () => {
                   sx={{
                     gridColumn: 'span 1',
                     gridRow: 'span 1',
-                    borderRadius: 4,
                     p: 2,
                     backgroundColor: 'background.paper',
                     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
@@ -530,7 +548,6 @@ const NodeDetail = () => {
                 sx={{
                   gridColumn: { xs: 'span 1', sm: 'span 2' },
                   gridRow: 'span 1',
-                  borderRadius: 4,
                   p: 4,
                   backgroundColor: 'background.paper',
                   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',

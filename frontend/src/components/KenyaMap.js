@@ -72,21 +72,24 @@ const createCustomIcon = (status, isSelected = false) => {
   });
 };
 
-// Component to auto-fit map to markers
+// Component to set default Kenya view
 const MapBounds = ({ markers }) => {
   const map = useMap();
   
   useEffect(() => {
-    if (markers && markers.length > 0) {
-      const bounds = L.latLngBounds(markers.map(marker => [marker.lat, marker.lng]));
-      map.fitBounds(bounds, { padding: [20, 20] });
-    }
-  }, [markers, map]);
+    // Set view to show entire Kenya
+    // Kenya bounds approximately: North: 5.0°, South: -5.0°, East: 42.0°, West: 33.5°
+    const kenyaBounds = L.latLngBounds(
+      [5.0, 33.5],   // Northwest corner
+      [-5.0, 42.0]   // Southeast corner
+    );
+    map.fitBounds(kenyaBounds, { padding: [20, 20] });
+  }, [map]);
 
   return null;
 };
 
-const KenyaMap = ({ selectedNode }) => {
+const KenyaMap = ({ selectedNode, onStatusUpdate }) => {
   const [baseStations, setBaseStations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -135,6 +138,13 @@ const KenyaMap = ({ selectedNode }) => {
   const onlineCount = baseStations.filter(station => station.status === 'online').length;
   const offlineCount = baseStations.filter(station => station.status === 'offline').length;
   const unknownCount = baseStations.filter(station => station.status === 'unknown').length;
+
+  // Update parent component with status counts
+  useEffect(() => {
+    if (onStatusUpdate) {
+      onStatusUpdate({ onlineCount, offlineCount, unknownCount });
+    }
+  }, [onlineCount, offlineCount, unknownCount, onStatusUpdate]);
 
   if (loading) {
     return (
@@ -185,8 +195,7 @@ const KenyaMap = ({ selectedNode }) => {
             }
             sx={{
               background: 'linear-gradient(135deg, rgba(244, 67, 54, 0.1), rgba(244, 67, 54, 0.05))',
-              border: '1px solid rgba(244, 67, 54, 0.2)',
-              borderRadius: 2
+              border: '1px solid rgba(244, 67, 54, 0.2)'
             }}
           >
             {error}
@@ -199,110 +208,6 @@ const KenyaMap = ({ selectedNode }) => {
   return (
     <Box sx={{ height: '100%', position: 'relative' }}>
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <Paper 
-          elevation={4}
-          sx={{
-            position: 'absolute',
-            top: { xs: 8, sm: 12, md: 16 },
-            left: { xs: 8, sm: 12, md: 16 },
-            right: { xs: 8, sm: 12, md: 16 },
-            zIndex: 1000,
-            bgcolor: 'background.paper',
-            backdropFilter: 'blur(20px)',
-            borderRadius: { xs: 2, md: 3 },
-            p: { xs: 1.5, sm: 2 },
-            border: (theme) => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)'}`
-          }}
-        >
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between', 
-            alignItems: { xs: 'flex-start', sm: 'center' },
-            gap: { xs: 1, sm: 0 },
-            mb: { xs: 1.5, sm: 2 }
-          }}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 700, 
-                color: '#1a1a1a',
-                fontSize: { xs: '1rem', sm: '1.25rem' }
-              }}
-            >
-              Kenya Base Stations
-              {selectedNode && (
-                <Typography 
-                  component="span" 
-                  variant="caption" 
-                  sx={{ 
-                    ml: 1, 
-                    color: '#666',
-                    display: { xs: 'block', sm: 'inline' }
-                  }}
-                >
-                  • {selectedNode}
-                </Typography>
-              )}
-            </Typography>
-            <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-              <IconButton size="small" onClick={fetchBaseStations}>
-                <Refresh />
-              </IconButton>
-            </motion.div>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: { xs: 0.5, sm: 1 }, flexWrap: 'wrap' }}>
-            <motion.div whileHover={{ scale: 1.05 }}>
-              <Chip
-                icon={<Wifi />}
-                label={`${onlineCount} Online`}
-                color="success"
-                size="small"
-                sx={{ 
-                  background: 'linear-gradient(135deg, #4CAF50, #45a049)',
-                  color: 'white',
-                  fontWeight: 600
-                }}
-              />
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.05 }}>
-              <Chip
-                icon={<WifiOff />}
-                label={`${offlineCount} Offline`}
-                color="error"
-                size="small"
-                sx={{ 
-                  background: 'linear-gradient(135deg, #F44336, #d32f2f)',
-                  color: 'white',
-                  fontWeight: 600
-                }}
-              />
-            </motion.div>
-            {unknownCount > 0 && (
-              <motion.div whileHover={{ scale: 1.05 }}>
-                <Chip
-                  icon={<HelpOutline />}
-                  label={`${unknownCount} Unknown`}
-                  color="warning"
-                  size="small"
-                  sx={{ 
-                    background: 'linear-gradient(135deg, #FF9800, #f57c00)',
-                    color: 'white',
-                    fontWeight: 600
-                  }}
-                />
-              </motion.div>
-            )}
-          </Box>
-        </Paper>
-      </motion.div>
-
-      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6, delay: 0.2 }}
@@ -314,7 +219,6 @@ const KenyaMap = ({ selectedNode }) => {
           style={{ 
             height: '100%', 
             width: '100%',
-            borderRadius: 2,
             overflow: 'hidden'
           }}
         >
@@ -409,8 +313,7 @@ const KenyaMap = ({ selectedNode }) => {
                 p: 2,
                 bgcolor: 'background.paper',
                 backdropFilter: 'blur(20px)',
-                border: (theme) => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)'}`,
-                borderRadius: 2
+                border: (theme) => `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)'}`
               }}
             >
               <Typography variant="body2" sx={{ fontWeight: 600 }}>
