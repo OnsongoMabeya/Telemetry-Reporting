@@ -111,6 +111,8 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
 
 const MySites = () => {
   const theme = useTheme();
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState('');
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState('');
   const [serviceDetails, setServiceDetails] = useState(null);
@@ -118,29 +120,59 @@ const MySites = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch user's assigned services
+  // Fetch user's assigned clients
   useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/my-sites/clients`);
+        setClients(response.data.data || []);
+        
+        // Auto-select first client if available
+        if (response.data.data && response.data.data.length > 0) {
+          setSelectedClient(response.data.data[0].id);
+        }
+      } catch (err) {
+        console.error('Error fetching clients:', err);
+        setError('Failed to load your assigned clients');
+      }
+    };
+
+    fetchClients();
+  }, []);
+
+  // Fetch services for selected client
+  useEffect(() => {
+    if (!selectedClient) return;
+
     const fetchServices = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/my-sites/services`);
+        setLoading(true);
+        setError(null);
+        const response = await axios.get(`${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services`);
         setServices(response.data.data || []);
         
         // Auto-select first service if available
         if (response.data.data && response.data.data.length > 0) {
           setSelectedService(response.data.data[0].id);
+        } else {
+          setSelectedService('');
+          setServiceDetails(null);
+          setTelemetryData({});
         }
       } catch (err) {
         console.error('Error fetching services:', err);
-        setError('Failed to load your assigned services');
+        setError('Failed to load services for this client');
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchServices();
-  }, []);
+  }, [selectedClient]);
 
   // Fetch service details and telemetry when service is selected
   useEffect(() => {
-    if (!selectedService) return;
+    if (!selectedClient || !selectedService) return;
 
     const fetchServiceData = async () => {
       try {
@@ -148,7 +180,9 @@ const MySites = () => {
         setError(null);
 
         // Fetch service details with metrics
-        const detailsResponse = await axios.get(`${API_BASE_URL}/api/my-sites/services/${selectedService}`);
+        const detailsResponse = await axios.get(
+          `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${selectedService}`
+        );
         setServiceDetails(detailsResponse.data.data);
 
         // Fetch telemetry for each metric
@@ -156,7 +190,7 @@ const MySites = () => {
         const telemetryPromises = metrics.map(async (metric) => {
           try {
             const telemetryResponse = await axios.get(
-              `${API_BASE_URL}/api/my-sites/services/${selectedService}/metrics/${metric.id}/telemetry?timeFilter=1h`
+              `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${selectedService}/metrics/${metric.id}/telemetry?timeFilter=1h`
             );
             return {
               metricId: metric.id,
@@ -183,7 +217,7 @@ const MySites = () => {
     };
 
     fetchServiceData();
-  }, [selectedService]);
+  }, [selectedClient, selectedService]);
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -200,30 +234,57 @@ const MySites = () => {
         </Typography>
       </Box>
 
-      {/* Service Selector */}
+      {/* Client Selector */}
       <Paper sx={{ p: 3, mb: 3 }}>
-        <FormControl fullWidth>
-          <InputLabel>Select Service</InputLabel>
+        <FormControl fullWidth sx={{ mb: 2 }}>
+          <InputLabel>Select Client</InputLabel>
           <Select
-            value={selectedService}
-            onChange={(e) => setSelectedService(e.target.value)}
-            label="Select Service"
-            disabled={services.length === 0}
+            value={selectedClient}
+            onChange={(e) => setSelectedClient(e.target.value)}
+            label="Select Client"
+            disabled={clients.length === 0}
           >
-            {services.map((service) => (
-              <MenuItem key={service.id} value={service.id}>
+            {clients.map((client) => (
+              <MenuItem key={client.id} value={client.id}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <WifiIcon fontSize="small" />
-                  {service.name}
+                  <LocationOnIcon fontSize="small" />
+                  {client.name}
                 </Box>
               </MenuItem>
             ))}
           </Select>
         </FormControl>
 
-        {services.length === 0 && (
+        {clients.length === 0 && (
+          <Alert severity="info">
+            No clients have been assigned to you yet. Please contact your administrator.
+          </Alert>
+        )}
+
+        {selectedClient && (
+          <FormControl fullWidth>
+            <InputLabel>Select Service</InputLabel>
+            <Select
+              value={selectedService}
+              onChange={(e) => setSelectedService(e.target.value)}
+              label="Select Service"
+              disabled={services.length === 0}
+            >
+              {services.map((service) => (
+                <MenuItem key={service.id} value={service.id}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <WifiIcon fontSize="small" />
+                    {service.name}
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
+        {selectedClient && services.length === 0 && (
           <Alert severity="info" sx={{ mt: 2 }}>
-            No services have been assigned to you yet. Please contact your administrator.
+            No services are assigned to this client yet.
           </Alert>
         )}
       </Paper>

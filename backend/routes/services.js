@@ -39,8 +39,6 @@ router.get('/', requireAdmin, async (req, res) => {
         u.last_name as created_by_last_name,
         (SELECT COUNT(*) FROM service_metric_assignments sma 
          WHERE sma.service_id = s.id AND sma.is_active = TRUE) as metric_count,
-        (SELECT COUNT(*) FROM user_service_assignments usa 
-         WHERE usa.service_id = s.id) as user_count,
         (SELECT COUNT(*) FROM client_services cs 
          WHERE cs.service_id = s.id) as client_count
       FROM services s

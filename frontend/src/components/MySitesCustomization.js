@@ -54,7 +54,7 @@ const MySitesCustomization = () => {
   const [metricMappings, setMetricMappings] = useState([]);
   const [clientServices, setClientServices] = useState([]);
   const [serviceMetrics, setServiceMetrics] = useState([]);
-  const [userServices, setUserServices] = useState([]);
+  const [userClients, setUserClients] = useState([]);
   
   // State for loading and errors
   const [loading, setLoading] = useState(false);
@@ -259,20 +259,20 @@ const MySitesCustomization = () => {
     }
   };
 
-  const handleAssignServiceToUser = async () => {
+  const handleAssignClientToUser = async () => {
     try {
       setLoading(true);
       setError(null);
-      await axios.post(`${API_BASE_URL}/api/user-service-assignments`, {
+      await axios.post(`${API_BASE_URL}/api/user-client-assignments`, {
         userId: assignForm.userId,
-        serviceId: assignForm.serviceId
+        clientId: assignForm.clientId
       });
-      setSuccess('Service assigned to user successfully');
+      setSuccess('Client assigned to user successfully');
       setAssignDialog({ open: false, type: '', data: null });
       setAssignForm({ clientId: '', serviceId: '', userId: '', metricMappingId: '' });
-      fetchUserServices();
+      fetchUserClients();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to assign service to user');
+      setError(err.response?.data?.error || 'Failed to assign client to user');
     } finally {
       setLoading(false);
     }
@@ -314,12 +314,12 @@ const MySitesCustomization = () => {
     }
   }, [services]);
 
-  const fetchUserServices = async () => {
+  const fetchUserClients = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/user-service-assignments`);
-      setUserServices(response.data.data || []);
+      const response = await axios.get(`${API_BASE_URL}/api/user-client-assignments`);
+      setUserClients(response.data.data || []);
     } catch (err) {
-      console.error('Error fetching user services:', err);
+      console.error('Error fetching user clients:', err);
     }
   };
 
@@ -355,38 +355,38 @@ const MySitesCustomization = () => {
     }
   };
 
-  const handleRemoveServiceFromUser = async (userId, serviceId) => {
-    if (!window.confirm('Are you sure you want to remove this service from the user?')) return;
+  const handleRemoveClientFromUser = async (userId, clientId) => {
+    if (!window.confirm('Are you sure you want to remove this client from the user?')) return;
     
     try {
       setLoading(true);
       setError(null);
-      await axios.delete(`${API_BASE_URL}/api/user-service-assignments/${userId}/${serviceId}`);
-      setSuccess('Service removed from user successfully');
-      fetchUserServices();
+      await axios.delete(`${API_BASE_URL}/api/user-client-assignments/${userId}/${clientId}`);
+      setSuccess('Client removed from user successfully');
+      fetchUserClients();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to remove service from user');
+      setError(err.response?.data?.error || 'Failed to remove client from user');
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch assignments when clients/services change
+  // Fetch assignments when clients/services/users change
   useEffect(() => {
     if (clients.length > 0) {
       fetchClientServices();
     }
-  }, [clients]);
+  }, [clients, fetchClientServices]);
 
   useEffect(() => {
     if (services.length > 0) {
       fetchServiceMetrics();
     }
-  }, [services]);
+  }, [services, fetchServiceMetrics]);
 
   useEffect(() => {
     if (users.length > 0) {
-      fetchUserServices();
+      fetchUserClients();
     }
   }, [users]);
 
@@ -754,19 +754,19 @@ const MySitesCustomization = () => {
         </AccordionDetails>
       </Accordion>
 
-      {/* 5. User-Service Assignments */}
+      {/* 5. User-Client Assignments */}
       <Accordion 
-        expanded={expanded === 'userServices'} 
-        onChange={handleAccordionChange('userServices')}
+        expanded={expanded === 'userClients'} 
+        onChange={handleAccordionChange('userClients')}
         sx={{ mb: 2 }}
       >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <PeopleIcon color="primary" />
             <Box>
-              <Typography variant="h6">User-Service Assignments</Typography>
+              <Typography variant="h6">User-Client Assignments</Typography>
               <Typography variant="caption" color="text.secondary">
-                Assign services to users ({userServices.length} assignments)
+                Assign clients to users ({userClients.length} assignments)
               </Typography>
             </Box>
           </Box>
@@ -778,12 +778,12 @@ const MySitesCustomization = () => {
               startIcon={<AddIcon />}
               onClick={() => {
                 setAssignForm({ clientId: '', serviceId: '', userId: '', metricMappingId: '' });
-                setAssignDialog({ open: true, type: 'userService', data: null });
+                setAssignDialog({ open: true, type: 'userClient', data: null });
               }}
               sx={{ mb: 2 }}
-              disabled={users.length === 0 || services.length === 0}
+              disabled={users.length === 0 || clients.length === 0}
             >
-              Assign Service to User
+              Assign Client to User
             </Button>
 
             <TableContainer component={Paper} variant="outlined">
@@ -791,32 +791,32 @@ const MySitesCustomization = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell><strong>User</strong></TableCell>
-                    <TableCell><strong>Service</strong></TableCell>
+                    <TableCell><strong>Client</strong></TableCell>
                     <TableCell><strong>Email</strong></TableCell>
                     <TableCell><strong>Assigned Date</strong></TableCell>
                     <TableCell><strong>Actions</strong></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {userServices.length === 0 ? (
+                  {userClients.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} align="center">
                         <Typography variant="body2" color="text.secondary">
-                          No user-service assignments yet
+                          No user-client assignments yet
                         </Typography>
                       </TableCell>
                     </TableRow>
                   ) : (
-                    userServices.map((assignment) => (
-                      <TableRow key={`${assignment.user_id}-${assignment.service_id}`}>
+                    userClients.map((assignment) => (
+                      <TableRow key={`${assignment.user_id}-${assignment.client_id}`}>
                         <TableCell>{assignment.username}</TableCell>
-                        <TableCell>{assignment.service_name}</TableCell>
+                        <TableCell>{assignment.client_name}</TableCell>
                         <TableCell>{assignment.email}</TableCell>
                         <TableCell>{new Date(assignment.assigned_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <IconButton
                             size="small"
-                            onClick={() => handleRemoveServiceFromUser(assignment.user_id, assignment.service_id)}
+                            onClick={() => handleRemoveClientFromUser(assignment.user_id, assignment.client_id)}
                             color="error"
                           >
                             <DeleteIcon fontSize="small" />
@@ -930,7 +930,7 @@ const MySitesCustomization = () => {
         <DialogTitle>
           {assignDialog.type === 'clientService' && 'Assign Service to Client'}
           {assignDialog.type === 'serviceMetric' && 'Assign Metric to Service'}
-          {assignDialog.type === 'userService' && 'Assign Service to User'}
+          {assignDialog.type === 'userClient' && 'Assign Client to User'}
         </DialogTitle>
         <DialogContent>
           {assignDialog.type === 'clientService' && (
@@ -999,7 +999,7 @@ const MySitesCustomization = () => {
             </>
           )}
 
-          {assignDialog.type === 'userService' && (
+          {assignDialog.type === 'userClient' && (
             <>
               <FormControl fullWidth margin="dense">
                 <InputLabel>User</InputLabel>
@@ -1016,15 +1016,15 @@ const MySitesCustomization = () => {
                 </Select>
               </FormControl>
               <FormControl fullWidth margin="dense">
-                <InputLabel>Service</InputLabel>
+                <InputLabel>Client</InputLabel>
                 <Select
-                  value={assignForm.serviceId}
-                  onChange={(e) => setAssignForm({ ...assignForm, serviceId: e.target.value })}
-                  label="Service"
+                  value={assignForm.clientId}
+                  onChange={(e) => setAssignForm({ ...assignForm, clientId: e.target.value })}
+                  label="Client"
                 >
-                  {services.map((service) => (
-                    <MenuItem key={service.id} value={service.id}>
-                      {service.name}
+                  {clients.map((client) => (
+                    <MenuItem key={client.id} value={client.id}>
+                      {client.name}
                     </MenuItem>
                   ))}
                 </Select>
@@ -1040,13 +1040,13 @@ const MySitesCustomization = () => {
             onClick={() => {
               if (assignDialog.type === 'clientService') handleAssignServiceToClient();
               else if (assignDialog.type === 'serviceMetric') handleAssignMetricToService();
-              else if (assignDialog.type === 'userService') handleAssignServiceToUser();
+              else if (assignDialog.type === 'userClient') handleAssignClientToUser();
             }}
             variant="contained"
             disabled={loading || 
               (assignDialog.type === 'clientService' && (!assignForm.clientId || !assignForm.serviceId)) ||
               (assignDialog.type === 'serviceMetric' && (!assignForm.serviceId || !assignForm.metricMappingId)) ||
-              (assignDialog.type === 'userService' && (!assignForm.userId || !assignForm.serviceId))
+              (assignDialog.type === 'userClient' && (!assignForm.userId || !assignForm.clientId))
             }
           >
             {loading ? <CircularProgress size={24} /> : 'Assign'}
