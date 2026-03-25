@@ -14,6 +14,7 @@ import RootElement from './components/RootElement';
 import LoginModal from './components/LoginModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeModeProvider, useThemeMode } from './context/ThemeContext';
+import { MySitesProvider } from './context/MySitesContext';
 import { setAuthLogout } from './services/axiosInterceptor';
 import './services/axiosInterceptor';
 import './styles/global.css';
@@ -363,17 +364,19 @@ const AppContent = () => {
       {isAuthenticated && (
         <Router>
           <RootElement>
-            <DashboardLayout>
-              <Routes>
-                <Route path="/" element={<NodeDetail />} />
-                <Route path="/my-sites" element={<MySites />} />
-                <Route path="/my-sites-customization" element={<MySitesCustomization />} />
-                <Route path="/users" element={<UserManagement />} />
-                <Route path="/visualization-settings" element={<VisualizationSettings />} />
-                <Route path="/alerts" element={<Alerts />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </DashboardLayout>
+            <MySitesProvider>
+              <DashboardLayout>
+                <Routes>
+                  <Route path="/" element={<NodeDetail />} />
+                  <Route path="/my-sites" element={<MySites />} />
+                  <Route path="/my-sites-customization" element={<MySitesCustomization />} />
+                  <Route path="/users" element={<UserManagement />} />
+                  <Route path="/visualization-settings" element={<VisualizationSettings />} />
+                  <Route path="/alerts" element={<Alerts />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </DashboardLayout>
+            </MySitesProvider>
           </RootElement>
         </Router>
       )}

@@ -82,7 +82,7 @@ const VisualizationSettings = () => {
         isAdmin ? axios.get(`${API_BASE_URL}/api/metric-mappings/unmapped`) : Promise.resolve({ data: { nodes: [] } })
       ]);
 
-      setMappings(mappingsRes.data);
+      setMappings(mappingsRes.data.data || mappingsRes.data || []);
       setNodes(nodesRes.data);
       setAvailableColumns(columnsRes.data);
       setUnmappedNodes(unmappedRes.data.nodes || []);

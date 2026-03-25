@@ -4,17 +4,12 @@ import {
   Paper,
   Typography,
   Container,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   CircularProgress,
   Alert,
   useTheme,
 } from '@mui/material';
 import {
   LocationOn as LocationOnIcon,
-  Wifi as WifiIcon,
 } from '@mui/icons-material';
 import {
   ComposedChart,
@@ -27,6 +22,7 @@ import {
 } from 'recharts';
 import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
+import { useMySites } from '../context/MySitesContext';
 
 // Telemetry Graph Component (similar to NodeDetail)
 const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor = '#30a1e4' }) => {
@@ -110,11 +106,17 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
 });
 
 const MySites = () => {
-  const theme = useTheme();
-  const [clients, setClients] = useState([]);
-  const [selectedClient, setSelectedClient] = useState('');
-  const [services, setServices] = useState([]);
-  const [selectedService, setSelectedService] = useState('');
+  const {
+    clients,
+    setClients,
+    selectedClient,
+    setSelectedClient,
+    services,
+    setServices,
+    selectedService,
+    setSelectedService,
+  } = useMySites();
+  
   const [serviceDetails, setServiceDetails] = useState(null);
   const [telemetryData, setTelemetryData] = useState({});
   const [loading, setLoading] = useState(false);
@@ -138,7 +140,7 @@ const MySites = () => {
     };
 
     fetchClients();
-  }, []);
+  }, [setClients, setSelectedClient]);
 
   // Fetch services for selected client
   useEffect(() => {
@@ -168,7 +170,7 @@ const MySites = () => {
     };
 
     fetchServices();
-  }, [selectedClient]);
+  }, [selectedClient, setServices, setSelectedService]);
 
   // Fetch service details and telemetry when service is selected
   useEffect(() => {
@@ -234,60 +236,18 @@ const MySites = () => {
         </Typography>
       </Box>
 
-      {/* Client Selector */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <FormControl fullWidth sx={{ mb: 2 }}>
-          <InputLabel>Select Client</InputLabel>
-          <Select
-            value={selectedClient}
-            onChange={(e) => setSelectedClient(e.target.value)}
-            label="Select Client"
-            disabled={clients.length === 0}
-          >
-            {clients.map((client) => (
-              <MenuItem key={client.id} value={client.id}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <LocationOnIcon fontSize="small" />
-                  {client.name}
-                </Box>
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+      {/* Info Messages */}
+      {clients.length === 0 && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          No clients have been assigned to you yet. Please contact your administrator.
+        </Alert>
+      )}
 
-        {clients.length === 0 && (
-          <Alert severity="info">
-            No clients have been assigned to you yet. Please contact your administrator.
-          </Alert>
-        )}
-
-        {selectedClient && (
-          <FormControl fullWidth>
-            <InputLabel>Select Service</InputLabel>
-            <Select
-              value={selectedService}
-              onChange={(e) => setSelectedService(e.target.value)}
-              label="Select Service"
-              disabled={services.length === 0}
-            >
-              {services.map((service) => (
-                <MenuItem key={service.id} value={service.id}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <WifiIcon fontSize="small" />
-                    {service.name}
-                  </Box>
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        )}
-
-        {selectedClient && services.length === 0 && (
-          <Alert severity="info" sx={{ mt: 2 }}>
-            No services are assigned to this client yet.
-          </Alert>
-        )}
-      </Paper>
+      {selectedClient && services.length === 0 && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          No services are assigned to this client yet.
+        </Alert>
+      )}
 
       {/* Error Display */}
       {error && (

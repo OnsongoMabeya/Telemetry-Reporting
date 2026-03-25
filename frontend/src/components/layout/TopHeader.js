@@ -16,16 +16,20 @@ import {
   Logout,
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
+import { useMySites } from '../../context/MySitesContext';
 import DashboardControls from '../dashboard/DashboardControls';
 import GenerateReportButton from '../dashboard/GenerateReportButton';
+import MySitesControls from '../dashboard/MySitesControls';
 
 const TopHeader = () => {
   const theme = useTheme();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const mySitesContext = useMySites();
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
 
   const isDashboard = location.pathname === '/';
+  const isMySites = location.pathname === '/my-sites';
 
   const handleUserMenuOpen = (event) => {
     setUserMenuAnchor(event.currentTarget);
@@ -57,9 +61,19 @@ const TopHeader = () => {
       }}
     >
       <Toolbar sx={{ justifyContent: 'space-between', minHeight: 64 }}>
-        {/* Left Section: Dashboard Controls (conditionally rendered) */}
+        {/* Left Section: Dashboard Controls or My Sites Controls (conditionally rendered) */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
           {isDashboard && <DashboardControls />}
+          {isMySites && mySitesContext && (
+            <MySitesControls
+              clients={mySitesContext.clients}
+              selectedClient={mySitesContext.selectedClient}
+              setSelectedClient={mySitesContext.setSelectedClient}
+              services={mySitesContext.services}
+              selectedService={mySitesContext.selectedService}
+              setSelectedService={mySitesContext.setSelectedService}
+            />
+          )}
         </Box>
 
         {/* Right Section: Generate Report Button & User Menu */}

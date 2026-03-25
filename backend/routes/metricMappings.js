@@ -183,7 +183,8 @@ router.get('/columns', requireAdminOrManager, async (req, res) => {
 });
 
 // GET /api/metric-mappings - Get all metric mappings (with optional filters)
-router.get('/', requireAdminOrManager, async (req, res) => {
+// Accessible to all authenticated users for assignment purposes
+router.get('/', async (req, res) => {
   try {
     const { node_name, base_station_name } = req.query;
 
@@ -223,11 +224,16 @@ router.get('/', requireAdminOrManager, async (req, res) => {
 
     const [mappings] = await db.query(query, params);
 
-    res.json(mappings);
+    res.json({
+      success: true,
+      data: mappings,
+      count: mappings.length
+    });
 
   } catch (error) {
     console.error('Error fetching metric mappings:', error);
     res.status(500).json({ 
+      success: false,
       error: 'Failed to fetch metric mappings',
       code: 'SERVER_ERROR'
     });

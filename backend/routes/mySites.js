@@ -207,7 +207,7 @@ router.get('/clients/:clientId/services/:serviceId', async (req, res) => {
 });
 
 // GET /api/my-sites/clients/:clientId/services/:serviceId/metrics/:metricId/telemetry
-// Get telemetry data for a specific metric
+// Get telemetry data for a specific metric with smart date range logic
 router.get('/clients/:clientId/services/:serviceId/metrics/:metricId/telemetry', async (req, res) => {
   try {
     const userId = req.user.id;
@@ -248,30 +248,131 @@ router.get('/clients/:clientId/services/:serviceId/metrics/:metricId/telemetry',
 
     const metric = metrics[0];
 
-    // Fetch telemetry data from the appropriate table
-    const tableName = `${metric.node_name}_${metric.base_station_name}`.replace(/[^a-zA-Z0-9_]/g, '_');
-    
-    // Calculate time range based on filter
-    let timeCondition = '';
-    switch (timeFilter) {
-      case '5m': timeCondition = 'sample_time >= NOW() - INTERVAL 5 MINUTE'; break;
-      case '10m': timeCondition = 'sample_time >= NOW() - INTERVAL 10 MINUTE'; break;
-      case '30m': timeCondition = 'sample_time >= NOW() - INTERVAL 30 MINUTE'; break;
-      case '1h': timeCondition = 'sample_time >= NOW() - INTERVAL 1 HOUR'; break;
-      case '6h': timeCondition = 'sample_time >= NOW() - INTERVAL 6 HOUR'; break;
-      case '12h': timeCondition = 'sample_time >= NOW() - INTERVAL 12 HOUR'; break;
-      case '24h': timeCondition = 'sample_time >= NOW() - INTERVAL 24 HOUR'; break;
-      case '7d': timeCondition = 'sample_time >= NOW() - INTERVAL 7 DAY'; break;
-      default: timeCondition = 'sample_time >= NOW() - INTERVAL 1 HOUR';
+    // Set timezone for this session
+    await db.query(`SET time_zone = '+03:00'`);
+
+    // Get the time range of available data
+    const timeRangeQuery = `
+      SELECT 
+        CONVERT_TZ(MIN(time), @@session.time_zone, '+03:00') as earliest_time,
+        CONVERT_TZ(MAX(time), @@session.time_zone, '+03:00') as latest_time
+      FROM node_status_table
+      WHERE NodeName = ? AND NodeBaseStationName = ?
+    `;
+
+    const [[timeRange]] = await db.query(timeRangeQuery, [metric.node_name, metric.base_station_name]);
+
+    // If no data is found, return empty result
+    if (!timeRange.earliest_time || !timeRange.latest_time) {
+      return res.json({
+        success: true,
+        data: [],
+        count: 0
+      });
     }
 
-    const [telemetryData] = await db.query(
-      `SELECT sample_time, ${metric.column_name} as ${metric.metric_name}
-       FROM ${tableName}
-       WHERE ${timeCondition}
-       ORDER BY sample_time ASC`,
-      []
-    );
+    // Calculate time range based on filter (same as Dashboard)
+    let timeRangeMinutes;
+    let timeStep;
+    
+    switch (timeFilter) {
+      case '5m': 
+        timeRangeMinutes = 5;
+        timeStep = 1;
+        break;
+      case '10m':
+        timeRangeMinutes = 10;
+        timeStep = 1;
+        break;
+      case '30m':
+        timeRangeMinutes = 30;
+        timeStep = 1;
+        break;
+      case '1h':
+        timeRangeMinutes = 60;
+        timeStep = 1;
+        break;
+      case '2h':
+        timeRangeMinutes = 120;
+        timeStep = 2;
+        break;
+      case '6h':
+        timeRangeMinutes = 360;
+        timeStep = 5;
+        break;
+      case '1d':
+        timeRangeMinutes = 1440;
+        timeStep = 15;
+        break;
+      case '2d':
+        timeRangeMinutes = 2880;
+        timeStep = 30;
+        break;
+      case '5d':
+        timeRangeMinutes = 7200;
+        timeStep = 60;
+        break;
+      case '1w':
+        timeRangeMinutes = 10080;
+        timeStep = 120;
+        break;
+      case '2w':
+        timeRangeMinutes = 20160;
+        timeStep = 240;
+        break;
+      case '30d':
+        timeRangeMinutes = 43200;
+        timeStep = 360;
+        break;
+      default:
+        timeRangeMinutes = 60;
+        timeStep = 1;
+    }
+
+    // Calculate time range based on latest available data (not NOW())
+    const endTime = new Date(timeRange.latest_time);
+    const startTime = new Date(endTime.getTime() - (timeRangeMinutes * 60 * 1000));
+
+    // Build query with time bucketing for performance
+    const query = `
+      WITH time_buckets AS (
+        SELECT 
+          DATE_FORMAT(
+            CONVERT_TZ(
+              FROM_UNIXTIME(
+                FLOOR(UNIX_TIMESTAMP(time) / (? * 60)) * (? * 60)
+              ),
+              @@session.time_zone,
+              '+03:00'
+            ),
+            '%Y-%m-%d %H:%i:00'
+          ) as bucket_start,
+          ROUND(AVG(${metric.column_name}), 2) as \`${metric.metric_name}\`,
+          COUNT(*) as sample_count
+        FROM node_status_table
+        WHERE NodeName = ?
+          AND NodeBaseStationName = ?
+          AND time BETWEEN ? AND ?
+        GROUP BY bucket_start
+        HAVING sample_count > 0
+        ORDER BY bucket_start DESC
+        LIMIT 200
+      )
+      SELECT 
+        bucket_start as sample_time,
+        \`${metric.metric_name}\`
+      FROM time_buckets
+      ORDER BY sample_time ASC
+    `;
+
+    const [telemetryData] = await db.query(query, [
+      timeStep,
+      timeStep,
+      metric.node_name,
+      metric.base_station_name,
+      startTime,
+      endTime
+    ]);
 
     res.json({
       success: true,
