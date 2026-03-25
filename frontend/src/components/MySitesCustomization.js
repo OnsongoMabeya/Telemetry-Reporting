@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -23,6 +23,11 @@ import {
   Alert,
   Chip,
   CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Snackbar,
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -45,6 +50,11 @@ const MySitesCustomization = () => {
   // State for data
   const [clients, setClients] = useState([]);
   const [services, setServices] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [metricMappings, setMetricMappings] = useState([]);
+  const [clientServices, setClientServices] = useState([]);
+  const [serviceMetrics, setServiceMetrics] = useState([]);
+  const [userServices, setUserServices] = useState([]);
   
   // State for loading and errors
   const [loading, setLoading] = useState(false);
@@ -54,15 +64,19 @@ const MySitesCustomization = () => {
   // State for dialogs
   const [clientDialog, setClientDialog] = useState({ open: false, mode: 'create', data: null });
   const [serviceDialog, setServiceDialog] = useState({ open: false, mode: 'create', data: null });
+  const [assignDialog, setAssignDialog] = useState({ open: false, type: '', data: null });
 
   // State for form data
   const [clientForm, setClientForm] = useState({ name: '', description: '' });
   const [serviceForm, setServiceForm] = useState({ name: '', description: '' });
+  const [assignForm, setAssignForm] = useState({ clientId: '', serviceId: '', userId: '', metricMappingId: '' });
 
   // Fetch data on component mount
   useEffect(() => {
     fetchClients();
     fetchServices();
+    fetchUsers();
+    fetchMetricMappings();
   }, []);
 
   // Fetch functions
@@ -186,6 +200,195 @@ const MySitesCustomization = () => {
       setLoading(false);
     }
   };
+
+  // Fetch users and metric mappings
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/users`);
+      setUsers(response.data.users || []);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      setUsers([]);
+    }
+  };
+
+  const fetchMetricMappings = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/metric-mappings`);
+      setMetricMappings(response.data.data || []);
+    } catch (err) {
+      console.error('Error fetching metric mappings:', err);
+      setMetricMappings([]);
+    }
+  };
+
+  // Assignment operations
+  const handleAssignServiceToClient = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await axios.post(`${API_BASE_URL}/api/clients/${assignForm.clientId}/services`, {
+        serviceId: assignForm.serviceId
+      });
+      setSuccess('Service assigned to client successfully');
+      setAssignDialog({ open: false, type: '', data: null });
+      setAssignForm({ clientId: '', serviceId: '', userId: '', metricMappingId: '' });
+      fetchClientServices();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to assign service to client');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignMetricToService = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await axios.post(`${API_BASE_URL}/api/services/${assignForm.serviceId}/metrics`, {
+        metricMappingId: assignForm.metricMappingId
+      });
+      setSuccess('Metric assigned to service successfully');
+      setAssignDialog({ open: false, type: '', data: null });
+      setAssignForm({ clientId: '', serviceId: '', userId: '', metricMappingId: '' });
+      fetchServiceMetrics();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to assign metric to service');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAssignServiceToUser = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      await axios.post(`${API_BASE_URL}/api/user-service-assignments`, {
+        userId: assignForm.userId,
+        serviceId: assignForm.serviceId
+      });
+      setSuccess('Service assigned to user successfully');
+      setAssignDialog({ open: false, type: '', data: null });
+      setAssignForm({ clientId: '', serviceId: '', userId: '', metricMappingId: '' });
+      fetchUserServices();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to assign service to user');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchClientServices = useCallback(async () => {
+    try {
+      const allAssignments = [];
+      for (const client of clients) {
+        const response = await axios.get(`${API_BASE_URL}/api/clients/${client.id}/services`);
+        const assignments = (response.data.data || []).map(s => ({
+          ...s,
+          client_id: client.id,
+          client_name: client.name
+        }));
+        allAssignments.push(...assignments);
+      }
+      setClientServices(allAssignments);
+    } catch (err) {
+      console.error('Error fetching client services:', err);
+    }
+  }, [clients]);
+
+  const fetchServiceMetrics = useCallback(async () => {
+    try {
+      const allAssignments = [];
+      for (const service of services) {
+        const response = await axios.get(`${API_BASE_URL}/api/services/${service.id}/metrics`);
+        const assignments = (response.data.data || []).map(m => ({
+          ...m,
+          service_id: service.id,
+          service_name: service.name
+        }));
+        allAssignments.push(...assignments);
+      }
+      setServiceMetrics(allAssignments);
+    } catch (err) {
+      console.error('Error fetching service metrics:', err);
+    }
+  }, [services]);
+
+  const fetchUserServices = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/user-service-assignments`);
+      setUserServices(response.data.data || []);
+    } catch (err) {
+      console.error('Error fetching user services:', err);
+    }
+  };
+
+  const handleRemoveServiceFromClient = async (clientId, serviceId) => {
+    if (!window.confirm('Are you sure you want to remove this service from the client?')) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      await axios.delete(`${API_BASE_URL}/api/clients/${clientId}/services/${serviceId}`);
+      setSuccess('Service removed from client successfully');
+      fetchClientServices();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to remove service from client');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveMetricFromService = async (serviceId, metricMappingId) => {
+    if (!window.confirm('Are you sure you want to remove this metric from the service?')) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      await axios.delete(`${API_BASE_URL}/api/services/${serviceId}/metrics/${metricMappingId}`);
+      setSuccess('Metric removed from service successfully');
+      fetchServiceMetrics();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to remove metric from service');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveServiceFromUser = async (userId, serviceId) => {
+    if (!window.confirm('Are you sure you want to remove this service from the user?')) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      await axios.delete(`${API_BASE_URL}/api/user-service-assignments/${userId}/${serviceId}`);
+      setSuccess('Service removed from user successfully');
+      fetchUserServices();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to remove service from user');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch assignments when clients/services change
+  useEffect(() => {
+    if (clients.length > 0) {
+      fetchClientServices();
+    }
+  }, [clients]);
+
+  useEffect(() => {
+    if (services.length > 0) {
+      fetchServiceMetrics();
+    }
+  }, [services]);
+
+  useEffect(() => {
+    if (users.length > 0) {
+      fetchUserServices();
+    }
+  }, [users]);
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -395,47 +598,238 @@ const MySitesCustomization = () => {
         </AccordionDetails>
       </Accordion>
 
-      {/* Placeholder sections for remaining accordions - to be implemented */}
-      <Accordion disabled sx={{ mb: 2 }}>
+      {/* 3. Client-Service Assignments */}
+      <Accordion 
+        expanded={expanded === 'clientServices'} 
+        onChange={handleAccordionChange('clientServices')}
+        sx={{ mb: 2 }}
+      >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <LinkIcon color="disabled" />
+            <LinkIcon color="primary" />
             <Box>
-              <Typography variant="h6" color="text.disabled">Client-Service Assignments</Typography>
-              <Typography variant="caption" color="text.disabled">
-                Assign services to clients (Coming soon)
+              <Typography variant="h6">Client-Service Assignments</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Assign services to clients ({clientServices.length} assignments)
               </Typography>
             </Box>
           </Box>
         </AccordionSummary>
+        <AccordionDetails>
+          <Box>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setAssignForm({ clientId: '', serviceId: '', userId: '', metricMappingId: '' });
+                setAssignDialog({ open: true, type: 'clientService', data: null });
+              }}
+              sx={{ mb: 2 }}
+              disabled={clients.length === 0 || services.length === 0}
+            >
+              Assign Service to Client
+            </Button>
+
+            <TableContainer component={Paper} variant="outlined">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell><strong>Client</strong></TableCell>
+                    <TableCell><strong>Service</strong></TableCell>
+                    <TableCell><strong>Description</strong></TableCell>
+                    <TableCell><strong>Actions</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {clientServices.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">
+                        <Typography variant="body2" color="text.secondary">
+                          No client-service assignments yet
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    clientServices.map((assignment, index) => (
+                      <TableRow key={`${assignment.client_id}-${assignment.id}-${index}`}>
+                        <TableCell>{assignment.client_name}</TableCell>
+                        <TableCell>{assignment.name}</TableCell>
+                        <TableCell>{assignment.description || '-'}</TableCell>
+                        <TableCell>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleRemoveServiceFromClient(assignment.client_id, assignment.id)}
+                            color="error"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </AccordionDetails>
       </Accordion>
 
-      <Accordion disabled sx={{ mb: 2 }}>
+      {/* 4. Service-Metric Assignments */}
+      <Accordion 
+        expanded={expanded === 'serviceMetrics'} 
+        onChange={handleAccordionChange('serviceMetrics')}
+        sx={{ mb: 2 }}
+      >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <AssessmentIcon color="disabled" />
+            <AssessmentIcon color="primary" />
             <Box>
-              <Typography variant="h6" color="text.disabled">Service Metric Assignments</Typography>
-              <Typography variant="caption" color="text.disabled">
-                Assign metrics to services with custom display names (Coming soon)
+              <Typography variant="h6">Service-Metric Assignments</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Assign metrics to services ({serviceMetrics.length} assignments)
               </Typography>
             </Box>
           </Box>
         </AccordionSummary>
+        <AccordionDetails>
+          <Box>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setAssignForm({ clientId: '', serviceId: '', userId: '', metricMappingId: '' });
+                setAssignDialog({ open: true, type: 'serviceMetric', data: null });
+              }}
+              sx={{ mb: 2 }}
+              disabled={services.length === 0 || metricMappings.length === 0}
+            >
+              Assign Metric to Service
+            </Button>
+
+            <TableContainer component={Paper} variant="outlined">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell><strong>Service</strong></TableCell>
+                    <TableCell><strong>Metric Name</strong></TableCell>
+                    <TableCell><strong>Node</strong></TableCell>
+                    <TableCell><strong>Base Station</strong></TableCell>
+                    <TableCell><strong>Unit</strong></TableCell>
+                    <TableCell><strong>Actions</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {serviceMetrics.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        <Typography variant="body2" color="text.secondary">
+                          No service-metric assignments yet
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    serviceMetrics.map((assignment, index) => (
+                      <TableRow key={`${assignment.service_id}-${assignment.id}-${index}`}>
+                        <TableCell>{assignment.service_name}</TableCell>
+                        <TableCell>{assignment.metric_name}</TableCell>
+                        <TableCell>{assignment.node_name}</TableCell>
+                        <TableCell>{assignment.base_station_name}</TableCell>
+                        <TableCell>{assignment.unit}</TableCell>
+                        <TableCell>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleRemoveMetricFromService(assignment.service_id, assignment.id)}
+                            color="error"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </AccordionDetails>
       </Accordion>
 
-      <Accordion disabled sx={{ mb: 2 }}>
+      {/* 5. User-Service Assignments */}
+      <Accordion 
+        expanded={expanded === 'userServices'} 
+        onChange={handleAccordionChange('userServices')}
+        sx={{ mb: 2 }}
+      >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <PeopleIcon color="disabled" />
+            <PeopleIcon color="primary" />
             <Box>
-              <Typography variant="h6" color="text.disabled">User-Service Assignments</Typography>
-              <Typography variant="caption" color="text.disabled">
-                Assign services to users (Coming soon)
+              <Typography variant="h6">User-Service Assignments</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Assign services to users ({userServices.length} assignments)
               </Typography>
             </Box>
           </Box>
         </AccordionSummary>
+        <AccordionDetails>
+          <Box>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setAssignForm({ clientId: '', serviceId: '', userId: '', metricMappingId: '' });
+                setAssignDialog({ open: true, type: 'userService', data: null });
+              }}
+              sx={{ mb: 2 }}
+              disabled={users.length === 0 || services.length === 0}
+            >
+              Assign Service to User
+            </Button>
+
+            <TableContainer component={Paper} variant="outlined">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell><strong>User</strong></TableCell>
+                    <TableCell><strong>Service</strong></TableCell>
+                    <TableCell><strong>Email</strong></TableCell>
+                    <TableCell><strong>Assigned Date</strong></TableCell>
+                    <TableCell><strong>Actions</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {userServices.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center">
+                        <Typography variant="body2" color="text.secondary">
+                          No user-service assignments yet
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    userServices.map((assignment) => (
+                      <TableRow key={`${assignment.user_id}-${assignment.service_id}`}>
+                        <TableCell>{assignment.username}</TableCell>
+                        <TableCell>{assignment.service_name}</TableCell>
+                        <TableCell>{assignment.email}</TableCell>
+                        <TableCell>{new Date(assignment.assigned_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleRemoveServiceFromUser(assignment.user_id, assignment.service_id)}
+                            color="error"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </AccordionDetails>
       </Accordion>
 
       {/* Client Dialog */}
@@ -525,6 +919,163 @@ const MySitesCustomization = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Assignment Dialog */}
+      <Dialog 
+        open={assignDialog.open} 
+        onClose={() => setAssignDialog({ open: false, type: '', data: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          {assignDialog.type === 'clientService' && 'Assign Service to Client'}
+          {assignDialog.type === 'serviceMetric' && 'Assign Metric to Service'}
+          {assignDialog.type === 'userService' && 'Assign Service to User'}
+        </DialogTitle>
+        <DialogContent>
+          {assignDialog.type === 'clientService' && (
+            <>
+              <FormControl fullWidth margin="dense">
+                <InputLabel>Client</InputLabel>
+                <Select
+                  value={assignForm.clientId}
+                  onChange={(e) => setAssignForm({ ...assignForm, clientId: e.target.value })}
+                  label="Client"
+                >
+                  {clients.map((client) => (
+                    <MenuItem key={client.id} value={client.id}>
+                      {client.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth margin="dense">
+                <InputLabel>Service</InputLabel>
+                <Select
+                  value={assignForm.serviceId}
+                  onChange={(e) => setAssignForm({ ...assignForm, serviceId: e.target.value })}
+                  label="Service"
+                >
+                  {services.map((service) => (
+                    <MenuItem key={service.id} value={service.id}>
+                      {service.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </>
+          )}
+
+          {assignDialog.type === 'serviceMetric' && (
+            <>
+              <FormControl fullWidth margin="dense">
+                <InputLabel>Service</InputLabel>
+                <Select
+                  value={assignForm.serviceId}
+                  onChange={(e) => setAssignForm({ ...assignForm, serviceId: e.target.value })}
+                  label="Service"
+                >
+                  {services.map((service) => (
+                    <MenuItem key={service.id} value={service.id}>
+                      {service.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth margin="dense">
+                <InputLabel>Metric Mapping</InputLabel>
+                <Select
+                  value={assignForm.metricMappingId}
+                  onChange={(e) => setAssignForm({ ...assignForm, metricMappingId: e.target.value })}
+                  label="Metric Mapping"
+                >
+                  {metricMappings.map((mapping) => (
+                    <MenuItem key={mapping.id} value={mapping.id}>
+                      {mapping.metric_name} ({mapping.node_name} - {mapping.base_station_name})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </>
+          )}
+
+          {assignDialog.type === 'userService' && (
+            <>
+              <FormControl fullWidth margin="dense">
+                <InputLabel>User</InputLabel>
+                <Select
+                  value={assignForm.userId}
+                  onChange={(e) => setAssignForm({ ...assignForm, userId: e.target.value })}
+                  label="User"
+                >
+                  {users.map((user) => (
+                    <MenuItem key={user.id} value={user.id}>
+                      {user.username} ({user.email})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth margin="dense">
+                <InputLabel>Service</InputLabel>
+                <Select
+                  value={assignForm.serviceId}
+                  onChange={(e) => setAssignForm({ ...assignForm, serviceId: e.target.value })}
+                  label="Service"
+                >
+                  {services.map((service) => (
+                    <MenuItem key={service.id} value={service.id}>
+                      {service.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAssignDialog({ open: false, type: '', data: null })}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (assignDialog.type === 'clientService') handleAssignServiceToClient();
+              else if (assignDialog.type === 'serviceMetric') handleAssignMetricToService();
+              else if (assignDialog.type === 'userService') handleAssignServiceToUser();
+            }}
+            variant="contained"
+            disabled={loading || 
+              (assignDialog.type === 'clientService' && (!assignForm.clientId || !assignForm.serviceId)) ||
+              (assignDialog.type === 'serviceMetric' && (!assignForm.serviceId || !assignForm.metricMappingId)) ||
+              (assignDialog.type === 'userService' && (!assignForm.userId || !assignForm.serviceId))
+            }
+          >
+            {loading ? <CircularProgress size={24} /> : 'Assign'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for success/error messages */}
+      <Snackbar
+        open={!!success}
+        autoHideDuration={6000}
+        onClose={() => setSuccess(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={() => setSuccess(null)} severity="success" sx={{ width: '100%' }}>
+          {success}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

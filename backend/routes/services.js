@@ -286,6 +286,62 @@ router.delete('/:id', requireAdmin, async (req, res) => {
 // SERVICE METRIC ASSIGNMENTS
 // ============================================================================
 
+// GET /api/services/:id/metrics - Get all metric assignments for a service (alias)
+router.get('/:id/metrics', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if service exists
+    const [service] = await db.query(
+      'SELECT id, name FROM services WHERE id = ? AND is_active = TRUE',
+      [id]
+    );
+
+    if (service.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+
+    // Get all metric assignments for this service
+    const [assignments] = await db.query(`
+      SELECT 
+        sma.id,
+        sma.metric_mapping_id,
+        sma.display_name,
+        sma.display_order,
+        sma.created_at,
+        sma.updated_at,
+        mm.node_name,
+        mm.base_station_name,
+        mm.metric_name,
+        mm.column_name,
+        mm.unit,
+        u.username as created_by_username
+      FROM service_metric_assignments sma
+      INNER JOIN metric_mappings mm ON sma.metric_mapping_id = mm.id
+      INNER JOIN users u ON sma.created_by = u.id
+      WHERE sma.service_id = ? AND sma.is_active = TRUE AND mm.is_active = TRUE
+      ORDER BY sma.display_order, sma.created_at
+    `, [id]);
+
+    res.json({
+      success: true,
+      service: service[0],
+      data: assignments,
+      count: assignments.length
+    });
+  } catch (error) {
+    console.error('Error fetching service metric assignments:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch service metric assignments',
+      message: error.message
+    });
+  }
+});
+
 // GET /api/services/:id/metric-assignments - Get all metric assignments for a service
 router.get('/:id/metric-assignments', requireAdmin, async (req, res) => {
   try {
@@ -337,6 +393,93 @@ router.get('/:id/metric-assignments', requireAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to fetch service metric assignments',
+      message: error.message
+    });
+  }
+});
+
+// POST /api/services/:id/metrics - Assign metric mapping to service (alias)
+router.post('/:id/metrics', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { metricMappingId, displayName, displayOrder } = req.body;
+
+    // Validation
+    if (!metricMappingId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Metric mapping ID is required'
+      });
+    }
+
+    // Check if service exists
+    const [service] = await db.query(
+      'SELECT id, name FROM services WHERE id = ? AND is_active = TRUE',
+      [id]
+    );
+
+    if (service.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+
+    // Check if metric mapping exists
+    const [metricMapping] = await db.query(
+      'SELECT id, metric_name, node_name, base_station_name FROM metric_mappings WHERE id = ? AND is_active = TRUE',
+      [metricMappingId]
+    );
+
+    if (metricMapping.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Metric mapping not found'
+      });
+    }
+
+    // Check if assignment already exists
+    const [existing] = await db.query(
+      'SELECT id FROM service_metric_assignments WHERE service_id = ? AND metric_mapping_id = ?',
+      [id, metricMappingId]
+    );
+
+    if (existing.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'This metric mapping is already assigned to this service'
+      });
+    }
+
+    // Use metric name as default display name if not provided
+    const finalDisplayName = displayName && displayName.trim() !== '' 
+      ? displayName.trim() 
+      : metricMapping[0].metric_name;
+
+    // Insert assignment
+    const [result] = await db.query(
+      `INSERT INTO service_metric_assignments 
+       (service_id, metric_mapping_id, display_name, display_order, created_by) 
+       VALUES (?, ?, ?, ?, ?)`,
+      [id, metricMappingId, finalDisplayName, displayOrder || 0, req.user.id]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'Metric mapping assigned to service successfully',
+      data: {
+        id: result.insertId,
+        service_id: id,
+        metric_mapping_id: metricMappingId,
+        display_name: finalDisplayName,
+        display_order: displayOrder || 0
+      }
+    });
+  } catch (error) {
+    console.error('Error assigning metric to service:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to assign metric to service',
       message: error.message
     });
   }
@@ -505,6 +648,50 @@ router.put('/metric-assignments/:assignmentId', requireAdmin, async (req, res) =
     res.status(500).json({
       success: false,
       error: 'Failed to update metric assignment',
+      message: error.message
+    });
+  }
+});
+
+// DELETE /api/services/:serviceId/metrics/:metricMappingId - Remove metric assignment (alias)
+router.delete('/:serviceId/metrics/:metricMappingId', requireAdmin, async (req, res) => {
+  try {
+    const { serviceId, metricMappingId } = req.params;
+
+    // Find the assignment
+    const [assignment] = await db.query(`
+      SELECT 
+        sma.id,
+        s.name as service_name,
+        mm.metric_name
+      FROM service_metric_assignments sma
+      INNER JOIN services s ON sma.service_id = s.id
+      INNER JOIN metric_mappings mm ON sma.metric_mapping_id = mm.id
+      WHERE sma.service_id = ? AND sma.metric_mapping_id = ? AND sma.is_active = TRUE
+    `, [serviceId, metricMappingId]);
+
+    if (assignment.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Metric assignment not found'
+      });
+    }
+
+    // Soft delete
+    await db.query(
+      'UPDATE service_metric_assignments SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [assignment[0].id]
+    );
+
+    res.json({
+      success: true,
+      message: `Metric "${assignment[0].metric_name}" removed from service "${assignment[0].service_name}" successfully`
+    });
+  } catch (error) {
+    console.error('Error removing metric assignment:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to remove metric assignment',
       message: error.message
     });
   }
