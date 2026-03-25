@@ -9,7 +9,23 @@ import {
 import {
   LocationOn as LocationOnIcon,
   Wifi as WifiIcon,
+  DateRange as DateRangeIcon,
 } from '@mui/icons-material';
+
+const TIME_FILTERS = [
+  { value: '5m', label: 'Last 5 minutes' },
+  { value: '10m', label: 'Last 10 minutes' },
+  { value: '30m', label: 'Last 30 minutes' },
+  { value: '1h', label: 'Last 1 hour' },
+  { value: '2h', label: 'Last 2 hours' },
+  { value: '6h', label: 'Last 6 hours' },
+  { value: '1d', label: 'Last 24 hours' },
+  { value: '2d', label: 'Last 2 days' },
+  { value: '5d', label: 'Last 5 days' },
+  { value: '1w', label: 'Last 1 week' },
+  { value: '2w', label: 'Last 2 weeks' },
+  { value: '30d', label: 'Last 30 days' }
+];
 
 const MySitesControls = ({ 
   clients, 
@@ -17,7 +33,9 @@ const MySitesControls = ({
   setSelectedClient,
   services,
   selectedService,
-  setSelectedService 
+  setSelectedService,
+  timeFilter,
+  setTimeFilter
 }) => {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -62,6 +80,25 @@ const MySitesControls = ({
           </Select>
         </FormControl>
       )}
+
+      {/* Time Range Selector */}
+      <FormControl size="small" sx={{ minWidth: 180 }}>
+        <InputLabel sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <DateRangeIcon fontSize="small" sx={{ color: '#f59e0b' }} />
+          Time Range
+        </InputLabel>
+        <Select
+          value={timeFilter}
+          onChange={(e) => setTimeFilter(e.target.value)}
+          label="Time Range"
+        >
+          {TIME_FILTERS.map((filter) => (
+            <MenuItem key={filter.value} value={filter.value}>
+              {filter.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
     </Box>
   );
 };

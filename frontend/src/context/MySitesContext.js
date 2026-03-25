@@ -15,6 +15,7 @@ export const MySitesProvider = ({ children }) => {
   const [selectedClient, setSelectedClient] = useState('');
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState('');
+  const [timeFilter, setTimeFilter] = useState('1h');
 
   const value = {
     clients,
@@ -25,6 +26,8 @@ export const MySitesProvider = ({ children }) => {
     setServices,
     selectedService,
     setSelectedService,
+    timeFilter,
+    setTimeFilter,
   };
 
   return (

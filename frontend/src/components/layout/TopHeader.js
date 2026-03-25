@@ -72,6 +72,8 @@ const TopHeader = () => {
               services={mySitesContext.services}
               selectedService={mySitesContext.selectedService}
               setSelectedService={mySitesContext.setSelectedService}
+              timeFilter={mySitesContext.timeFilter}
+              setTimeFilter={mySitesContext.setTimeFilter}
             />
           )}
         </Box>

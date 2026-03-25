@@ -30,7 +30,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
 
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
         <CircularProgress />
       </Box>
     );
@@ -38,7 +38,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
 
   if (!data || data.length === 0) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
         <Typography variant="body2" color="text.secondary">
           No data available
         </Typography>
@@ -47,7 +47,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
   }
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={200}>
       <ComposedChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
         <CartesianGrid 
           strokeDasharray="3 3" 
@@ -65,6 +65,8 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
         <YAxis
           stroke={theme.palette.mode === 'dark' ? '#9ca3af' : '#6b7280'}
           style={{ fontSize: '12px' }}
+          domain={[0, 'auto']}
+          padding={{ top: 40 }}
           label={{ 
             value: unit, 
             angle: -90, 
@@ -106,16 +108,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
 });
 
 const MySites = () => {
-  const {
-    clients,
-    setClients,
-    selectedClient,
-    setSelectedClient,
-    services,
-    setServices,
-    selectedService,
-    setSelectedService,
-  } = useMySites();
+  const { clients, setClients, selectedClient, setSelectedClient, services, setServices, selectedService, setSelectedService, timeFilter } = useMySites();
   
   const [serviceDetails, setServiceDetails] = useState(null);
   const [telemetryData, setTelemetryData] = useState({});
@@ -192,7 +185,7 @@ const MySites = () => {
         const telemetryPromises = metrics.map(async (metric) => {
           try {
             const telemetryResponse = await axios.get(
-              `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${selectedService}/metrics/${metric.id}/telemetry?timeFilter=1h`
+              `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${selectedService}/metrics/${metric.id}/telemetry?timeFilter=${timeFilter}`
             );
             return {
               metricId: metric.id,
@@ -219,7 +212,7 @@ const MySites = () => {
     };
 
     fetchServiceData();
-  }, [selectedClient, selectedService]);
+  }, [selectedClient, selectedService, timeFilter]);
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
@@ -284,15 +277,31 @@ const MySites = () => {
               sx={{
                 display: 'grid',
                 gridTemplateColumns: {
-                  xs: 'repeat(1, 1fr)',
-                  lg: 'repeat(2, 1fr)',
+                  xs: '1fr',
+                  sm: 'repeat(2, 1fr)',
+                  md: 'repeat(3, 1fr)',
+                  lg: 'repeat(4, 1fr)',
                 },
                 gap: 3,
+                gridAutoRows: '300px',
               }}
             >
               {serviceDetails.metrics && serviceDetails.metrics.length > 0 ? (
                 serviceDetails.metrics.map((metric) => (
-                  <Paper key={metric.id} sx={{ p: 3 }}>
+                  <Paper 
+                    key={metric.id} 
+                    elevation={3}
+                    sx={{ 
+                      gridColumn: 'span 1',
+                      gridRow: 'span 1',
+                      p: 2,
+                      backgroundColor: 'background.paper',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      overflow: 'hidden',
+                    }}
+                  >
                     <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
                       {metric.display_name || metric.metric_name}
                     </Typography>
