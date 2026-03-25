@@ -14,6 +14,7 @@ import {
 import {
   ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -25,7 +26,7 @@ import { API_BASE_URL } from '../config/api';
 import { useMySites } from '../context/MySitesContext';
 
 // Telemetry Graph Component (similar to NodeDetail)
-const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor = '#30a1e4' }) => {
+const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor = '#30a1e4', hasCustomColor = false }) => {
   const theme = useTheme();
 
   if (isLoading) {
@@ -87,6 +88,17 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
           }}
           formatter={(value) => [`${parseFloat(value).toFixed(2)} ${unit}`, title]}
         />
+        {hasCustomColor && (
+          <Area
+            type="monotone"
+            dataKey={dataKey}
+            fill={lineColor}
+            fillOpacity={0.3}
+            stroke="none"
+            animationDuration={1500}
+            animationEasing="ease-in-out"
+          />
+        )}
         <Line
           type="monotone"
           dataKey={dataKey}
@@ -315,6 +327,7 @@ const MySites = () => {
                       unit={metric.unit}
                       isLoading={false}
                       lineColor={metric.color || '#30a1e4'}
+                      hasCustomColor={!!metric.color}
                     />
                   </Paper>
                 ))
