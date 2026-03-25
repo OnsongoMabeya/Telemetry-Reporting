@@ -1,0 +1,172 @@
+# My Sites Database Migration
+
+## Overview
+
+This migration creates the database structure for the My Sites feature, which enables hierarchical service management with clients, services, and granular metric assignments.
+
+## Tables Created
+
+### 1. `clients`
+
+Stores client information (e.g., Radio Africa Group, Standard Group)
+
+- Primary key: `id`
+- Unique constraint: `name`
+- Foreign key: `created_by` → `users(id)`
+
+### 2. `services`
+
+Stores services (e.g., Kameme FM, EMOO FM)
+
+- Primary key: `id`
+- Unique constraint: `name`
+- Foreign key: `created_by` → `users(id)`
+
+### 3. `client_services`
+
+Many-to-many relationship between clients and services
+
+- A service can belong to multiple clients
+- Unique constraint: `(client_id, service_id)`
+- Foreign keys: `client_id` → `clients(id)`, `service_id` → `services(id)`
+
+### 4. `service_metric_assignments`
+
+Assigns individual metric mappings to services with custom display names
+
+- Each metric mapping can be assigned to a service with a custom display name
+- Example: "Genset01/NAKURU - Kameme FM Forward Power" → Display as "Nakuru Site"
+- Unique constraint: `(service_id, metric_mapping_id)`
+- Foreign keys: `service_id` → `services(id)`, `metric_mapping_id` → `metric_mappings(id)`
+
+### 5. `user_service_assignments`
+
+Assigns specific services to specific users for access control
+
+- Users can only see services they are assigned to
+- Unique constraint: `(user_id, service_id)`
+- Foreign keys: `user_id` → `users(id)`, `service_id` → `services(id)`
+
+## Views Created
+
+### `v_active_clients`
+
+Shows active clients with creator info and service count
+
+### `v_active_services`
+
+Shows active services with creator info, metric count, and user count
+
+### `v_service_metric_assignments`
+
+Shows service metric assignments with full details (service name, node, base station, metric name, display name, etc.)
+
+### `v_user_services`
+
+Shows user service assignments with full details
+
+## Sample Data
+
+The migration includes sample data for testing:
+
+- **Clients**: Radio Africa Group, Standard Group
+- **Services**: Kameme FM, EMOO FM, Spice FM
+- **Client-Service Links**:
+  - Radio Africa Group → Kameme FM, EMOO FM
+  - Standard Group → Spice FM
+
+## How to Run Migration
+
+### Option 1: Using MySQL Command Line
+
+```bash
+mysql -u your_username -p your_database_name < backend/database/migrations/005_create_my_sites_tables.sql
+```
+
+### Option 2: Using MySQL Workbench
+
+1. Open MySQL Workbench
+2. Connect to your database
+3. Open the migration file: `005_create_my_sites_tables.sql`
+4. Execute the script
+
+### Option 3: Using Node.js Script
+
+Create a migration runner script or execute directly:
+
+```javascript
+const mysql = require('mysql2/promise');
+const fs = require('fs');
+require('dotenv').config();
+
+async function runMigration() {
+  const connection = await mysql.createConnection({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    multipleStatements: true
+  });
+
+  const sql = fs.readFileSync('./database/migrations/005_create_my_sites_tables.sql', 'utf8');
+  await connection.query(sql);
+  console.log('Migration completed successfully!');
+  await connection.end();
+}
+
+runMigration().catch(console.error);
+```
+
+## Verification
+
+After running the migration, verify the tables were created:
+
+```sql
+-- Check all tables exist
+SHOW TABLES LIKE '%client%';
+SHOW TABLES LIKE '%service%';
+
+-- Check sample data
+SELECT * FROM clients;
+SELECT * FROM services;
+SELECT * FROM client_services;
+
+-- Check views
+SELECT * FROM v_active_clients;
+SELECT * FROM v_active_services;
+```
+
+## Next Steps
+
+After running this migration:
+
+1. Create backend API endpoints for CRUD operations
+2. Build "My Sites Customization" UI (admin only)
+3. Build "My Sites" UI (all users)
+4. Assign metric mappings to services via the UI
+5. Assign services to users via the UI
+
+## Rollback
+
+To rollback this migration:
+
+```sql
+DROP VIEW IF EXISTS v_user_services;
+DROP VIEW IF EXISTS v_service_metric_assignments;
+DROP VIEW IF EXISTS v_active_services;
+DROP VIEW IF EXISTS v_active_clients;
+
+DROP TABLE IF EXISTS user_service_assignments;
+DROP TABLE IF EXISTS service_metric_assignments;
+DROP TABLE IF EXISTS client_services;
+DROP TABLE IF EXISTS services;
+DROP TABLE IF EXISTS clients;
+```
+
+## Notes
+
+- All tables use `InnoDB` engine for transaction support
+- All tables use `utf8mb4` charset for full Unicode support
+- Foreign keys use `ON DELETE CASCADE` for automatic cleanup
+- All tables include audit fields: `created_at`, `updated_at`, `created_by`
+- All tables include `is_active` flag for soft deletes
