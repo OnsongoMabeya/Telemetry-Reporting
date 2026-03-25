@@ -25,6 +25,7 @@ const requireAdmin = (req, res, next) => {
 
 // GET /api/clients - Get all clients
 router.get('/', requireAdmin, async (req, res) => {
+  console.log('GET /api/clients - Request received from user:', req.user);
   try {
     const [clients] = await db.query(`
       SELECT 
