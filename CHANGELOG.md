@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - My Sites Enhancements & Smart Telemetry (March 25, 2026)
+
+#### My Sites Feature
+
+- **User-Client Assignment Model**
+  - Changed from user-service to user-client assignments
+  - Users can have one or more clients
+  - Access all services belonging to assigned clients
+  - Simplified management and improved scalability
+
+- **Navbar-Integrated Filters**
+  - Moved client and service selectors to top navigation bar
+  - Created `MySitesContext` for shared state management
+  - Created `MySitesControls` component for navbar filters
+  - Cleaner UI with filters always accessible
+
+- **Smart Telemetry Endpoint**
+  - Implemented Dashboard's smart date range logic
+  - Fetches latest available data instead of using NOW()
+  - Time bucketing for performance optimization (1min to 6hr intervals)
+  - Adaptive sampling based on time filter selection
+  - Proper timezone handling (EAT +03:00)
+  - Supports all time ranges: 5m, 10m, 30m, 1h, 2h, 6h, 1d, 2d, 5d, 1w, 2w, 30d
+
+- **Database Schema Updates**
+  - Dropped `user_service_assignments` table
+  - Created `user_client_assignments` table with audit fields
+  - Updated views to reflect new assignment model
+  - Migration: `008_rename_user_service_to_user_client.sql`
+
+#### API Improvements
+
+- **Metric Mappings Endpoint**
+  - Made `/api/metric-mappings` accessible to all authenticated users
+  - Standardized response format: `{ success, data, count }`
+  - Fixed permissions for metric assignment functionality
+
+- **Frontend Compatibility**
+  - Updated `VisualizationSettings` to handle new response format
+  - Backward compatible data extraction with fallbacks
+
+#### Bug Fixes (March 25,2025)
+
+- Fixed React Hooks violations in `TopHeader` component
+- Fixed ESLint warnings in `MySites` component
+- Removed unused `theme` variable
+- Added missing `useEffect` dependencies
+
 ### Added - UI Refinements & Responsive Improvements (March 13, 2026)
 
 #### Dashboard Enhancements

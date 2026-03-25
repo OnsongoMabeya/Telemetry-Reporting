@@ -395,6 +395,318 @@ Retrieve metric mappings for a specific node/base station combination. Used by t
 
 ---
 
+## My Sites API
+
+The My Sites feature provides a hierarchical service management system with user-client assignments.
+
+### Architecture
+
+- Users are assigned to **clients** (not individual services)
+- Each client can have multiple **services**
+- Each service can have multiple **metric assignments**
+- Users access all services belonging to their assigned clients
+
+### Client Management
+
+#### List All Clients
+
+**Endpoint:** `GET /clients`
+
+**Access:** All authenticated users
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Radio Africa Group",
+      "description": "Media company",
+      "is_active": true,
+      "created_at": "2026-03-25T10:00:00.000Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+#### Create Client
+
+**Endpoint:** `POST /clients`
+
+**Access:** Admin, Manager
+
+**Request Body:**
+
+```json
+{
+  "name": "Radio Africa Group",
+  "description": "Media company"
+}
+```
+
+#### Get Client Services
+
+**Endpoint:** `GET /clients/:id/services`
+
+**Access:** All authenticated users
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Kameme FM",
+      "description": "Radio service"
+    }
+  ]
+}
+```
+
+#### Assign Service to Client
+
+**Endpoint:** `POST /clients/:id/services`
+
+**Access:** Admin, Manager
+
+**Request Body:**
+
+```json
+{
+  "serviceId": 1
+}
+```
+
+---
+
+### Service Management
+
+#### List All Services
+
+**Endpoint:** `GET /services`
+
+**Access:** All authenticated users
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Kameme FM",
+      "description": "Radio service",
+      "metric_count": 3,
+      "client_count": 1
+    }
+  ]
+}
+```
+
+#### Get Service Metrics
+
+**Endpoint:** `GET /services/:id/metrics`
+
+**Access:** All authenticated users
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "metric_name": "Forward Power",
+      "node_name": "Aviation FM",
+      "base_station_name": "ELDORET",
+      "unit": "W"
+    }
+  ]
+}
+```
+
+#### Assign Metric to Service
+
+**Endpoint:** `POST /services/:id/metrics`
+
+**Access:** Admin, Manager
+
+**Request Body:**
+
+```json
+{
+  "metricMappingId": 1
+}
+```
+
+---
+
+### User-Client Assignments
+
+#### List User-Client Assignments
+
+**Endpoint:** `GET /user-client-assignments`
+
+**Access:** Admin, Manager
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "user_id": 2,
+      "client_id": 1,
+      "username": "john.doe",
+      "client_name": "Radio Africa Group",
+      "assigned_at": "2026-03-25T10:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### Assign Client to User
+
+**Endpoint:** `POST /user-client-assignments`
+
+**Access:** Admin, Manager
+
+**Request Body:**
+
+```json
+{
+  "userId": 2,
+  "clientId": 1
+}
+```
+
+#### Remove Client from User
+
+**Endpoint:** `DELETE /user-client-assignments/:userId/:clientId`
+
+**Access:** Admin, Manager
+
+---
+
+### My Sites User Access
+
+#### Get User's Assigned Clients
+
+**Endpoint:** `GET /my-sites/clients`
+
+**Access:** All authenticated users
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Radio Africa Group",
+      "description": "Media company"
+    }
+  ]
+}
+```
+
+#### Get Client Services (User Access)
+
+**Endpoint:** `GET /my-sites/clients/:clientId/services`
+
+**Access:** User must be assigned to the client
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "name": "Kameme FM",
+      "description": "Radio service"
+    }
+  ]
+}
+```
+
+#### Get Service Details with Metrics
+
+**Endpoint:** `GET /my-sites/clients/:clientId/services/:serviceId`
+
+**Access:** User must be assigned to the client
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "service": {
+      "id": 1,
+      "name": "Kameme FM"
+    },
+    "metrics": [
+      {
+        "id": 1,
+        "metric_name": "Forward Power",
+        "node_name": "Aviation FM",
+        "base_station_name": "ELDORET"
+      }
+    ]
+  }
+}
+```
+
+#### Get Telemetry Data for Metric
+
+**Endpoint:** `GET /my-sites/clients/:clientId/services/:serviceId/metrics/:metricId/telemetry`
+
+**Access:** User must be assigned to the client
+
+**Query Parameters:**
+
+- `timeFilter` (optional): Time range (5m, 10m, 30m, 1h, 2h, 6h, 1d, 2d, 5d, 1w, 2w, 30d)
+
+**Features:**
+
+- Smart date range logic (fetches latest available data, not NOW())
+- Time bucketing for performance optimization
+- Adaptive sampling based on time filter
+- Timezone handling (EAT +03:00)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "sample_time": "2025-03-03 23:07:00",
+      "Aviation FM Forward Power": "1033.00"
+    },
+    {
+      "sample_time": "2025-03-03 23:08:00",
+      "Aviation FM Forward Power": "1045.00"
+    }
+  ],
+  "count": 60
+}
+```
+
+---
+
 ## Error Codes
 
 | Code | Description                              |

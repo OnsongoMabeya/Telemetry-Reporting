@@ -2,7 +2,16 @@
 
 ## Overview
 
-This migration creates the database structure for the My Sites feature, which enables hierarchical service management with clients, services, and granular metric assignments.
+This migration creates the database structure for the My Sites feature, which enables hierarchical service management with clients, services, and granular metric assignments using a **user-client assignment model**.
+
+## Architecture
+
+The My Sites feature uses a client-based access control model:
+
+- Users are assigned to **clients** (not individual services)
+- Each client can have multiple **services**
+- Each service can have multiple **metric assignments**
+- Users access all services belonging to their assigned clients
 
 ## Tables Created
 
@@ -39,13 +48,15 @@ Assigns individual metric mappings to services with custom display names
 - Unique constraint: `(service_id, metric_mapping_id)`
 - Foreign keys: `service_id` → `services(id)`, `metric_mapping_id` → `metric_mappings(id)`
 
-### 5. `user_service_assignments`
+### 5. `user_client_assignments` ⭐ NEW
 
-Assigns specific services to specific users for access control
+Assigns specific clients to specific users for access control
 
-- Users can only see services they are assigned to
-- Unique constraint: `(user_id, service_id)`
-- Foreign keys: `user_id` → `users(id)`, `service_id` → `services(id)`
+- Users can access all services belonging to their assigned clients
+- A user can have one or more clients
+- Unique constraint: `(user_id, client_id)`
+- Foreign keys: `user_id` → `users(id)`, `client_id` → `clients(id)`
+- Includes audit fields: `assigned_at`, `assigned_by`
 
 ## Views Created
 
@@ -55,15 +66,15 @@ Shows active clients with creator info and service count
 
 ### `v_active_services`
 
-Shows active services with creator info, metric count, and user count
+Shows active services with creator info, metric count, and client count
 
 ### `v_service_metric_assignments`
 
 Shows service metric assignments with full details (service name, node, base station, metric name, display name, etc.)
 
-### `v_user_services`
+### `v_user_client_assignments` ⭐ UPDATED
 
-Shows user service assignments with full details
+Shows user-client assignments with full details (replaces `v_user_services`)
 
 ## Sample Data
 
@@ -136,27 +147,67 @@ SELECT * FROM v_active_clients;
 SELECT * FROM v_active_services;
 ```
 
+## Access Control Model
+
+### User-Client Assignment Flow
+
+1. **Admin assigns clients to users** via My Sites Customization
+2. **User accesses My Sites** and sees all clients they're assigned to
+3. **User selects a client** from the navbar dropdown
+4. **User sees all services** belonging to that client
+5. **User selects a service** from the navbar dropdown
+6. **Telemetry graphs populate** with all metrics assigned to that service
+
+### Benefits of Client-Based Access
+
+- **Simplified management**: Assign users to clients instead of individual services
+- **Scalability**: Adding new services to a client automatically grants access to assigned users
+- **Hierarchical organization**: Mirrors real-world client-service relationships
+- **Reduced complexity**: Fewer assignment records to manage
+
+## My Sites Features
+
+### My Sites Customization (Admin/Manager)
+
+Located at `/my-sites-customization`, provides complete management interface:
+
+- **Client Management**: Create, edit, delete clients
+- **Service Management**: Create, edit, delete services
+- **Client-Service Assignments**: Link services to clients
+- **Service-Metric Assignments**: Assign metric mappings to services
+- **User-Client Assignments**: Grant users access to clients
+
+### My Sites (All Users)
+
+Located at `/my-sites`, provides user-facing telemetry interface:
+
+- **Navbar Filters**: Client and service selectors in top navigation bar
+- **Smart Telemetry**: Fetches latest available data (not NOW())
+- **Time Bucketing**: Performance-optimized data sampling
+- **Dashboard-Style Graphs**: Same visualization as main dashboard
+- **Responsive Design**: Mobile-friendly interface
+
 ## Next Steps
 
 After running this migration:
 
-1. Create backend API endpoints for CRUD operations
-2. Build "My Sites Customization" UI (admin only)
-3. Build "My Sites" UI (all users)
-4. Assign metric mappings to services via the UI
-5. Assign services to users via the UI
+1. ✅ Create backend API endpoints for CRUD operations
+2. ✅ Build "My Sites Customization" UI (admin only)
+3. ✅ Build "My Sites" UI (all users)
+4. ✅ Assign metric mappings to services via the UI
+5. ✅ Assign clients to users via the UI (user-client model)
 
 ## Rollback
 
 To rollback this migration:
 
 ```sql
-DROP VIEW IF EXISTS v_user_services;
+DROP VIEW IF EXISTS v_user_client_assignments;
 DROP VIEW IF EXISTS v_service_metric_assignments;
 DROP VIEW IF EXISTS v_active_services;
 DROP VIEW IF EXISTS v_active_clients;
 
-DROP TABLE IF EXISTS user_service_assignments;
+DROP TABLE IF EXISTS user_client_assignments;
 DROP TABLE IF EXISTS service_metric_assignments;
 DROP TABLE IF EXISTS client_services;
 DROP TABLE IF EXISTS services;

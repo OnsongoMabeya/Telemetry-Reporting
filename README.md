@@ -104,6 +104,13 @@ The system features a completely redesigned user interface with a professional S
 - **Interactive Maps**: Kenya-wide base station monitoring with verified GPS coordinates
 - **User Management**: Role-based access control with admin, manager, and viewer roles
 - **Node Assignment**: Granular access control - assign specific nodes to users
+- **My Sites Feature**: Hierarchical service management with user-client assignments
+  - Client-based access control model
+  - Service-to-client mapping
+  - Metric assignments per service
+  - Smart telemetry with time bucketing
+  - Navbar-integrated filters
+  - Dashboard-style visualizations
 - **Comprehensive Reporting**: Generate and export reports in multiple formats
 - **Responsive Design**: Mobile-first design with comprehensive breakpoint support (see [Responsive Design](#-responsive-design) section)
 - **Dark/Light Mode**: Optimized viewing in any lighting condition
