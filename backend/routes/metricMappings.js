@@ -348,19 +348,35 @@ router.post('/', requireAdmin, async (req, res) => {
       });
     }
 
-    // Check if mapping already exists
-    const [existing] = await db.query(
-      `SELECT id FROM metric_mappings 
+    // Check if mapping already exists for this column
+    const [existingColumn] = await db.query(
+      `SELECT id, metric_name FROM metric_mappings 
        WHERE node_name = ? AND base_station_name = ? 
-       AND (column_name = ? OR metric_name = ?)
+       AND column_name = ?
        AND is_active = TRUE`,
-      [node_name, base_station_name, column_name, metric_name]
+      [node_name, base_station_name, column_name]
     );
 
-    if (existing.length > 0) {
+    if (existingColumn.length > 0) {
       return res.status(409).json({ 
-        error: 'Mapping already exists for this column or metric name',
-        code: 'DUPLICATE_MAPPING'
+        error: `Column ${column_name} is already mapped to "${existingColumn[0].metric_name}"`,
+        code: 'DUPLICATE_COLUMN'
+      });
+    }
+
+    // Check if mapping already exists for this metric name
+    const [existingMetric] = await db.query(
+      `SELECT id, column_name FROM metric_mappings 
+       WHERE node_name = ? AND base_station_name = ? 
+       AND metric_name = ?
+       AND is_active = TRUE`,
+      [node_name, base_station_name, metric_name]
+    );
+
+    if (existingMetric.length > 0) {
+      return res.status(409).json({ 
+        error: `Metric name "${metric_name}" is already used for column ${existingMetric[0].column_name}`,
+        code: 'DUPLICATE_METRIC_NAME'
       });
     }
 
