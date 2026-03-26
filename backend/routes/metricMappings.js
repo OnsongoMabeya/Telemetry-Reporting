@@ -329,6 +329,25 @@ router.post('/', requireAdmin, async (req, res) => {
       });
     }
 
+    // Validate user exists
+    if (!req.user || !req.user.id) {
+      console.error('User authentication error: req.user =', req.user);
+      return res.status(401).json({ 
+        error: 'User authentication failed',
+        code: 'AUTH_ERROR'
+      });
+    }
+
+    // Verify user exists in database
+    const [userCheck] = await db.query('SELECT id FROM users WHERE id = ?', [req.user.id]);
+    if (userCheck.length === 0) {
+      console.error('User ID not found in database:', req.user.id);
+      return res.status(401).json({ 
+        error: 'User not found in database',
+        code: 'USER_NOT_FOUND'
+      });
+    }
+
     // Check if mapping already exists
     const [existing] = await db.query(
       `SELECT id FROM metric_mappings 
@@ -386,6 +405,12 @@ router.post('/', requireAdmin, async (req, res) => {
 
   } catch (error) {
     console.error('Error creating metric mapping:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      sqlMessage: error.sqlMessage,
+      sql: error.sql
+    });
     res.status(500).json({ 
       error: 'Failed to create metric mapping',
       code: 'SERVER_ERROR'
