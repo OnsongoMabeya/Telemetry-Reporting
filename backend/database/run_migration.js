@@ -22,7 +22,9 @@ async function runMigration(migrationFile) {
     console.log('✅ Connected to database\n');
     
     // Read migration file
-    const migrationPath = path.join(__dirname, 'migrations', migrationFile);
+    // Add .sql extension if not provided
+    const fileName = migrationFile.endsWith('.sql') ? migrationFile : `${migrationFile}.sql`;
+    const migrationPath = path.join(__dirname, 'migrations', fileName);
     const sql = fs.readFileSync(migrationPath, 'utf8');
     
     console.log(`📄 Running migration: ${migrationFile}\n`);
