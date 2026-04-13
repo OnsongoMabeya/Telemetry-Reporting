@@ -148,10 +148,14 @@ const MySites = () => {
   const [slideCountdown, setSlideCountdown] = useState(0);
   const [nextServiceData, setNextServiceData] = useState(null);
   const [connectionError, setConnectionError] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const containerRef = useRef(null);
   const slideshowTimerRef = useRef(null);
   const countdownTimerRef = useRef(null);
   const keepAliveRef = useRef(null);
+  const controlsTimerRef = useRef(null);
+  const retryTimerRef = useRef(null);
 
   // Fetch user's assigned clients
   useEffect(() => {
@@ -351,16 +355,24 @@ const MySites = () => {
   const switchToNextService = useCallback(() => {
     if (services.length === 0) return;
 
-    // Use preloaded data if available
-    if (nextServiceData) {
-      setServiceDetails(nextServiceData.details);
-      setTelemetryData(nextServiceData.telemetry);
-      setNextServiceData(null);
-    }
+    // Fade out transition
+    setIsTransitioning(true);
 
-    const nextIndex = (currentServiceIndex + 1) % services.length;
-    setCurrentServiceIndex(nextIndex);
-    setSelectedService(services[nextIndex].id);
+    setTimeout(() => {
+      // Use preloaded data if available
+      if (nextServiceData) {
+        setServiceDetails(nextServiceData.details);
+        setTelemetryData(nextServiceData.telemetry);
+        setNextServiceData(null);
+      }
+
+      const nextIndex = (currentServiceIndex + 1) % services.length;
+      setCurrentServiceIndex(nextIndex);
+      setSelectedService(services[nextIndex].id);
+
+      // Fade in
+      setIsTransitioning(false);
+    }, 300);
   }, [services, currentServiceIndex, nextServiceData, setCurrentServiceIndex, setSelectedService]);
 
   // Start slideshow when isPlaying becomes true
@@ -427,6 +439,84 @@ const MySites = () => {
     setIsPaused(prev => !prev);
   }, []);
 
+  // ========== AUTO-HIDE CONTROLS ==========
+  const showControls = useCallback(() => {
+    setControlsVisible(true);
+    if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
+    controlsTimerRef.current = setTimeout(() => {
+      setControlsVisible(false);
+    }, 5000);
+  }, []);
+
+  // Show controls on mouse move during slideshow
+  useEffect(() => {
+    if (!isPlaying || !isFullscreen) return;
+
+    const handleMouseMove = () => showControls();
+    const handleClick = () => showControls();
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('click', handleClick);
+
+    // Initial auto-hide
+    showControls();
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('click', handleClick);
+      if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
+    };
+  }, [isPlaying, isFullscreen, showControls]);
+
+  // ========== INTERNET DISCONNECTION DETECTION ==========
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const checkConnection = async () => {
+      try {
+        await axios.get(`${API_BASE_URL}/api/my-sites/clients`, { timeout: 5000 });
+        setConnectionError(false);
+      } catch (err) {
+        if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+          setConnectionError(true);
+        }
+      }
+    };
+
+    // Check connection every 15 seconds during slideshow
+    retryTimerRef.current = setInterval(checkConnection, 15000);
+
+    return () => {
+      if (retryTimerRef.current) clearInterval(retryTimerRef.current);
+    };
+  }, [isPlaying]);
+
+  // ========== DYNAMIC SERVICE LIST REFRESH ==========
+  useEffect(() => {
+    if (!isPlaying || !selectedClient) return;
+
+    // Refresh service list every full cycle (services.length * slideInterval seconds)
+    const cycleDuration = services.length * slideInterval * 1000;
+    const minRefreshInterval = 60000; // At least every 60 seconds
+    const refreshInterval = Math.max(cycleDuration, minRefreshInterval);
+
+    const refreshServices = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services`);
+        const refreshedServices = response.data.data || [];
+        if (JSON.stringify(refreshedServices.map(s => s.id)) !== JSON.stringify(services.map(s => s.id))) {
+          setServices(refreshedServices);
+        }
+      } catch (err) {
+        console.error('Error refreshing services:', err);
+      }
+    };
+
+    const refreshTimer = setInterval(refreshServices, refreshInterval);
+
+    return () => clearInterval(refreshTimer);
+  }, [isPlaying, selectedClient, services, slideInterval, setServices]);
+
   // Preload next service whenever currentServiceIndex changes during slideshow
   useEffect(() => {
     if (isPlaying && !isPaused && services.length > 1) {
@@ -489,7 +579,14 @@ const MySites = () => {
 
       {/* Service Details and Telemetry Graphs */}
       {selectedService && serviceDetails ? (
-        <Box sx={{ flex: isFullscreen ? 1 : 'unset', overflow: isFullscreen ? 'hidden' : 'visible' }}>
+        <Box 
+          sx={{ 
+            flex: isFullscreen ? 1 : 'unset', 
+            overflow: isFullscreen ? 'hidden' : 'visible',
+            opacity: isTransitioning ? 0 : 1,
+            transition: 'opacity 0.3s ease-in-out',
+          }}
+        >
           {/* Service Info */}
           <Paper sx={{ p: isFullscreen ? 1.5 : 3, mb: isFullscreen ? 1 : 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -606,6 +703,9 @@ const MySites = () => {
             alignItems: 'center',
             justifyContent: 'space-between',
             zIndex: 9999,
+            opacity: controlsVisible ? 1 : 0,
+            transition: 'opacity 0.3s ease-in-out',
+            pointerEvents: controlsVisible ? 'auto' : 'none',
           }}
         >
           {/* Left: Service info */}
@@ -670,6 +770,36 @@ const MySites = () => {
               </IconButton>
             </Tooltip>
           </Box>
+        </Box>
+      )}
+
+      {/* ========== INTERNET DISCONNECTION OVERLAY ========== */}
+      {isPlaying && isFullscreen && connectionError && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9998,
+          }}
+        >
+          <WifiOffIcon sx={{ fontSize: 64, color: '#f44336', mb: 2 }} />
+          <Typography variant="h5" sx={{ color: 'white', fontWeight: 600, mb: 1 }}>
+            No Internet Connection
+          </Typography>
+          <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', mb: 3 }}>
+            Please check your network connection
+          </Typography>
+          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)' }}>
+            Retrying automatically...
+          </Typography>
         </Box>
       )}
     </Container>
