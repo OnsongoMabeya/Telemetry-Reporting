@@ -2,6 +2,48 @@
 
 ## Status: ✅ COMPLETE (March 12, 2026) | Updated: April 13, 2026
 
+## ✅ My Sites Graph Quality Upgrade (April 13, 2026)
+
+Upgraded My Sites TelemetryGraph to match Dashboard (NodeDetail) quality:
+
+### Files Modified
+
+- **`frontend/src/components/MySites.js`** — Complete TelemetryGraph rewrite with dashboard-quality rendering
+- **`frontend/src/components/NodeDetail.js`** — Added latest value display and formatYAxis
+
+### Features Implemented
+
+- **Data Transformation**: `sample_time` strings → numeric `timestamp` for proper time scale
+- **Downsampling**: Max 200 points via `useMemo` for smooth rendering on large ranges
+- **X-axis**: `type="number" scale="time"` with calculated domain from data
+- **X-axis**: Smart `formatXAxis` with `Africa/Nairobi` timezone (HH:MM ≤24h, Mon DD HH ≤7d, Mon DD >7d)
+- **Y-axis**: Calculated nice round ticks from data (5 evenly spaced) instead of auto decimals
+- **Y-axis**: `formatYAxis` (1.2k for ≥1000, adaptive decimal places)
+- **Y-axis**: Removed rotated `insideLeft` unit label; unit shown as caption above graph
+- **Layout**: Flex column with `flex: 1` chart instead of fixed 200px height — fills card properly
+- **Tooltip**: Glassmorphism style (blur + semi-transparent) with Nairobi timezone
+- **Tooltip**: Format values as `name (unit)` matching Dashboard
+- **Color fallback**: `#60a5fa` in dark mode, `#30a1e4` in light mode
+- **Latest Value**: Bottom-left display of most recent data point in metric's line color
+- **Title Consolidation**: `"Metric Name — Node - Station"` inside graph, removed duplicate card labels
+
+## ✅ Sliding JWT Token Refresh (April 13, 2026)
+
+Prevents session expiry during slideshow by issuing fresh JWTs on keep-alive:
+
+### Files Modified - (April 13, 2026)
+
+- **`backend/server.js`** — `/api/keep-alive` now issues a fresh JWT with renewed expiry
+- **`frontend/src/context/AuthContext.js`** — Added `refreshToken()` function to context
+- **`frontend/src/components/MySites.js`** — Keep-alive and connection check handlers store refreshed token
+
+### How It Works
+
+- Every 25 minutes during slideshow, keep-alive returns a new JWT (same payload, new expiry)
+- Frontend stores it in `localStorage` and updates axios `Authorization` header
+- Session never expires as long as slideshow is active
+- Connection check (every 10s) also refreshes token on success
+
 This document tracks the progress of the UI redesign to a modern SaaS dashboard layout.
 
 **Final Result:** Successfully implemented a modern SaaS dashboard with fixed sidebar, top header, and CSS Grid card layout. All functionality preserved, graphs displaying correctly, fully responsive across all devices.
@@ -10,7 +52,7 @@ This document tracks the progress of the UI redesign to a modern SaaS dashboard 
 
 Added fullscreen slideshow mode for My Sites, designed for monitoring displays and TV screens:
 
-### Files Modified
+### Files Modified - (April 13, 2026) - Continued
 
 - **`frontend/src/context/MySitesContext.js`** — Added `isPlaying`, `currentServiceIndex`, `slideInterval` state
 - **`frontend/src/components/dashboard/MySitesControls.js`** — Added Play/Stop button and Speed control dropdown
@@ -18,7 +60,7 @@ Added fullscreen slideshow mode for My Sites, designed for monitoring displays a
 - **`frontend/src/components/MySites.js`** — Full slideshow logic (fullscreen, cycling, preloading, overlays, error handling)
 - **`backend/server.js`** — Added `/api/keep-alive` endpoint, fixed `trust proxy` setting
 
-### Features Implemented
+### Features Implemented - (April 13, 2026)
 
 - **Navbar Controls**: Play/Stop button (green ▶ / red ⏹) + Speed dropdown (10s–2min)
 - **Full Screen**: Auto-enters fullscreen on play, ESC exits both

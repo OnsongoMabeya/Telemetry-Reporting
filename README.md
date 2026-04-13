@@ -121,7 +121,7 @@ The system features a completely redesigned user interface with a professional S
     - Auto-hide overlay controls (5s timeout, show on mouse move)
     - Top header: service name, client name, time range, speed indicator
     - Bottom controls: countdown, progress bar, pause/stop/exit
-    - Session keep-alive (25-min ping to prevent 30-min timeout)
+    - Session keep-alive with sliding JWT refresh (25-min ping renews token)
     - Internet disconnection detection with auto-retry overlay
     - Data reload on reconnection
     - Dynamic service list refresh during slideshow
@@ -922,7 +922,7 @@ The system supports multiple users with role-based access control (RBAC).
 - `DELETE /api/metric-mappings/:id` - Soft delete metric mapping (admin only)
 - `GET /api/metric-mappings/audit/:id` - Get audit trail for mapping
 - `GET /api/telemetry-mappings/:nodeName/:baseStation` - Get mappings for telemetry display
-- `GET /api/keep-alive` - Lightweight session keep-alive endpoint (returns `{ success: true, timestamp }`)
+- `GET /api/keep-alive` - Session keep-alive with sliding JWT refresh (returns `{ success, timestamp, token }`)
 
 ### Security
 
@@ -1077,7 +1077,7 @@ Output shows:
 
 **Dashboard graph styling defaults:**
 
-- **Default (no color configured)**: Blue line (#30a1e4) with no area fill.
+- **Default (no color configured)**: Blue line (#30a1e4 light / #60a5fa dark) with no area fill.
 - **When `color` is configured**: Solid line in the configured color + area fill at 30% opacity of the same color.
 
 **metric_mapping_audit table:**

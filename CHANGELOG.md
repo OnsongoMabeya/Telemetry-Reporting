@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Graph Quality Upgrade & Token Refresh (April 13, 2026)
+
+#### My Sites Graph Quality Upgrade
+
+- **TelemetryGraph Rewrite** — Upgraded to match Dashboard (NodeDetail) rendering quality
+  - Data transformation: `sample_time` → numeric `timestamp` for proper time scale
+  - Data downsampling: max 200 points via `useMemo` for smooth rendering
+  - X-axis: `type="number" scale="time"` with calculated domain from data
+  - X-axis: Smart `formatXAxis` with `Africa/Nairobi` timezone (HH:MM ≤24h, Mon DD HH ≤7d, Mon DD >7d)
+  - Y-axis: Calculated nice round ticks from data (5 evenly spaced)
+  - Y-axis: `formatYAxis` (1.2k for ≥1000, adaptive decimal places)
+  - Y-axis: Removed rotated `insideLeft` unit label; unit shown as caption above graph
+  - Layout: Flex column with `flex: 1` chart instead of fixed 200px height
+  - Tooltip: Glassmorphism style (blur + semi-transparent) with Nairobi timezone
+  - Tooltip: Format values as `name (unit)` matching Dashboard
+  - Color fallback: `#60a5fa` in dark mode, `#30a1e4` in light mode
+  - Title consolidation: `"Metric Name — Node - Station"` inside graph
+
+- **Latest Value Display** — Bottom-left display of most recent data point in both My Sites and Dashboard
+  - Styled in metric's line color with unit suffix
+  - Added `formatYAxis` and `latestDisplay` to NodeDetail TelemetryGraph
+
+#### Sliding JWT Token Refresh
+
+- **Backend** — `/api/keep-alive` now issues a fresh JWT with renewed expiry (sliding token refresh)
+  - Same user payload (id, username, email, role, loginTime)
+  - New `expiresIn` based on `SESSION_TIMEOUT_MINUTES` env variable
+  - Falls back to simple success response if token signing fails
+- **Frontend** — `AuthContext` now exposes `refreshToken(newToken)` function
+  - Updates `localStorage` and React state
+  - Axios interceptor automatically uses new token on subsequent requests
+- **MySites** — Keep-alive handler and connection check handler store refreshed token
+  - Session never expires as long as slideshow is active
+
+#### ESLint Warning Cleanup
+
+- `KenyaMap.js`: Removed unused `Chip` import
+- `NodeAssignmentDialog.js`: Wrapped `fetchData` in `useCallback`, added to deps
+- `NodeDetail.js`: Removed unused `theme` variable from main component
+- `HTMLReport.js`: Removed unused `chartRoot` variable
+- `ReportConfigModal.js`: Removed unused `Divider` import
+
+#### Other
+
+- Updated `caniuse-lite`/browserslist database
+
 ### Added - My Sites Enhancements & Smart Telemetry (March 25, 2026)
 
 #### My Sites Feature

@@ -762,11 +762,11 @@ GET /api/metric-mappings?nodeName=MediaMax1&sortBy=display_order&sortOrder=asc
 
 ## Keep-Alive API
 
-### Session Keep-Alive
+### Session Keep-Alive (with Token Refresh)
 
-Lightweight endpoint for preventing session timeout during slideshow mode. Returns a simple success response to keep the JWT session active.
+Endpoint for preventing session timeout during slideshow mode. Issues a fresh JWT with a new expiry (sliding token refresh), ensuring the session remains active as long as the slideshow is running.
 
-**Endpoint:** `GET /keep-alive`
+**Endpoint:** `GET /api/keep-alive`
 
 **Access:** All authenticated users
 
@@ -775,11 +775,18 @@ Lightweight endpoint for preventing session timeout during slideshow mode. Retur
 ```json
 {
   "success": true,
-  "timestamp": 1712991234567
+  "timestamp": 1712991234567,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
-**Usage:** Called every 25 minutes during My Sites slideshow to prevent the 30-minute session timeout.
+**Fields:**
+
+- `success` — Always `true` for valid tokens
+- `timestamp` — Current server timestamp (milliseconds)
+- `token` — Fresh JWT with renewed expiry (same user payload, new `expiresIn`). The frontend should store this token and use it for subsequent requests.
+
+**Usage:** Called every 25 minutes during My Sites slideshow. The frontend stores the returned token in `localStorage` and updates the axios `Authorization` header, preventing the 30-minute session timeout as long as the slideshow is active.
 
 ---
 
