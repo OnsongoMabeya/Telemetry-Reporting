@@ -10,6 +10,7 @@ import {
   IconButton,
   LinearProgress,
   Tooltip,
+  Button,
 } from '@mui/material';
 import {
   LocationOn as LocationOnIcon,
@@ -18,6 +19,8 @@ import {
   PlayArrow as PlayArrowIcon,
   FullscreenExit as FullscreenExitIcon,
   WifiOff as WifiOffIcon,
+  ErrorOutline as ErrorOutlineIcon,
+  Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import {
   ComposedChart,
@@ -49,13 +52,29 @@ const TIME_FILTERS = [
 ];
 
 // Telemetry Graph Component (similar to NodeDetail)
-const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor = '#30a1e4', hasCustomColor = false }) => {
+const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor = '#30a1e4', hasCustomColor = false, hasError = false, onRetry = null }) => {
   const theme = useTheme();
 
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 200, gap: 1 }}>
+        <ErrorOutlineIcon sx={{ fontSize: 32, color: 'error.main' }} />
+        <Typography variant="body2" color="text.secondary">
+          Failed to load data
+        </Typography>
+        {onRetry && (
+          <Button size="small" variant="outlined" color="primary" onClick={onRetry} startIcon={<RefreshIcon />}>
+            Retry
+          </Button>
+        )}
       </Box>
     );
   }
@@ -165,6 +184,7 @@ const MySites = () => {
   const [connectionError, setConnectionError] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [failedMetrics, setFailedMetrics] = useState(new Set());
   const containerRef = useRef(null);
   const slideshowTimerRef = useRef(null);
   const countdownTimerRef = useRef(null);
@@ -237,6 +257,7 @@ const MySites = () => {
       try {
         setLoading(true);
         setError(null);
+        setFailedMetrics(new Set());
 
         // Fetch service details with metrics
         const detailsResponse = await axios.get(
@@ -246,6 +267,7 @@ const MySites = () => {
 
         // Fetch telemetry for each metric
         const metrics = detailsResponse.data.data.metrics || [];
+        const failedIds = new Set();
         const telemetryPromises = metrics.map(async (metric) => {
           try {
             const telemetryResponse = await axios.get(
@@ -253,11 +275,13 @@ const MySites = () => {
             );
             return {
               metricId: metric.id,
-              data: telemetryResponse.data.data || []
+              data: telemetryResponse.data.data || [],
+              failed: false
             };
           } catch (err) {
             console.error(`Error fetching telemetry for metric ${metric.id}:`, err);
-            return { metricId: metric.id, data: [] };
+            failedIds.add(metric.id);
+            return { metricId: metric.id, data: [], failed: true };
           }
         });
 
@@ -267,6 +291,7 @@ const MySites = () => {
           telemetryMap[result.metricId] = result.data;
         });
         setTelemetryData(telemetryMap);
+        setFailedMetrics(failedIds);
       } catch (err) {
         console.error('Error fetching service data:', err);
         setError('Failed to load service data');
@@ -276,6 +301,24 @@ const MySites = () => {
     };
 
     fetchServiceData();
+  }, [selectedClient, selectedService, timeFilter]);
+
+  // Retry a single failed metric
+  const retryMetric = useCallback(async (metricId) => {
+    if (!selectedClient || !selectedService) return;
+    try {
+      const telemetryResponse = await axios.get(
+        `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${selectedService}/metrics/${metricId}/telemetry?timeFilter=${timeFilter}`
+      );
+      setTelemetryData(prev => ({ ...prev, [metricId]: telemetryResponse.data.data || [] }));
+      setFailedMetrics(prev => {
+        const next = new Set(prev);
+        next.delete(metricId);
+        return next;
+      });
+    } catch (err) {
+      console.error(`Retry failed for metric ${metricId}:`, err);
+    }
   }, [selectedClient, selectedService, timeFilter]);
 
   // ========== SLIDESHOW LOGIC ==========
@@ -352,21 +395,24 @@ const MySites = () => {
         `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${nextService.id}`
       );
       const metrics = detailsResponse.data.data.metrics || [];
+      const failedIds = new Set();
       const telemetryPromises = metrics.map(async (metric) => {
         try {
           const telemetryResponse = await axios.get(
             `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${nextService.id}/metrics/${metric.id}/telemetry?timeFilter=${timeFilter}`
           );
-          return { metricId: metric.id, data: telemetryResponse.data.data || [] };
+          return { metricId: metric.id, data: telemetryResponse.data.data || [], failed: false };
         } catch (err) {
-          return { metricId: metric.id, data: [] };
+          failedIds.add(metric.id);
+          return { metricId: metric.id, data: [], failed: true };
         }
       });
       const telemetryResults = await Promise.all(telemetryPromises);
       const telemetryMap = {};
       telemetryResults.forEach(result => { telemetryMap[result.metricId] = result.data; });
-      setNextServiceData({ details: detailsResponse.data.data, telemetry: telemetryMap });
-      nextServiceDataRef.current = { details: detailsResponse.data.data, telemetry: telemetryMap };
+      const preloadedData = { details: detailsResponse.data.data, telemetry: telemetryMap, failedMetrics: failedIds };
+      setNextServiceData(preloadedData);
+      nextServiceDataRef.current = preloadedData;
       setConnectionError(false);
     } catch (err) {
       console.error('Error preloading next service:', err);
@@ -390,6 +436,7 @@ const MySites = () => {
       if (preloaded) {
         setServiceDetails(preloaded.details);
         setTelemetryData(preloaded.telemetry);
+        setFailedMetrics(preloaded.failedMetrics || new Set());
         setNextServiceData(null);
         nextServiceDataRef.current = null;
         // Skip the normal fetch since we already have the data
@@ -399,11 +446,28 @@ const MySites = () => {
       const nextIndex = (currentServiceIndex + 1) % services.length;
       setCurrentServiceIndex(nextIndex);
       setSelectedService(services[nextIndex].id);
+      if (!preloaded) {
+        setFailedMetrics(new Set());
+      }
 
       // Fade in
       setIsTransitioning(false);
     }, 300);
   }, [services, currentServiceIndex, setCurrentServiceIndex, setSelectedService]);
+
+  // Auto-skip to next service if all metrics failed during slideshow
+  useEffect(() => {
+    if (!isPlaying || !isFullscreen || !serviceDetails) return;
+    const totalMetrics = serviceDetails.metrics?.length || 0;
+    if (totalMetrics === 0) return;
+    if (failedMetrics.size === totalMetrics && totalMetrics > 0) {
+      console.warn('All metrics failed to load, auto-skipping to next service in 5s');
+      const skipTimer = setTimeout(() => {
+        switchToNextService();
+      }, 5000);
+      return () => clearTimeout(skipTimer);
+    }
+  }, [failedMetrics, isPlaying, isFullscreen, serviceDetails, switchToNextService]);
 
   // Start slideshow when isPlaying becomes true
   useEffect(() => {
@@ -739,6 +803,8 @@ const MySites = () => {
                       isLoading={false}
                       lineColor={metric.color || '#30a1e4'}
                       hasCustomColor={!!metric.color}
+                      hasError={failedMetrics.has(metric.id)}
+                      onRetry={() => retryMetric(metric.id)}
                     />
                   </Paper>
                 ))
