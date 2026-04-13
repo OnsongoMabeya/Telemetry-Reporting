@@ -5,11 +5,16 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   LocationOn as LocationOnIcon,
   Wifi as WifiIcon,
   DateRange as DateRangeIcon,
+  PlayArrow as PlayArrowIcon,
+  Stop as StopIcon,
+  Speed as SpeedIcon,
 } from '@mui/icons-material';
 
 const TIME_FILTERS = [
@@ -27,6 +32,14 @@ const TIME_FILTERS = [
   { value: '30d', label: 'Last 30 days' }
 ];
 
+const SLIDE_SPEEDS = [
+  { value: 10, label: '10 seconds' },
+  { value: 20, label: '20 seconds' },
+  { value: 30, label: '30 seconds' },
+  { value: 60, label: '1 minute' },
+  { value: 120, label: '2 minutes' },
+];
+
 const MySitesControls = ({ 
   clients, 
   selectedClient, 
@@ -35,7 +48,11 @@ const MySitesControls = ({
   selectedService,
   setSelectedService,
   timeFilter,
-  setTimeFilter
+  setTimeFilter,
+  isPlaying,
+  setIsPlaying,
+  slideInterval,
+  setSlideInterval
 }) => {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -99,6 +116,50 @@ const MySitesControls = ({
           ))}
         </Select>
       </FormControl>
+
+      {/* Speed Selector */}
+      <FormControl size="small" sx={{ minWidth: 130 }}>
+        <InputLabel sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <SpeedIcon fontSize="small" sx={{ color: '#8b5cf6' }} />
+          Speed
+        </InputLabel>
+        <Select
+          value={slideInterval}
+          onChange={(e) => setSlideInterval(Number(e.target.value))}
+          label="Speed"
+        >
+          {SLIDE_SPEEDS.map((speed) => (
+            <MenuItem key={speed.value} value={speed.value}>
+              {speed.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {/* Play/Stop Button */}
+      <Tooltip title={isPlaying ? 'Stop Slideshow' : 'Start Slideshow'}>
+        <IconButton
+          onClick={() => setIsPlaying(!isPlaying)}
+          disabled={!selectedClient || services.length === 0}
+          sx={{
+            backgroundColor: isPlaying 
+              ? 'error.main' 
+              : 'success.main',
+            color: 'white',
+            '&:hover': {
+              backgroundColor: isPlaying 
+                ? 'error.dark' 
+                : 'success.dark',
+            },
+            '&:disabled': {
+              backgroundColor: 'action.disabledBackground',
+              color: 'action.disabled',
+            },
+          }}
+        >
+          {isPlaying ? <StopIcon /> : <PlayArrowIcon />}
+        </IconButton>
+      </Tooltip>
     </Box>
   );
 };

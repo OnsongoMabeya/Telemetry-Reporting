@@ -16,6 +16,9 @@ export const MySitesProvider = ({ children }) => {
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState('');
   const [timeFilter, setTimeFilter] = useState('1h');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
+  const [slideInterval, setSlideInterval] = useState(30);
 
   const value = {
     clients,
@@ -28,6 +31,12 @@ export const MySitesProvider = ({ children }) => {
     setSelectedService,
     timeFilter,
     setTimeFilter,
+    isPlaying,
+    setIsPlaying,
+    currentServiceIndex,
+    setCurrentServiceIndex,
+    slideInterval,
+    setSlideInterval,
   };
 
   return (

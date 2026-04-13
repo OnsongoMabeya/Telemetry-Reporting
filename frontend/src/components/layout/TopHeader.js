@@ -74,6 +74,10 @@ const TopHeader = () => {
               setSelectedService={mySitesContext.setSelectedService}
               timeFilter={mySitesContext.timeFilter}
               setTimeFilter={mySitesContext.setTimeFilter}
+              isPlaying={mySitesContext.isPlaying}
+              setIsPlaying={mySitesContext.setIsPlaying}
+              slideInterval={mySitesContext.slideInterval}
+              setSlideInterval={mySitesContext.setSlideInterval}
             />
           )}
         </Box>
