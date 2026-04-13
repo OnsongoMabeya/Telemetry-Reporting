@@ -95,7 +95,7 @@ const rateLimit = require('express-rate-limit');
 
 const limiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 60, // limit each IP to 60 requests per windowMs
+  max: 300, // limit each IP to 300 requests per windowMs (monitoring dashboard fetches 14+ metrics concurrently)
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   // Trust the X-Forwarded-For header from nginx

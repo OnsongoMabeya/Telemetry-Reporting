@@ -52,6 +52,37 @@ const TIME_FILTERS = [
   { value: '30d', label: 'Last 30 days' }
 ];
 
+// Fetch telemetry for multiple metrics in staggered chunks to avoid rate limiting
+const fetchTelemetryStaggered = async (metrics, buildUrl, chunkSize = 5, delayMs = 150) => {
+  const failedIds = new Set();
+  const results = [];
+
+  for (let i = 0; i < metrics.length; i += chunkSize) {
+    const chunk = metrics.slice(i, i + chunkSize);
+    const chunkResults = await Promise.all(
+      chunk.map(async (metric) => {
+        try {
+          const response = await axios.get(buildUrl(metric));
+          return { metricId: metric.id, data: response.data.data || [], failed: false };
+        } catch (err) {
+          console.error(`Error fetching telemetry for metric ${metric.id}:`, err);
+          failedIds.add(metric.id);
+          return { metricId: metric.id, data: [], failed: true };
+        }
+      })
+    );
+    results.push(...chunkResults);
+    // Small delay between chunks to stay under rate limits
+    if (i + chunkSize < metrics.length) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
+
+  const telemetryMap = {};
+  results.forEach(result => { telemetryMap[result.metricId] = result.data; });
+  return { telemetryMap, failedIds };
+};
+
 // Telemetry Graph Component (matching NodeDetail quality)
 const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor = '#30a1e4', hasCustomColor = false, hasError = false, onRetry = null }) => {
   const theme = useTheme();
@@ -407,31 +438,12 @@ const MySites = () => {
         );
         setServiceDetails(detailsResponse.data.data);
 
-        // Fetch telemetry for each metric
+        // Fetch telemetry for each metric (staggered to avoid rate limiting)
         const metrics = detailsResponse.data.data.metrics || [];
-        const failedIds = new Set();
-        const telemetryPromises = metrics.map(async (metric) => {
-          try {
-            const telemetryResponse = await axios.get(
-              `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${selectedService}/metrics/${metric.id}/telemetry?timeFilter=${timeFilter}`
-            );
-            return {
-              metricId: metric.id,
-              data: telemetryResponse.data.data || [],
-              failed: false
-            };
-          } catch (err) {
-            console.error(`Error fetching telemetry for metric ${metric.id}:`, err);
-            failedIds.add(metric.id);
-            return { metricId: metric.id, data: [], failed: true };
-          }
-        });
-
-        const telemetryResults = await Promise.all(telemetryPromises);
-        const telemetryMap = {};
-        telemetryResults.forEach(result => {
-          telemetryMap[result.metricId] = result.data;
-        });
+        const { telemetryMap, failedIds } = await fetchTelemetryStaggered(
+          metrics,
+          (metric) => `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${selectedService}/metrics/${metric.id}/telemetry?timeFilter=${timeFilter}`
+        );
         setTelemetryData(telemetryMap);
         setFailedMetrics(failedIds);
       } catch (err) {
@@ -537,21 +549,10 @@ const MySites = () => {
         `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${nextService.id}`
       );
       const metrics = detailsResponse.data.data.metrics || [];
-      const failedIds = new Set();
-      const telemetryPromises = metrics.map(async (metric) => {
-        try {
-          const telemetryResponse = await axios.get(
-            `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${nextService.id}/metrics/${metric.id}/telemetry?timeFilter=${timeFilter}`
-          );
-          return { metricId: metric.id, data: telemetryResponse.data.data || [], failed: false };
-        } catch (err) {
-          failedIds.add(metric.id);
-          return { metricId: metric.id, data: [], failed: true };
-        }
-      });
-      const telemetryResults = await Promise.all(telemetryPromises);
-      const telemetryMap = {};
-      telemetryResults.forEach(result => { telemetryMap[result.metricId] = result.data; });
+      const { telemetryMap, failedIds } = await fetchTelemetryStaggered(
+        metrics,
+        (metric) => `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${nextService.id}/metrics/${metric.id}/telemetry?timeFilter=${timeFilter}`
+      );
       const preloadedData = { details: detailsResponse.data.data, telemetry: telemetryMap, failedMetrics: failedIds };
       setNextServiceData(preloadedData);
       nextServiceDataRef.current = preloadedData;
@@ -751,20 +752,10 @@ const MySites = () => {
         setServiceDetails(detailsResponse.data.data);
 
         const metrics = detailsResponse.data.data.metrics || [];
-        const telemetryPromises = metrics.map(async (metric) => {
-          try {
-            const telemetryResponse = await axios.get(
-              `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${selectedService}/metrics/${metric.id}/telemetry?timeFilter=${timeFilter}`
-            );
-            return { metricId: metric.id, data: telemetryResponse.data.data || [] };
-          } catch (err) {
-            return { metricId: metric.id, data: [] };
-          }
-        });
-
-        const telemetryResults = await Promise.all(telemetryPromises);
-        const telemetryMap = {};
-        telemetryResults.forEach(result => { telemetryMap[result.metricId] = result.data; });
+        const { telemetryMap } = await fetchTelemetryStaggered(
+          metrics,
+          (metric) => `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${selectedService}/metrics/${metric.id}/telemetry?timeFilter=${timeFilter}`
+        );
         setTelemetryData(telemetryMap);
         setWasDisconnected(false);
       } catch (err) {
