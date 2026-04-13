@@ -15,7 +15,6 @@ import LoginModal from './components/LoginModal';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeModeProvider, useThemeMode } from './context/ThemeContext';
 import { MySitesProvider } from './context/MySitesContext';
-import { setAuthLogout } from './services/axiosInterceptor';
 import './services/axiosInterceptor';
 import './styles/global.css';
 
@@ -336,11 +335,7 @@ const ThemedApp = () => {
 };
 
 const AppContent = () => {
-  const { isAuthenticated, loading, logout } = useAuth();
-
-  useEffect(() => {
-    setAuthLogout(logout);
-  }, [logout]);
+  const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (

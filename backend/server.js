@@ -159,23 +159,56 @@ app.use('/api/user-client-assignments', authenticateToken, userClientAssignments
 app.use('/api/my-sites', authenticateToken, mySitesRoutes);
 
 // Keep-alive endpoint for slideshow session management (with token refresh)
-app.get('/api/keep-alive', authenticateToken, (req, res) => {
+// Accepts expired tokens within a grace period so the session can be renewed
+app.get('/api/keep-alive', (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'No token provided.', code: 'NO_TOKEN' });
+  }
+
   try {
+    // First try normal verification (token still valid)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const sessionTimeout = parseInt(process.env.SESSION_TIMEOUT_MINUTES) || 30;
     const newToken = jwt.sign(
-      {
-        id: req.user.id,
-        username: req.user.username,
-        email: req.user.email,
-        role: req.user.role,
-        loginTime: req.user.loginTime
-      },
+      { id: decoded.id, username: decoded.username, email: decoded.email, role: decoded.role, loginTime: decoded.loginTime },
       process.env.JWT_SECRET,
       { expiresIn: `${sessionTimeout}m` }
     );
-    res.json({ success: true, timestamp: Date.now(), token: newToken });
+    return res.json({ success: true, timestamp: Date.now(), token: newToken });
   } catch (error) {
-    res.json({ success: true, timestamp: Date.now() });
+    if (error.name === 'TokenExpiredError') {
+      // Token expired — check if within grace period (2x session timeout)
+      try {
+        const decoded = jwt.decode(token);
+        if (!decoded || !decoded.exp) {
+          return res.status(401).json({ error: 'Invalid token.', code: 'INVALID_TOKEN' });
+        }
+
+        const sessionTimeout = parseInt(process.env.SESSION_TIMEOUT_MINUTES) || 30;
+        const gracePeriodMs = sessionTimeout * 60 * 1000 * 2; // 2x session timeout
+        const expiredAt = decoded.exp * 1000;
+        const now = Date.now();
+
+        if (now - expiredAt > gracePeriodMs) {
+          return res.status(401).json({ error: 'Token expired beyond grace period. Please login again.', code: 'TOKEN_EXPIRED' });
+        }
+
+        // Within grace period — issue a fresh token
+        const newToken = jwt.sign(
+          { id: decoded.id, username: decoded.username, email: decoded.email, role: decoded.role, loginTime: decoded.loginTime },
+          process.env.JWT_SECRET,
+          { expiresIn: `${sessionTimeout}m` }
+        );
+        return res.json({ success: true, timestamp: Date.now(), token: newToken });
+      } catch (decodeError) {
+        return res.status(401).json({ error: 'Invalid token.', code: 'INVALID_TOKEN' });
+      }
+    }
+
+    return res.status(403).json({ error: 'Invalid token.', code: 'INVALID_TOKEN' });
   }
 });
 

@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
+import { setAuthLogout, setAuthRefreshToken } from '../services/axiosInterceptor';
 
 const AuthContext = createContext(null);
 
@@ -17,6 +18,20 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Register interceptor callbacks on mount
+  useEffect(() => {
+    setAuthLogout(() => {
+      localStorage.removeItem('token');
+      setToken(null);
+      setUser(null);
+      setIsAuthenticated(false);
+    });
+    setAuthRefreshToken((newToken) => {
+      localStorage.setItem('token', newToken);
+      setToken(newToken);
+    });
+  }, []);
 
   // Verify token on mount
   useEffect(() => {
