@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, memo, useRef, useCallback, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -51,21 +51,117 @@ const TIME_FILTERS = [
   { value: '30d', label: 'Last 30 days' }
 ];
 
-// Telemetry Graph Component (similar to NodeDetail)
+// Telemetry Graph Component (matching NodeDetail quality)
 const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor = '#30a1e4', hasCustomColor = false, hasError = false, onRetry = null }) => {
   const theme = useTheme();
 
+  // Determine the actual color to use for line and area
+  const actualLineColor = hasCustomColor
+    ? lineColor
+    : (theme.palette.mode === 'dark' ? '#60a5fa' : '#30a1e4');
+
+  // Transform data: convert sample_time string to numeric timestamp for proper time scale
+  const transformedData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    return data.map(item => ({
+      ...item,
+      timestamp: new Date(item.sample_time).getTime()
+    })).filter(item => !isNaN(item.timestamp));
+  }, [data]);
+
+  // Downsample data for smooth rendering (max 200 points)
+  const downsampledData = useMemo(() => {
+    if (!transformedData || transformedData.length === 0) return [];
+    const maxPoints = 200;
+    if (transformedData.length <= maxPoints) return transformedData;
+    const step = Math.ceil(transformedData.length / maxPoints);
+    return transformedData.filter((_, index) => index % step === 0);
+  }, [transformedData]);
+
+  // Smart X-axis formatter with Nairobi timezone
+  const formatXAxis = useCallback((tickItem) => {
+    if (!tickItem) return '';
+    try {
+      const date = new Date(tickItem);
+      if (isNaN(date.getTime())) return '';
+
+      if (!transformedData || transformedData.length < 2) {
+        return new Intl.DateTimeFormat('en-US', {
+          hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Nairobi', hour12: false
+        }).format(date);
+      }
+
+      const timeRange = transformedData[transformedData.length - 1].timestamp - transformedData[0].timestamp;
+      const hours = timeRange / (1000 * 60 * 60);
+
+      if (hours <= 24) {
+        return new Intl.DateTimeFormat('en-US', {
+          hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Nairobi', hour12: false
+        }).format(date);
+      } else if (hours <= 168) {
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'short', day: 'numeric', hour: '2-digit', timeZone: 'Africa/Nairobi', hour12: false
+        }).format(date);
+      } else {
+        return new Intl.DateTimeFormat('en-US', {
+          month: 'short', day: 'numeric', timeZone: 'Africa/Nairobi'
+        }).format(date);
+      }
+    } catch (error) {
+      return '';
+    }
+  }, [transformedData]);
+
+  // Calculate time domain from data
+  const getTimeDomain = useCallback(() => {
+    if (!transformedData || transformedData.length === 0) return ['auto', 'auto'];
+    const timestamps = transformedData.map(d => d.timestamp);
+    return [Math.min(...timestamps), Math.max(...timestamps)];
+  }, [transformedData]);
+
+  // Calculate nice Y-axis scale with round ticks
+  const getYAxisScale = useCallback(() => {
+    if (!transformedData || transformedData.length === 0) {
+      return { domain: [0, 100], ticks: [0, 25, 50, 75, 100] };
+    }
+
+    const values = transformedData.map(item => Number(item[dataKey]) || 0).filter(v => !isNaN(v));
+    if (values.length === 0) {
+      return { domain: [0, 100], ticks: [0, 25, 50, 75, 100] };
+    }
+
+    const max = Math.max(...values);
+    if (max === 0) {
+      return { domain: [0, 1], ticks: [0, 0.25, 0.5, 0.75, 1] };
+    }
+
+    const padding = max * 0.1;
+    const domainMax = max + padding;
+    const step = domainMax / 4;
+    const ticks = [0, step, step * 2, step * 3, domainMax];
+
+    return { domain: [0, domainMax], ticks };
+  }, [transformedData, dataKey]);
+
+  // Y-axis tick formatter with unit awareness
+  const formatYAxis = useCallback((value) => {
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}k`;
+    }
+    return value.toFixed(value < 10 ? 2 : value < 100 ? 1 : 0);
+  }, []);
+
   if (isLoading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
-        <CircularProgress />
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 200 }}>
+        <CircularProgress size={40} sx={{ color: actualLineColor }} />
       </Box>
     );
   }
 
   if (hasError) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 200, gap: 1 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 200, gap: 1 }}>
         <ErrorOutlineIcon sx={{ fontSize: 32, color: 'error.main' }} />
         <Typography variant="body2" color="text.secondary">
           Failed to load data
@@ -81,7 +177,7 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
 
   if (!data || data.length === 0) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 200 }}>
         <Typography variant="body2" color="text.secondary">
           No data available
         </Typography>
@@ -90,74 +186,100 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
   }
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
-      <ComposedChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-        <CartesianGrid 
-          strokeDasharray="3 3" 
-          stroke={theme.palette.mode === 'dark' ? '#374151' : '#e5e7eb'}
-        />
-        <XAxis
-          dataKey="sample_time"
-          stroke={theme.palette.mode === 'dark' ? '#9ca3af' : '#6b7280'}
-          style={{ fontSize: '12px' }}
-          tickFormatter={(value) => {
-            const date = new Date(value);
-            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-          }}
-        />
-        <YAxis
-          stroke={theme.palette.mode === 'dark' ? '#9ca3af' : '#6b7280'}
-          style={{ fontSize: '12px' }}
-          domain={[0, 'auto']}
-          padding={{ top: 40 }}
-          label={{ 
-            value: unit, 
-            angle: -90, 
-            position: 'insideLeft',
-            style: { fill: theme.palette.mode === 'dark' ? '#9ca3af' : '#6b7280' }
-          }}
-        />
-        <RechartsTooltip
-          contentStyle={{
-            backgroundColor: theme.palette.mode === 'dark' ? '#1f2937' : '#ffffff',
-            border: `1px solid ${theme.palette.mode === 'dark' ? '#374151' : '#e5e7eb'}`,
-            color: theme.palette.mode === 'dark' ? '#f3f4f6' : '#111827',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-          }}
-          labelFormatter={(value) => {
-            const date = new Date(value);
-            return date.toLocaleString();
-          }}
-          formatter={(value) => [`${parseFloat(value).toFixed(2)} ${unit}`, title]}
-        />
-        {hasCustomColor && (
-          <Area
-            type="monotone"
-            dataKey={dataKey}
-            fill={lineColor}
-            fillOpacity={0.3}
-            stroke="none"
-            animationDuration={1500}
-            animationEasing="ease-in-out"
-          />
-        )}
-        <Line
-          type="monotone"
-          dataKey={dataKey}
-          stroke={lineColor}
-          strokeWidth={theme.palette.mode === 'dark' ? 3 : 2}
-          dot={false}
-          activeDot={{
-            r: 6,
-            fill: lineColor,
-            stroke: theme.palette.mode === 'dark' ? '#1e293b' : '#fff',
-            strokeWidth: 2
-          }}
-          animationDuration={1500}
-          animationEasing="ease-in-out"
-        />
-      </ComposedChart>
-    </ResponsiveContainer>
+    <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Graph Title & Unit */}
+      <Box sx={{ mb: 1 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.primary' }}>
+          {title}
+        </Typography>
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          {unit}
+        </Typography>
+      </Box>
+
+      {/* Graph */}
+      <Box sx={{ flex: 1, minHeight: 0 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart
+            data={downsampledData}
+            margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke={theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'}
+              strokeOpacity={theme.palette.mode === 'dark' ? 0.5 : 0.3}
+            />
+            <XAxis
+              dataKey="timestamp"
+              tickFormatter={formatXAxis}
+              stroke={theme.palette.mode === 'dark' ? '#94a3b8' : theme.palette.text.secondary}
+              tick={{ fontSize: 11, fill: theme.palette.mode === 'dark' ? '#cbd5e1' : theme.palette.text.secondary }}
+              domain={getTimeDomain()}
+              type="number"
+              scale="time"
+            />
+            <YAxis
+              stroke={theme.palette.mode === 'dark' ? '#94a3b8' : theme.palette.text.secondary}
+              tick={{ fontSize: 11, fill: theme.palette.mode === 'dark' ? '#cbd5e1' : theme.palette.text.secondary }}
+              domain={getYAxisScale().domain}
+              ticks={getYAxisScale().ticks}
+              tickFormatter={formatYAxis}
+            />
+            <RechartsTooltip
+              contentStyle={{
+                backgroundColor: theme.palette.mode === 'dark' ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(20px)',
+                border: `1px solid ${theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`,
+                color: theme.palette.text.primary,
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+                fontSize: '0.75rem'
+              }}
+              labelFormatter={(value) => {
+                try {
+                  return new Date(value).toLocaleString('en-US', {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    timeZone: 'Africa/Nairobi'
+                  });
+                } catch (error) {
+                  return '';
+                }
+              }}
+              formatter={(value, name) => [
+                typeof value === 'number' ? value.toFixed(2) : value,
+                unit ? `${name} (${unit})` : name
+              ]}
+            />
+            {hasCustomColor && (
+              <Area
+                type="monotone"
+                dataKey={dataKey}
+                fill={actualLineColor}
+                fillOpacity={0.3}
+                stroke="none"
+                animationDuration={1500}
+                animationEasing="ease-in-out"
+              />
+            )}
+            <Line
+              type="monotone"
+              dataKey={dataKey}
+              stroke={actualLineColor}
+              strokeWidth={theme.palette.mode === 'dark' ? 3 : 2}
+              dot={false}
+              activeDot={{
+                r: 6,
+                fill: actualLineColor,
+                stroke: theme.palette.mode === 'dark' ? '#1e293b' : '#fff',
+                strokeWidth: 2
+              }}
+              animationDuration={1500}
+              animationEasing="ease-in-out"
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </Box>
+    </Box>
   );
 });
 
@@ -775,10 +897,10 @@ const MySites = () => {
             >
               {serviceDetails.metrics && serviceDetails.metrics.length > 0 ? (
                 serviceDetails.metrics.map((metric) => (
-                  <Paper 
-                    key={metric.id} 
+                  <Paper
+                    key={metric.id}
                     elevation={3}
-                    sx={{ 
+                    sx={{
                       gridColumn: 'span 1',
                       gridRow: 'span 1',
                       p: isFullscreen ? 1.5 : 2,
@@ -789,15 +911,9 @@ const MySites = () => {
                       overflow: 'hidden',
                     }}
                   >
-                    <Typography variant={isFullscreen ? 'subtitle2' : 'h6'} sx={{ mb: isFullscreen ? 0.5 : 2, fontWeight: 600 }}>
-                      {metric.display_name || metric.metric_name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: isFullscreen ? 0.5 : 2 }}>
-                      {metric.node_name} - {metric.base_station_name}
-                    </Typography>
                     <TelemetryGraph
                       data={telemetryData[metric.id] || []}
-                      title={metric.display_name || metric.metric_name}
+                      title={`${metric.display_name || metric.metric_name} — ${metric.node_name} - ${metric.base_station_name}`}
                       dataKey={metric.metric_name}
                       unit={metric.unit}
                       isLoading={false}
