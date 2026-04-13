@@ -171,6 +171,8 @@ const MySites = () => {
   const keepAliveRef = useRef(null);
   const controlsTimerRef = useRef(null);
   const retryTimerRef = useRef(null);
+  const nextServiceDataRef = useRef(null);
+  const skipNextFetchRef = useRef(false);
 
   // Fetch user's assigned clients
   useEffect(() => {
@@ -223,8 +225,13 @@ const MySites = () => {
   }, [selectedClient, setServices, setSelectedService]);
 
   // Fetch service details and telemetry when service is selected
+  // Skip if slideshow has already preloaded the data
   useEffect(() => {
     if (!selectedClient || !selectedService) return;
+    if (skipNextFetchRef.current) {
+      skipNextFetchRef.current = false;
+      return;
+    }
 
     const fetchServiceData = async () => {
       try {
@@ -359,10 +366,14 @@ const MySites = () => {
       const telemetryMap = {};
       telemetryResults.forEach(result => { telemetryMap[result.metricId] = result.data; });
       setNextServiceData({ details: detailsResponse.data.data, telemetry: telemetryMap });
+      nextServiceDataRef.current = { details: detailsResponse.data.data, telemetry: telemetryMap };
       setConnectionError(false);
     } catch (err) {
       console.error('Error preloading next service:', err);
-      setConnectionError(true);
+      // Only set connectionError for actual network errors, not server errors (5xx)
+      if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+        setConnectionError(true);
+      }
     }
   }, [selectedClient, services, timeFilter]);
 
@@ -374,11 +385,15 @@ const MySites = () => {
     setIsTransitioning(true);
 
     setTimeout(() => {
-      // Use preloaded data if available
-      if (nextServiceData) {
-        setServiceDetails(nextServiceData.details);
-        setTelemetryData(nextServiceData.telemetry);
+      // Use preloaded data from ref (avoids stale closure)
+      const preloaded = nextServiceDataRef.current;
+      if (preloaded) {
+        setServiceDetails(preloaded.details);
+        setTelemetryData(preloaded.telemetry);
         setNextServiceData(null);
+        nextServiceDataRef.current = null;
+        // Skip the normal fetch since we already have the data
+        skipNextFetchRef.current = true;
       }
 
       const nextIndex = (currentServiceIndex + 1) % services.length;
@@ -388,7 +403,7 @@ const MySites = () => {
       // Fade in
       setIsTransitioning(false);
     }, 300);
-  }, [services, currentServiceIndex, nextServiceData, setCurrentServiceIndex, setSelectedService]);
+  }, [services, currentServiceIndex, setCurrentServiceIndex, setSelectedService]);
 
   // Start slideshow when isPlaying becomes true
   useEffect(() => {

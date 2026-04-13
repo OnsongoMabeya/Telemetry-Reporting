@@ -44,7 +44,8 @@ const app = express();
 require('dotenv').config();
 
 // Trust proxy - required when behind nginx reverse proxy
-app.set('trust proxy', true);
+// Use 'loopback' instead of true to prevent rate limiter bypass
+app.set('trust proxy', 'loopback');
 
 // Enable CORS for all routes
 app.use((req, res, next) => {
