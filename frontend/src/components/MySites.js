@@ -340,7 +340,8 @@ const MySites = () => {
     timeFilter,
     isPlaying, setIsPlaying,
     currentServiceIndex, setCurrentServiceIndex,
-    slideInterval
+    slideInterval,
+    enterFullscreenRef
   } = useMySites();
   const { refreshToken } = useAuth();
   
@@ -448,14 +449,19 @@ const MySites = () => {
         setFailedMetrics(failedIds);
       } catch (err) {
         console.error('Error fetching service data:', err);
-        setError('Failed to load service data');
+        if (err.response?.status === 403 && isPlaying) {
+          // Access denied during slideshow — skip to next service
+          setTimeout(() => switchToNextService(), 500);
+        } else {
+          setError('Failed to load service data');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchServiceData();
-  }, [selectedClient, selectedService, timeFilter]);
+  }, [selectedClient, selectedService, timeFilter, isPlaying, switchToNextService]);
 
   // Retry a single failed metric
   const retryMetric = useCallback(async (metricId) => {
@@ -492,9 +498,16 @@ const MySites = () => {
         setIsFullscreen(true);
       }
     } catch (err) {
-      console.error('Failed to enter fullscreen:', err);
+      // Fullscreen may fail if not triggered by user gesture — non-critical
+      console.warn('Fullscreen not available:', err.message);
     }
   }, []);
+
+  // Expose enterFullscreen to context so the click handler can call it
+  // within the user gesture stack (browsers require this for requestFullscreen)
+  useEffect(() => {
+    enterFullscreenRef.current = enterFullscreen;
+  }, [enterFullscreen, enterFullscreenRef]);
 
   // Exit full screen
   const exitFullscreen = useCallback(() => {
@@ -559,8 +572,13 @@ const MySites = () => {
       setConnectionError(false);
     } catch (err) {
       console.error('Error preloading next service:', err);
-      // Only set connectionError for actual network errors, not server errors (5xx)
-      if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+      if (err.response?.status === 403) {
+        // Access denied — mark as inaccessible so slideshow skips it
+        const inaccessibleData = { details: null, telemetry: {}, failedMetrics: new Set(), inaccessible: true };
+        setNextServiceData(inaccessibleData);
+        nextServiceDataRef.current = inaccessibleData;
+      } else if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+        // Only set connectionError for actual network errors, not server errors (5xx)
         setConnectionError(true);
       }
     }
@@ -576,6 +594,18 @@ const MySites = () => {
     setTimeout(() => {
       // Use preloaded data from ref (avoids stale closure)
       const preloaded = nextServiceDataRef.current;
+      if (preloaded?.inaccessible) {
+        // Service returned 403 — skip it and move to the next one
+        nextServiceDataRef.current = null;
+        setNextServiceData(null);
+        const nextIndex = (currentServiceIndex + 1) % services.length;
+        setCurrentServiceIndex(nextIndex);
+        setSelectedService(services[nextIndex].id);
+        setIsTransitioning(false);
+        // Immediately trigger another switch to skip the inaccessible service
+        setTimeout(() => switchToNextService(), 100);
+        return;
+      }
       if (preloaded) {
         setServiceDetails(preloaded.details);
         setTelemetryData(preloaded.telemetry);
@@ -615,9 +645,6 @@ const MySites = () => {
   // Start slideshow when isPlaying becomes true
   useEffect(() => {
     if (isPlaying && !isPaused && services.length > 0) {
-      // Enter fullscreen
-      enterFullscreen();
-
       // Start countdown
       setSlideCountdown(slideInterval);
 
@@ -666,7 +693,7 @@ const MySites = () => {
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
       if (keepAliveRef.current) clearInterval(keepAliveRef.current);
     };
-  }, [isPlaying, isPaused, services.length, slideInterval, enterFullscreen, switchToNextService, preloadNextService, currentServiceIndex, refreshToken]);
+  }, [isPlaying, isPaused, services.length, slideInterval, switchToNextService, preloadNextService, currentServiceIndex, refreshToken]);
 
   // Stop slideshow completely
   const stopSlideshow = useCallback(() => {

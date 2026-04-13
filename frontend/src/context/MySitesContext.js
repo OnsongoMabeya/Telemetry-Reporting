@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useRef } from 'react';
 
 const MySitesContext = createContext();
 
@@ -20,6 +20,11 @@ export const MySitesProvider = ({ children }) => {
   const [currentServiceIndex, setCurrentServiceIndex] = useState(0);
   const [slideInterval, setSlideInterval] = useState(30);
 
+  // Ref to hold the enterFullscreen function from MySites.js component
+  // This allows the click handler in MySitesControls to call requestFullscreen
+  // within the user gesture stack (required by browsers)
+  const enterFullscreenRef = useRef(() => {});
+
   const value = {
     clients,
     setClients,
@@ -37,6 +42,7 @@ export const MySitesProvider = ({ children }) => {
     setCurrentServiceIndex,
     slideInterval,
     setSlideInterval,
+    enterFullscreenRef,
   };
 
   return (

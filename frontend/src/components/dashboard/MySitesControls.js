@@ -52,7 +52,8 @@ const MySitesControls = ({
   isPlaying,
   setIsPlaying,
   slideInterval,
-  setSlideInterval
+  setSlideInterval,
+  enterFullscreenRef
 }) => {
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -139,7 +140,14 @@ const MySitesControls = ({
       {/* Play/Stop Button */}
       <Tooltip title={isPlaying ? 'Stop Slideshow' : 'Start Slideshow'}>
         <IconButton
-          onClick={() => setIsPlaying(!isPlaying)}
+          onClick={() => {
+            if (!isPlaying) {
+              // Enter fullscreen within user gesture stack before starting slideshow
+              // Browsers require requestFullscreen to be triggered by a user gesture
+              enterFullscreenRef.current();
+            }
+            setIsPlaying(!isPlaying);
+          }}
           disabled={!selectedClient || services.length === 0}
           sx={{
             backgroundColor: isPlaying 

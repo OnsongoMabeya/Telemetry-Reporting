@@ -78,6 +78,7 @@ const TopHeader = () => {
               setIsPlaying={mySitesContext.setIsPlaying}
               slideInterval={mySitesContext.slideInterval}
               setSlideInterval={mySitesContext.setSlideInterval}
+              enterFullscreenRef={mySitesContext.enterFullscreenRef}
             />
           )}
         </Box>
