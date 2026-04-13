@@ -367,6 +367,7 @@ const MySites = () => {
   const retryTimerRef = useRef(null);
   const nextServiceDataRef = useRef(null);
   const skipNextFetchRef = useRef(false);
+  const switchToNextServiceRef = useRef(null);
 
   // Fetch user's assigned clients
   useEffect(() => {
@@ -451,7 +452,7 @@ const MySites = () => {
         console.error('Error fetching service data:', err);
         if (err.response?.status === 403 && isPlaying) {
           // Access denied during slideshow — skip to next service
-          setTimeout(() => switchToNextService(), 500);
+          setTimeout(() => switchToNextServiceRef.current?.(), 500);
         } else {
           setError('Failed to load service data');
         }
@@ -461,7 +462,7 @@ const MySites = () => {
     };
 
     fetchServiceData();
-  }, [selectedClient, selectedService, timeFilter, isPlaying, switchToNextService]);
+  }, [selectedClient, selectedService, timeFilter, isPlaying]);
 
   // Retry a single failed metric
   const retryMetric = useCallback(async (metricId) => {
@@ -627,6 +628,9 @@ const MySites = () => {
       setIsTransitioning(false);
     }, 300);
   }, [services, currentServiceIndex, setCurrentServiceIndex, setSelectedService]);
+
+  // Keep ref in sync so fetchServiceData can call it without forward reference
+  switchToNextServiceRef.current = switchToNextService;
 
   // Auto-skip to next service if all metrics failed during slideshow
   useEffect(() => {
