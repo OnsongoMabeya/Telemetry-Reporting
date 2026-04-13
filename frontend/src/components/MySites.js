@@ -35,6 +35,7 @@ import {
 import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
 import { useMySites } from '../context/MySitesContext';
+import { useAuth } from '../context/AuthContext';
 
 const TIME_FILTERS = [
   { value: '5m', label: 'Last 5 minutes' },
@@ -310,6 +311,7 @@ const MySites = () => {
     currentServiceIndex, setCurrentServiceIndex,
     slideInterval
   } = useMySites();
+  const { refreshToken } = useAuth();
   
   const [serviceDetails, setServiceDetails] = useState(null);
   const [telemetryData, setTelemetryData] = useState({});
@@ -636,9 +638,13 @@ const MySites = () => {
       preloadNextService(nextIndex);
 
       // Keep-alive ping every 25 minutes (before 30-min session timeout)
+      // Also refreshes the JWT token to prevent session expiry
       keepAliveRef.current = setInterval(async () => {
         try {
-          await axios.get(`${API_BASE_URL}/api/keep-alive`);
+          const response = await axios.get(`${API_BASE_URL}/api/keep-alive`);
+          if (response.data.token) {
+            refreshToken(response.data.token);
+          }
         } catch (err) {
           console.error('Keep-alive ping failed:', err);
         }
@@ -659,7 +665,7 @@ const MySites = () => {
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
       if (keepAliveRef.current) clearInterval(keepAliveRef.current);
     };
-  }, [isPlaying, isPaused, services.length, slideInterval, enterFullscreen, switchToNextService, preloadNextService, currentServiceIndex]);
+  }, [isPlaying, isPaused, services.length, slideInterval, enterFullscreen, switchToNextService, preloadNextService, currentServiceIndex, refreshToken]);
 
   // Stop slideshow completely
   const stopSlideshow = useCallback(() => {
@@ -710,7 +716,10 @@ const MySites = () => {
 
     const checkConnection = async () => {
       try {
-        await axios.get(`${API_BASE_URL}/api/keep-alive`, { timeout: 5000 });
+        const response = await axios.get(`${API_BASE_URL}/api/keep-alive`, { timeout: 5000 });
+        if (response.data.token) {
+          refreshToken(response.data.token);
+        }
         if (connectionError) {
           setConnectionError(false);
           setWasDisconnected(true);
@@ -728,7 +737,7 @@ const MySites = () => {
     return () => {
       if (retryTimerRef.current) clearInterval(retryTimerRef.current);
     };
-  }, [isPlaying, connectionError]);
+  }, [isPlaying, connectionError, refreshToken]);
 
   // Reload current service data when connection is restored after disconnection
   useEffect(() => {

@@ -138,6 +138,12 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     login,
     logout,
+    refreshToken: (newToken) => {
+      if (newToken) {
+        localStorage.setItem('token', newToken);
+        setToken(newToken);
+      }
+    },
     hasRole,
     hasAnyRole,
     isAdmin,

@@ -158,9 +158,25 @@ app.use('/api/services', authenticateToken, servicesRoutes);
 app.use('/api/user-client-assignments', authenticateToken, userClientAssignmentsRoutes);
 app.use('/api/my-sites', authenticateToken, mySitesRoutes);
 
-// Keep-alive endpoint for slideshow session management
+// Keep-alive endpoint for slideshow session management (with token refresh)
 app.get('/api/keep-alive', authenticateToken, (req, res) => {
-  res.json({ success: true, timestamp: Date.now() });
+  try {
+    const sessionTimeout = parseInt(process.env.SESSION_TIMEOUT_MINUTES) || 30;
+    const newToken = jwt.sign(
+      {
+        id: req.user.id,
+        username: req.user.username,
+        email: req.user.email,
+        role: req.user.role,
+        loginTime: req.user.loginTime
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: `${sessionTimeout}m` }
+    );
+    res.json({ success: true, timestamp: Date.now(), token: newToken });
+  } catch (error) {
+    res.json({ success: true, timestamp: Date.now() });
+  }
 });
 
 // Routes
