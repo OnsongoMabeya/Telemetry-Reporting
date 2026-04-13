@@ -157,6 +157,11 @@ app.use('/api/services', authenticateToken, servicesRoutes);
 app.use('/api/user-client-assignments', authenticateToken, userClientAssignmentsRoutes);
 app.use('/api/my-sites', authenticateToken, mySitesRoutes);
 
+// Keep-alive endpoint for slideshow session management
+app.get('/api/keep-alive', authenticateToken, (req, res) => {
+  res.json({ success: true, timestamp: Date.now() });
+});
+
 // Routes
 app.get('/api/nodes', authenticateToken, async (req, res) => {
   try {

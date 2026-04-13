@@ -33,6 +33,21 @@ import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
 import { useMySites } from '../context/MySitesContext';
 
+const TIME_FILTERS = [
+  { value: '5m', label: 'Last 5 minutes' },
+  { value: '10m', label: 'Last 10 minutes' },
+  { value: '30m', label: 'Last 30 minutes' },
+  { value: '1h', label: 'Last 1 hour' },
+  { value: '2h', label: 'Last 2 hours' },
+  { value: '6h', label: 'Last 6 hours' },
+  { value: '1d', label: 'Last 24 hours' },
+  { value: '2d', label: 'Last 2 days' },
+  { value: '5d', label: 'Last 5 days' },
+  { value: '1w', label: 'Last 1 week' },
+  { value: '2w', label: 'Last 2 weeks' },
+  { value: '30d', label: 'Last 30 days' }
+];
+
 // Telemetry Graph Component (similar to NodeDetail)
 const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor = '#30a1e4', hasCustomColor = false }) => {
   const theme = useTheme();
@@ -404,7 +419,7 @@ const MySites = () => {
       // Keep-alive ping every 25 minutes (before 30-min session timeout)
       keepAliveRef.current = setInterval(async () => {
         try {
-          await axios.get(`${API_BASE_URL}/api/my-sites/clients`);
+          await axios.get(`${API_BASE_URL}/api/keep-alive`);
         } catch (err) {
           console.error('Keep-alive ping failed:', err);
         }
@@ -469,13 +484,18 @@ const MySites = () => {
   }, [isPlaying, isFullscreen, showControls]);
 
   // ========== INTERNET DISCONNECTION DETECTION ==========
+  const [wasDisconnected, setWasDisconnected] = useState(false);
+
   useEffect(() => {
     if (!isPlaying) return;
 
     const checkConnection = async () => {
       try {
-        await axios.get(`${API_BASE_URL}/api/my-sites/clients`, { timeout: 5000 });
-        setConnectionError(false);
+        await axios.get(`${API_BASE_URL}/api/keep-alive`, { timeout: 5000 });
+        if (connectionError) {
+          setConnectionError(false);
+          setWasDisconnected(true);
+        }
       } catch (err) {
         if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
           setConnectionError(true);
@@ -483,13 +503,49 @@ const MySites = () => {
       }
     };
 
-    // Check connection every 15 seconds during slideshow
-    retryTimerRef.current = setInterval(checkConnection, 15000);
+    // Check connection every 10 seconds during slideshow
+    retryTimerRef.current = setInterval(checkConnection, 10000);
 
     return () => {
       if (retryTimerRef.current) clearInterval(retryTimerRef.current);
     };
-  }, [isPlaying]);
+  }, [isPlaying, connectionError]);
+
+  // Reload current service data when connection is restored after disconnection
+  useEffect(() => {
+    if (!wasDisconnected || !selectedClient || !selectedService) return;
+
+    const reloadCurrentService = async () => {
+      try {
+        const detailsResponse = await axios.get(
+          `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${selectedService}`
+        );
+        setServiceDetails(detailsResponse.data.data);
+
+        const metrics = detailsResponse.data.data.metrics || [];
+        const telemetryPromises = metrics.map(async (metric) => {
+          try {
+            const telemetryResponse = await axios.get(
+              `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${selectedService}/metrics/${metric.id}/telemetry?timeFilter=${timeFilter}`
+            );
+            return { metricId: metric.id, data: telemetryResponse.data.data || [] };
+          } catch (err) {
+            return { metricId: metric.id, data: [] };
+          }
+        });
+
+        const telemetryResults = await Promise.all(telemetryPromises);
+        const telemetryMap = {};
+        telemetryResults.forEach(result => { telemetryMap[result.metricId] = result.data; });
+        setTelemetryData(telemetryMap);
+        setWasDisconnected(false);
+      } catch (err) {
+        console.error('Error reloading service data after reconnection:', err);
+      }
+    };
+
+    reloadCurrentService();
+  }, [wasDisconnected, selectedClient, selectedService, timeFilter]);
 
   // ========== DYNAMIC SERVICE LIST REFRESH ==========
   useEffect(() => {
@@ -693,7 +749,45 @@ const MySites = () => {
         </Paper>
       ) : null}
 
-      {/* ========== SLIDESHOW OVERLAY CONTROLS ========== */}
+      {/* ========== SLIDESHOW TOP HEADER ========== */}
+      {isPlaying && isFullscreen && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 100%)',
+            color: 'white',
+            p: 2,
+            pb: 4,
+            zIndex: 9999,
+            opacity: controlsVisible ? 1 : 0,
+            transition: 'opacity 0.3s ease-in-out',
+            pointerEvents: controlsVisible ? 'auto' : 'none',
+          }}
+        >
+          <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+            {services[currentServiceIndex]?.name || 'Unknown Service'}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>
+              {clients.find(c => c.id === selectedClient)?.name || 'Unknown Client'}
+            </Typography>
+            <Typography variant="caption" sx={{ opacity: 0.6 }}>
+              Time Range: {TIME_FILTERS.find(f => f.value === timeFilter)?.label || timeFilter}
+            </Typography>
+            <Typography variant="caption" sx={{ opacity: 0.6 }}>
+              Speed: {slideInterval}s per service
+            </Typography>
+            <Typography variant="caption" sx={{ opacity: 0.6 }}>
+              Service {currentServiceIndex + 1} of {services.length}
+            </Typography>
+          </Box>
+        </Box>
+      )}
+
+      {/* ========== SLIDESHOW BOTTOM CONTROLS ========== */}
       {isPlaying && isFullscreen && (
         <Box
           sx={{
@@ -714,13 +808,13 @@ const MySites = () => {
             pointerEvents: controlsVisible ? 'auto' : 'none',
           }}
         >
-          {/* Left: Service info */}
+          {/* Left: Countdown */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              {services[currentServiceIndex]?.name || 'Unknown Service'}
+              {slideCountdown}s
             </Typography>
             <Typography variant="caption" sx={{ opacity: 0.7 }}>
-              Service {currentServiceIndex + 1} of {services.length} • {slideCountdown}s remaining
+              until next service
             </Typography>
           </Box>
 
