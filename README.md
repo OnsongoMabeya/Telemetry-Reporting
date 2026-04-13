@@ -109,8 +109,23 @@ The system features a completely redesigned user interface with a professional S
   - Service-to-client mapping
   - Metric assignments per service
   - Smart telemetry with time bucketing
-  - Navbar-integrated filters
-  - Dashboard-style visualizations
+  - Navbar-integrated filters (Client, Service, Time Range, Speed)
+  - Dashboard-style visualizations with area fills
+  - **Slideshow Mode**: Auto-cycling fullscreen display for monitoring screens
+    - Play/Stop button in navbar next to time filter
+    - Configurable speed (10s, 20s, 30s, 1min, 2min per service)
+    - Full-screen mode with auto-enter on play
+    - Service cycling with loop-back after last service
+    - Preloaded next service data for smooth transitions
+    - Fade transitions between services
+    - Auto-hide overlay controls (5s timeout, show on mouse move)
+    - Top header: service name, client name, time range, speed indicator
+    - Bottom controls: countdown, progress bar, pause/stop/exit
+    - Session keep-alive (25-min ping to prevent 30-min timeout)
+    - Internet disconnection detection with auto-retry overlay
+    - Data reload on reconnection
+    - Dynamic service list refresh during slideshow
+    - ESC key exits slideshow and fullscreen
 - **Comprehensive Reporting**: Generate and export reports in multiple formats
 - **Responsive Design**: Mobile-first design with comprehensive breakpoint support (see [Responsive Design](#-responsive-design) section)
 - **Dark/Light Mode**: Optimized viewing in any lighting condition
@@ -907,6 +922,7 @@ The system supports multiple users with role-based access control (RBAC).
 - `DELETE /api/metric-mappings/:id` - Soft delete metric mapping (admin only)
 - `GET /api/metric-mappings/audit/:id` - Get audit trail for mapping
 - `GET /api/telemetry-mappings/:nodeName/:baseStation` - Get mappings for telemetry display
+- `GET /api/keep-alive` - Lightweight session keep-alive endpoint (returns `{ success: true, timestamp }`)
 
 ### Security
 
@@ -1078,10 +1094,16 @@ BSI-telemetry-reporting/
 │   │   ├── assets/        # Images and other static assets
 │   │   ├── components/    # React components
 │   │   │   ├── reports/   # Report generation components
+│   │   │   ├── dashboard/ # Dashboard & MySites controls (MySitesControls.js)
+│   │   │   ├── layout/    # Layout components (TopHeader.js, Sidebar.js)
 │   │   │   ├── VisualizationSettings.js  # Metric mapping UI
+│   │   │   ├── MySites.js               # My Sites page with slideshow
 │   │   │   ├── NodeDetail.js             # Dashboard with conditional rendering
 │   │   │   └── ...       # Other components
 │   │   ├── config/        # Configuration files
+│   │   ├── context/      # React Context providers
+│   │   │   ├── DashboardContext.js  # Dashboard state management
+│   │   │   └── MySitesContext.js    # My Sites & slideshow state
 │   │   ├── App.js         # Main application component
 │   │   └── index.js       # Application entry point
 │   ├── .env.example      # Example environment variables

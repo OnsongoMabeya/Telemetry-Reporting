@@ -760,6 +760,137 @@ GET /api/metric-mappings?nodeName=MediaMax1&sortBy=display_order&sortOrder=asc
 
 ---
 
+## Keep-Alive API
+
+### Session Keep-Alive
+
+Lightweight endpoint for preventing session timeout during slideshow mode. Returns a simple success response to keep the JWT session active.
+
+**Endpoint:** `GET /keep-alive`
+
+**Access:** All authenticated users
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "timestamp": 1712991234567
+}
+```
+
+**Usage:** Called every 25 minutes during My Sites slideshow to prevent the 30-minute session timeout.
+
+---
+
+## My Sites API - continuation
+
+### Get Assigned Clients
+
+Retrieve clients assigned to the authenticated user.
+
+**Endpoint:** `GET /my-sites/clients`
+
+**Access:** All authenticated users
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Radio Africa Group"
+    }
+  ]
+}
+```
+
+---
+
+### Get Services for Client
+
+Retrieve services belonging to a specific client.
+
+**Endpoint:** `GET /my-sites/clients/:clientId/services`
+
+**Access:** All authenticated users (must be assigned to the client)
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Kameme FM"
+    }
+  ]
+}
+```
+
+---
+
+### Get Service Details
+
+Retrieve service details including assigned metrics.
+
+**Endpoint:** `GET /my-sites/clients/:clientId/services/:serviceId`
+
+**Access:** All authenticated users (must be assigned to the client)
+
+**Response:**
+
+```json
+{
+  "data": {
+    "id": 1,
+    "name": "Kameme FM",
+    "description": "Kameme FM Service",
+    "metrics": [
+      {
+        "id": 1,
+        "metric_name": "Aviation FM Forward Power",
+        "display_name": "Forward Power",
+        "node_name": "Aviation FM",
+        "base_station_name": "ELDORET",
+        "unit": "W",
+        "color": "#114521"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### Get Metric Telemetry
+
+Retrieve telemetry data for a specific metric within a service.
+
+**Endpoint:** `GET /my-sites/clients/:clientId/services/:serviceId/metrics/:metricId/telemetry?timeFilter=1h`
+
+**Access:** All authenticated users (must be assigned to the client)
+
+**Parameters:**
+
+- `timeFilter` (required): Time range filter (5m, 10m, 30m, 1h, 2h, 6h, 1d, 2d, 5d, 1w, 2w, 30d)
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "sample_time": "2025-03-03 23:07:00",
+      "Aviation FM Forward Power": "1033.00"
+    }
+  ]
+}
+```
+
+---
+
 ## Versioning
 
 Current API version: v1

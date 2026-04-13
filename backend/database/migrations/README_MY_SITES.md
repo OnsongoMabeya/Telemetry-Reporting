@@ -181,11 +181,26 @@ Located at `/my-sites-customization`, provides complete management interface:
 
 Located at `/my-sites`, provides user-facing telemetry interface:
 
-- **Navbar Filters**: Client and service selectors in top navigation bar
+- **Navbar Filters**: Client, Service, Time Range, and Speed selectors in top navigation bar
 - **Smart Telemetry**: Fetches latest available data (not NOW())
 - **Time Bucketing**: Performance-optimized data sampling
-- **Dashboard-Style Graphs**: Same visualization as main dashboard
+- **Dashboard-Style Graphs**: Same visualization as main dashboard with area fills
 - **Responsive Design**: Mobile-friendly interface
+- **Slideshow Mode**: Full-screen auto-cycling display for monitoring screens
+  - Play/Stop button in navbar (green ▶ / red ⏹)
+  - Speed control dropdown (10s, 20s, 30s default, 1min, 2min)
+  - Automatically enters fullscreen when started
+  - Cycles through all services for the selected client
+  - Preloads next service data for smooth transitions
+  - Fade transitions between services (300ms)
+  - Auto-hiding overlay controls (5s timeout, reappear on mouse move)
+  - Top header: service name, client name, time range, speed, service counter
+  - Bottom bar: countdown timer, progress bar, pause/resume, stop, exit fullscreen
+  - Session keep-alive via `/api/keep-alive` endpoint (25-min ping)
+  - Internet disconnection detection with auto-retry overlay
+  - Data reload when connection is restored
+  - Dynamic service list refresh (detects added/removed services)
+  - ESC key exits slideshow and fullscreen
 
 ## Next Steps
 
@@ -196,6 +211,7 @@ After running this migration:
 3. ✅ Build "My Sites" UI (all users)
 4. ✅ Assign metric mappings to services via the UI
 5. ✅ Assign clients to users via the UI (user-client model)
+6. ✅ Add slideshow mode with fullscreen cycling, keep-alive, and error handling
 
 ## Rollback
 

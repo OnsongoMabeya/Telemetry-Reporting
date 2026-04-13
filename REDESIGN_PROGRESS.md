@@ -1,10 +1,39 @@
 # UI Redesign Progress
 
-## Status: ✅ COMPLETE (March 12, 2026)
+## Status: ✅ COMPLETE (March 12, 2026) | Updated: April 13, 2026
 
 This document tracks the progress of the UI redesign to a modern SaaS dashboard layout.
 
 **Final Result:** Successfully implemented a modern SaaS dashboard with fixed sidebar, top header, and CSS Grid card layout. All functionality preserved, graphs displaying correctly, fully responsive across all devices.
+
+## ✅ My Sites Slideshow Feature (April 13, 2026)
+
+Added fullscreen slideshow mode for My Sites, designed for monitoring displays and TV screens:
+
+### Files Modified
+
+- **`frontend/src/context/MySitesContext.js`** — Added `isPlaying`, `currentServiceIndex`, `slideInterval` state
+- **`frontend/src/components/dashboard/MySitesControls.js`** — Added Play/Stop button and Speed control dropdown
+- **`frontend/src/components/layout/TopHeader.js`** — Passes slideshow props to MySitesControls
+- **`frontend/src/components/MySites.js`** — Full slideshow logic (fullscreen, cycling, preloading, overlays, error handling)
+- **`backend/server.js`** — Added `/api/keep-alive` endpoint, fixed `trust proxy` setting
+
+### Features Implemented
+
+- **Navbar Controls**: Play/Stop button (green ▶ / red ⏹) + Speed dropdown (10s–2min)
+- **Full Screen**: Auto-enters fullscreen on play, ESC exits both
+- **Service Cycling**: Loops through all services at configured interval
+- **Preloading**: Next service data fetched in background via ref (avoids stale closures)
+- **Skip Redundant Fetch**: Preloaded data applied directly, normal fetch skipped
+- **Fade Transitions**: 300ms opacity fade between services
+- **Auto-Hide Controls**: Overlay controls hide after 5s, show on mouse move/click
+- **Top Header Overlay**: Service name (h4), client name, time range, speed, service counter
+- **Bottom Controls Overlay**: Countdown timer, progress bar, pause/resume, stop, exit fullscreen
+- **Session Keep-Alive**: `/api/keep-alive` ping every 25 minutes (prevents 30-min timeout)
+- **Internet Disconnection**: Detection every 10s, full-screen overlay with auto-retry
+- **Data Reload on Reconnection**: Automatically re-fetches current service data after outage
+- **Dynamic Service Refresh**: Detects added/removed services during slideshow
+- **Responsive Fullscreen**: 4-column grid, hidden scrollbars, optimized for TV/monitor
 
 ## ✅ Completed (Phase 1)
 

@@ -161,7 +161,7 @@ const MySites = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [slideCountdown, setSlideCountdown] = useState(0);
-  const [nextServiceData, setNextServiceData] = useState(null);
+  const [, setNextServiceData] = useState(null);
   const [connectionError, setConnectionError] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [isTransitioning, setIsTransitioning] = useState(false);
