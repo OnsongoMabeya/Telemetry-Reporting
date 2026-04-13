@@ -129,16 +129,35 @@ router.get('/verify', authenticateToken, (req, res) => {
 });
 
 // Logout endpoint (client-side token removal, but useful for logging)
-router.post('/logout', authenticateToken, async (req, res) => {
+// No authentication required — user may have an expired token when logging out
+router.post('/logout', async (req, res) => {
   try {
-    console.log(`User ${req.user.username} logged out at ${new Date().toISOString()}`);
+    // Try to extract user info from token if present (optional)
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    let userId = null;
+    let username = 'unknown';
+
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.id;
+        username = decoded.username;
+      } catch (e) {
+        // Token expired or invalid — that's fine, still allow logout
+      }
+    }
+
+    console.log(`User ${username} logged out at ${new Date().toISOString()}`);
     
-    // Log activity
-    await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, ip_address)
-       VALUES (?, ?, ?, ?)`,
-      [req.user.id, 'LOGOUT', 'auth', req.ip]
-    );
+    // Log activity if we could identify the user
+    if (userId) {
+      await db.query(
+        `INSERT INTO user_activity_log (user_id, action, resource, ip_address)
+         VALUES (?, ?, ?, ?)`,
+        [userId, 'LOGOUT', 'auth', req.ip]
+      );
+    }
     
     res.json({
       success: true,
