@@ -325,7 +325,6 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
 
 // Main Component
 const NodeDetail = () => {
-  const theme = useTheme();
   const { isAuthenticated, hasRole } = useAuth();
   
   const {

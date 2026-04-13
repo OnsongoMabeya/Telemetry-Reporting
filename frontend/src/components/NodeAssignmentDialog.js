@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -31,13 +31,7 @@ const NodeAssignmentDialog = ({ open, onClose, user, onSuccess }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  useEffect(() => {
-    if (open && user) {
-      fetchData();
-    }
-  }, [open, user]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -61,7 +55,13 @@ const NodeAssignmentDialog = ({ open, onClose, user, onSuccess }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (open && user) {
+      fetchData();
+    }
+  }, [open, user, fetchData]);
 
   const handleNodeToggle = (nodeName) => {
     setSelectedNodes(prev => {

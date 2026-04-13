@@ -32,8 +32,6 @@ const generateAnalysis = (metric, data) => {
   return { currentValue, average, percentageChange, status, recommendation };
 };
 
-let chartRoot = null;
-
 const renderGraph = async (data, metric) => {
   const validData = data.filter(point => 
     point[metric.name] !== null && 
