@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useRef, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -7,9 +7,17 @@ import {
   CircularProgress,
   Alert,
   useTheme,
+  IconButton,
+  LinearProgress,
+  Tooltip,
 } from '@mui/material';
 import {
   LocationOn as LocationOnIcon,
+  Stop as StopIcon,
+  Pause as PauseIcon,
+  PlayArrow as PlayArrowIcon,
+  FullscreenExit as FullscreenExitIcon,
+  WifiOff as WifiOffIcon,
 } from '@mui/icons-material';
 import {
   ComposedChart,
@@ -120,12 +128,30 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
 });
 
 const MySites = () => {
-  const { clients, setClients, selectedClient, setSelectedClient, services, setServices, selectedService, setSelectedService, timeFilter } = useMySites();
+  const { 
+    clients, setClients, selectedClient, setSelectedClient, 
+    services, setServices, selectedService, setSelectedService, 
+    timeFilter,
+    isPlaying, setIsPlaying,
+    currentServiceIndex, setCurrentServiceIndex,
+    slideInterval, setSlideInterval
+  } = useMySites();
   
   const [serviceDetails, setServiceDetails] = useState(null);
   const [telemetryData, setTelemetryData] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Slideshow state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [slideCountdown, setSlideCountdown] = useState(0);
+  const [nextServiceData, setNextServiceData] = useState(null);
+  const [connectionError, setConnectionError] = useState(false);
+  const containerRef = useRef(null);
+  const slideshowTimerRef = useRef(null);
+  const countdownTimerRef = useRef(null);
+  const keepAliveRef = useRef(null);
 
   // Fetch user's assigned clients
   useEffect(() => {
@@ -226,8 +252,208 @@ const MySites = () => {
     fetchServiceData();
   }, [selectedClient, selectedService, timeFilter]);
 
+  // ========== SLIDESHOW LOGIC ==========
+
+  // Enter full screen
+  const enterFullscreen = useCallback(async () => {
+    try {
+      const element = containerRef.current;
+      if (element) {
+        if (element.requestFullscreen) {
+          await element.requestFullscreen();
+        } else if (element.webkitRequestFullscreen) {
+          await element.webkitRequestFullscreen();
+        } else if (element.msRequestFullscreen) {
+          await element.msRequestFullscreen();
+        }
+        setIsFullscreen(true);
+      }
+    } catch (err) {
+      console.error('Failed to enter fullscreen:', err);
+    }
+  }, []);
+
+  // Exit full screen
+  const exitFullscreen = useCallback(() => {
+    try {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+      setIsFullscreen(false);
+    } catch (err) {
+      console.error('Failed to exit fullscreen:', err);
+    }
+  }, []);
+
+  // Listen for fullscreen change (ESC key, etc.)
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
+      if (!isCurrentlyFullscreen && isPlaying) {
+        setIsPlaying(false);
+        setIsPaused(false);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, [isPlaying, setIsPlaying]);
+
+  // Preload next service data
+  const preloadNextService = useCallback(async (nextIndex) => {
+    if (!selectedClient || !services.length) return;
+    const nextService = services[nextIndex];
+    if (!nextService) return;
+
+    try {
+      const detailsResponse = await axios.get(
+        `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${nextService.id}`
+      );
+      const metrics = detailsResponse.data.data.metrics || [];
+      const telemetryPromises = metrics.map(async (metric) => {
+        try {
+          const telemetryResponse = await axios.get(
+            `${API_BASE_URL}/api/my-sites/clients/${selectedClient}/services/${nextService.id}/metrics/${metric.id}/telemetry?timeFilter=${timeFilter}`
+          );
+          return { metricId: metric.id, data: telemetryResponse.data.data || [] };
+        } catch (err) {
+          return { metricId: metric.id, data: [] };
+        }
+      });
+      const telemetryResults = await Promise.all(telemetryPromises);
+      const telemetryMap = {};
+      telemetryResults.forEach(result => { telemetryMap[result.metricId] = result.data; });
+      setNextServiceData({ details: detailsResponse.data.data, telemetry: telemetryMap });
+      setConnectionError(false);
+    } catch (err) {
+      console.error('Error preloading next service:', err);
+      setConnectionError(true);
+    }
+  }, [selectedClient, services, timeFilter]);
+
+  // Switch to next service in slideshow
+  const switchToNextService = useCallback(() => {
+    if (services.length === 0) return;
+
+    // Use preloaded data if available
+    if (nextServiceData) {
+      setServiceDetails(nextServiceData.details);
+      setTelemetryData(nextServiceData.telemetry);
+      setNextServiceData(null);
+    }
+
+    const nextIndex = (currentServiceIndex + 1) % services.length;
+    setCurrentServiceIndex(nextIndex);
+    setSelectedService(services[nextIndex].id);
+  }, [services, currentServiceIndex, nextServiceData, setCurrentServiceIndex, setSelectedService]);
+
+  // Start slideshow when isPlaying becomes true
+  useEffect(() => {
+    if (isPlaying && !isPaused && services.length > 0) {
+      // Enter fullscreen
+      enterFullscreen();
+
+      // Start countdown
+      setSlideCountdown(slideInterval);
+
+      // Countdown timer (updates every second)
+      countdownTimerRef.current = setInterval(() => {
+        setSlideCountdown(prev => {
+          if (prev <= 1) return slideInterval;
+          return prev - 1;
+        });
+      }, 1000);
+
+      // Slideshow switch timer
+      slideshowTimerRef.current = setInterval(() => {
+        switchToNextService();
+      }, slideInterval * 1000);
+
+      // Preload next service immediately
+      const nextIndex = (currentServiceIndex + 1) % services.length;
+      preloadNextService(nextIndex);
+
+      // Keep-alive ping every 25 minutes (before 30-min session timeout)
+      keepAliveRef.current = setInterval(async () => {
+        try {
+          await axios.get(`${API_BASE_URL}/api/my-sites/clients`);
+        } catch (err) {
+          console.error('Keep-alive ping failed:', err);
+        }
+      }, 25 * 60 * 1000);
+
+    } else {
+      // Clear all timers
+      if (slideshowTimerRef.current) clearInterval(slideshowTimerRef.current);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      if (keepAliveRef.current) clearInterval(keepAliveRef.current);
+      slideshowTimerRef.current = null;
+      countdownTimerRef.current = null;
+      keepAliveRef.current = null;
+    }
+
+    return () => {
+      if (slideshowTimerRef.current) clearInterval(slideshowTimerRef.current);
+      if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      if (keepAliveRef.current) clearInterval(keepAliveRef.current);
+    };
+  }, [isPlaying, isPaused, services.length, slideInterval, enterFullscreen, switchToNextService, preloadNextService, currentServiceIndex]);
+
+  // Stop slideshow completely
+  const stopSlideshow = useCallback(() => {
+    setIsPlaying(false);
+    setIsPaused(false);
+    exitFullscreen();
+  }, [exitFullscreen, setIsPlaying]);
+
+  // Toggle pause
+  const togglePause = useCallback(() => {
+    setIsPaused(prev => !prev);
+  }, []);
+
+  // Preload next service whenever currentServiceIndex changes during slideshow
+  useEffect(() => {
+    if (isPlaying && !isPaused && services.length > 1) {
+      const nextIndex = (currentServiceIndex + 1) % services.length;
+      preloadNextService(nextIndex);
+    }
+  }, [currentServiceIndex, isPlaying, isPaused, services.length, preloadNextService]);
+
+  // Slideshow progress percentage
+  const slideProgress = isPlaying && slideInterval > 0
+    ? ((slideInterval - slideCountdown) / slideInterval) * 100
+    : 0;
+
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
+    <Container 
+      maxWidth="xl" 
+      sx={{ 
+        mt: isFullscreen ? 0 : 4, 
+        mb: isFullscreen ? 0 : 4, 
+        px: isFullscreen ? 2 : 3,
+        height: isFullscreen ? '100vh' : 'auto',
+        display: isFullscreen ? 'flex' : 'block',
+        flexDirection: 'column',
+        overflow: isFullscreen ? 'hidden' : 'visible',
+      }}
+      ref={containerRef}
+    >
       {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
@@ -262,21 +488,30 @@ const MySites = () => {
       )}
 
       {/* Service Details and Telemetry Graphs */}
-      {selectedService && serviceDetails && (
-        <>
+      {selectedService && serviceDetails ? (
+        <Box sx={{ flex: isFullscreen ? 1 : 'unset', overflow: isFullscreen ? 'hidden' : 'visible' }}>
           {/* Service Info */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
-              {serviceDetails.name}
-            </Typography>
-            {serviceDetails.description && (
-              <Typography variant="body2" color="text.secondary">
-                {serviceDetails.description}
-              </Typography>
-            )}
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-              {serviceDetails.metrics?.length || 0} metric(s) assigned
-            </Typography>
+          <Paper sx={{ p: isFullscreen ? 1.5 : 3, mb: isFullscreen ? 1 : 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box>
+                <Typography variant={isFullscreen ? 'h5' : 'h6'} sx={{ fontWeight: 600 }}>
+                  {serviceDetails.name}
+                </Typography>
+                {serviceDetails.description && (
+                  <Typography variant="body2" color="text.secondary">
+                    {serviceDetails.description}
+                  </Typography>
+                )}
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  {serviceDetails.metrics?.length || 0} metric(s) assigned
+                </Typography>
+              </Box>
+              {isPlaying && isFullscreen && (
+                <Typography variant="caption" color="text.secondary">
+                  Service {currentServiceIndex + 1} of {services.length}
+                </Typography>
+              )}
+            </Box>
           </Paper>
 
           {/* Telemetry Graphs */}
@@ -291,11 +526,13 @@ const MySites = () => {
                 gridTemplateColumns: {
                   xs: '1fr',
                   sm: 'repeat(2, 1fr)',
-                  md: 'repeat(3, 1fr)',
+                  md: isFullscreen ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
                   lg: 'repeat(4, 1fr)',
                 },
-                gap: 3,
-                gridAutoRows: '300px',
+                gap: isFullscreen ? 2 : 3,
+                gridAutoRows: isFullscreen ? '1fr' : '300px',
+                flex: isFullscreen ? 1 : 'unset',
+                overflow: isFullscreen ? 'auto' : 'visible',
               }}
             >
               {serviceDetails.metrics && serviceDetails.metrics.length > 0 ? (
@@ -306,7 +543,7 @@ const MySites = () => {
                     sx={{ 
                       gridColumn: 'span 1',
                       gridRow: 'span 1',
-                      p: 2,
+                      p: isFullscreen ? 1.5 : 2,
                       backgroundColor: 'background.paper',
                       boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
                       display: 'flex',
@@ -314,10 +551,10 @@ const MySites = () => {
                       overflow: 'hidden',
                     }}
                   >
-                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                    <Typography variant={isFullscreen ? 'subtitle2' : 'h6'} sx={{ mb: isFullscreen ? 0.5 : 2, fontWeight: 600 }}>
                       {metric.display_name || metric.metric_name}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: isFullscreen ? 0.5 : 2 }}>
                       {metric.node_name} - {metric.base_station_name}
                     </Typography>
                     <TelemetryGraph
@@ -340,7 +577,100 @@ const MySites = () => {
               )}
             </Box>
           )}
-        </>
+        </Box>
+      ) : selectedClient && services.length === 0 ? (
+        <Paper sx={{ p: 6, textAlign: 'center' }}>
+          <WifiOffIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h6" color="text.secondary">
+            No services assigned to this client
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Please contact your administrator to have services assigned.
+          </Typography>
+        </Paper>
+      ) : null}
+
+      {/* ========== SLIDESHOW OVERLAY CONTROLS ========== */}
+      {isPlaying && isFullscreen && (
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+            backdropFilter: 'blur(10px)',
+            color: 'white',
+            p: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            zIndex: 9999,
+          }}
+        >
+          {/* Left: Service info */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+              {services[currentServiceIndex]?.name || 'Unknown Service'}
+            </Typography>
+            <Typography variant="caption" sx={{ opacity: 0.7 }}>
+              Service {currentServiceIndex + 1} of {services.length} • {slideCountdown}s remaining
+            </Typography>
+          </Box>
+
+          {/* Center: Progress bar */}
+          <Box sx={{ flex: 1, mx: 3, maxWidth: 400 }}>
+            <LinearProgress 
+              variant="determinate" 
+              value={slideProgress} 
+              sx={{ 
+                height: 4, 
+                borderRadius: 2,
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                '& .MuiLinearProgress-bar': {
+                  backgroundColor: '#30a1e4',
+                  borderRadius: 2,
+                }
+              }}
+            />
+          </Box>
+
+          {/* Right: Controls */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {connectionError && (
+              <Typography variant="caption" sx={{ color: '#f44336', mr: 1 }}>
+                No internet connection
+              </Typography>
+            )}
+            <Tooltip title={isPaused ? 'Resume' : 'Pause'}>
+              <IconButton 
+                onClick={togglePause} 
+                size="small" 
+                sx={{ color: 'white' }}
+              >
+                {isPaused ? <PlayArrowIcon /> : <PauseIcon />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Stop Slideshow">
+              <IconButton 
+                onClick={stopSlideshow} 
+                size="small" 
+                sx={{ color: 'white' }}
+              >
+                <StopIcon />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Exit Fullscreen">
+              <IconButton 
+                onClick={exitFullscreen} 
+                size="small" 
+                sx={{ color: 'white' }}
+              >
+                <FullscreenExitIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Box>
       )}
     </Container>
   );
