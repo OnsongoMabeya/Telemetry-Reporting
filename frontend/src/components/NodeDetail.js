@@ -167,6 +167,23 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
     return data.filter((_, index) => index % step === 0);
   }, [data]);
 
+  // Y-axis tick formatter with unit awareness
+  const formatYAxis = useCallback((value) => {
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}k`;
+    }
+    return value.toFixed(value < 10 ? 2 : value < 100 ? 1 : 0);
+  }, []);
+
+  // Latest value for bottom-left display
+  const latestDisplay = useMemo(() => {
+    if (!data || data.length === 0) return null;
+    const latestItem = data[data.length - 1];
+    const rawValue = latestItem?.[dataKey];
+    if (rawValue == null || isNaN(Number(rawValue))) return null;
+    return `${formatYAxis(Number(rawValue))}${unit ? ` ${unit}` : ''}`;
+  }, [data, dataKey, unit, formatYAxis]);
+
   if (isLoading) {
     return (
       <Box 
@@ -293,6 +310,15 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, timeFilter
           </ComposedChart>
         </ResponsiveContainer>
       </Box>
+
+      {/* Latest Value */}
+      {latestDisplay && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 0.5 }}>
+          <Typography variant="caption" sx={{ fontWeight: 600, color: actualLineColor }}>
+            {latestDisplay}
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 });

@@ -151,6 +151,15 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
     return value.toFixed(value < 10 ? 2 : value < 100 ? 1 : 0);
   }, []);
 
+  // Latest value for bottom-left display
+  const latestDisplay = useMemo(() => {
+    if (!transformedData || transformedData.length === 0) return null;
+    const latestItem = transformedData[transformedData.length - 1];
+    const rawValue = latestItem?.[dataKey];
+    if (rawValue == null || isNaN(Number(rawValue))) return null;
+    return `${formatYAxis(Number(rawValue))}${unit ? ` ${unit}` : ''}`;
+  }, [transformedData, dataKey, unit, formatYAxis]);
+
   if (isLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', minHeight: 200 }}>
@@ -279,6 +288,15 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
           </ComposedChart>
         </ResponsiveContainer>
       </Box>
+
+      {/* Latest Value */}
+      {latestDisplay && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 0.5 }}>
+          <Typography variant="caption" sx={{ fontWeight: 600, color: actualLineColor }}>
+            {latestDisplay}
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 });
