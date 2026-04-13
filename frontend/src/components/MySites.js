@@ -134,7 +134,7 @@ const MySites = () => {
     timeFilter,
     isPlaying, setIsPlaying,
     currentServiceIndex, setCurrentServiceIndex,
-    slideInterval, setSlideInterval
+    slideInterval
   } = useMySites();
   
   const [serviceDetails, setServiceDetails] = useState(null);
@@ -544,34 +544,36 @@ const MySites = () => {
       }}
       ref={containerRef}
     >
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-          <LocationOnIcon sx={{ fontSize: 32, color: 'primary.main' }} />
-          <Typography variant="h4" sx={{ fontWeight: 600 }}>
-            My Sites
+      {/* Header - hidden during fullscreen slideshow */}
+      {!isFullscreen && (
+        <Box sx={{ mb: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+            <LocationOnIcon sx={{ fontSize: 32, color: 'primary.main' }} />
+            <Typography variant="h4" sx={{ fontWeight: 600 }}>
+              My Sites
+            </Typography>
+          </Box>
+          <Typography variant="body2" color="text.secondary">
+            View telemetry data for your assigned services
           </Typography>
         </Box>
-        <Typography variant="body2" color="text.secondary">
-          View telemetry data for your assigned services
-        </Typography>
-      </Box>
+      )}
 
-      {/* Info Messages */}
-      {clients.length === 0 && (
+      {/* Info Messages - hidden during fullscreen slideshow */}
+      {!isFullscreen && clients.length === 0 && (
         <Alert severity="info" sx={{ mb: 3 }}>
           No clients have been assigned to you yet. Please contact your administrator.
         </Alert>
       )}
 
-      {selectedClient && services.length === 0 && (
+      {!isFullscreen && selectedClient && services.length === 0 && (
         <Alert severity="info" sx={{ mb: 3 }}>
           No services are assigned to this client yet.
         </Alert>
       )}
 
-      {/* Error Display */}
-      {error && (
+      {/* Error Display - hidden during fullscreen slideshow */}
+      {!isFullscreen && error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
@@ -626,10 +628,14 @@ const MySites = () => {
                   md: isFullscreen ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
                   lg: 'repeat(4, 1fr)',
                 },
-                gap: isFullscreen ? 2 : 3,
+                gap: isFullscreen ? 1.5 : 3,
                 gridAutoRows: isFullscreen ? '1fr' : '300px',
                 flex: isFullscreen ? 1 : 'unset',
                 overflow: isFullscreen ? 'auto' : 'visible',
+                ...(isFullscreen && {
+                  '&::-webkit-scrollbar': { display: 'none' },
+                  scrollbarWidth: 'none',
+                }),
               }}
             >
               {serviceDetails.metrics && serviceDetails.metrics.length > 0 ? (
