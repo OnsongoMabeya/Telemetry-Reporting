@@ -239,11 +239,11 @@ const TelemetryGraph = memo(({ data, title, dataKey, unit, isLoading, lineColor 
       </Box>
 
       {/* Graph */}
-      <Box sx={{ flex: 1, minHeight: 0 }}>
+      <Box sx={{ flex: 1, minHeight: 120 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={downsampledData}
-            margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+            margin={{ top: 5, right: 10, left: 20, bottom: 5 }}
           >
             <CartesianGrid
               strokeDasharray="3 3"
@@ -935,7 +935,7 @@ const MySites = () => {
                   lg: 'repeat(4, 1fr)',
                 },
                 gap: isFullscreen ? 1.5 : 3,
-                gridAutoRows: isFullscreen ? '1fr' : '300px',
+                gridAutoRows: isFullscreen ? 'minmax(180px, 1fr)' : '300px',
                 flex: isFullscreen ? 1 : 'unset',
                 overflow: isFullscreen ? 'auto' : 'visible',
                 ...(isFullscreen && {
@@ -958,6 +958,7 @@ const MySites = () => {
                       display: 'flex',
                       flexDirection: 'column',
                       overflow: 'hidden',
+                      minHeight: isFullscreen ? 180 : 'auto',
                     }}
                   >
                     <TelemetryGraph
