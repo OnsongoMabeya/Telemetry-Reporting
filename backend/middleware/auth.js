@@ -22,7 +22,7 @@ const authenticateToken = (req, res, next) => {
         code: 'TOKEN_EXPIRED'
       });
     }
-    return res.status(403).json({ 
+    return res.status(401).json({ 
       error: 'Invalid token.',
       code: 'INVALID_TOKEN'
     });
