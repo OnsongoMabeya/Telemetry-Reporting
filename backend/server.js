@@ -208,7 +208,7 @@ app.get('/api/keep-alive', (req, res) => {
       }
     }
 
-    return res.status(403).json({ error: 'Invalid token.', code: 'INVALID_TOKEN' });
+    return res.status(401).json({ error: 'Invalid token.', code: 'INVALID_TOKEN' });
   }
 });
 

@@ -48,6 +48,11 @@ axios.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
+    // Skip interceptor for the refresh request itself to prevent recursion
+    if (originalRequest._skipAuthRefresh) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401) {
       const errorCode = error.response?.data?.code;
 
@@ -66,7 +71,9 @@ axios.interceptors.response.use(
         isRefreshing = true;
 
         try {
-          const response = await axios.get(`${API_BASE_URL}/api/keep-alive`);
+          const response = await axios.get(`${API_BASE_URL}/api/keep-alive`, {
+            _skipAuthRefresh: true
+          });
           if (response.data.token) {
             localStorage.setItem('token', response.data.token);
             if (authContextRefreshToken) {
