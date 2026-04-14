@@ -367,7 +367,24 @@ const MySites = () => {
   const retryTimerRef = useRef(null);
   const nextServiceDataRef = useRef(null);
   const skipNextFetchRef = useRef(false);
+  const currentServiceIndexRef = useRef(currentServiceIndex);
+  const servicesRef = useRef(services);
   const switchToNextServiceRef = useRef(null);
+  const preloadNextServiceRef = useRef(null);
+  const refreshTokenRef = useRef(refreshToken);
+
+  // Keep refs in sync with state to avoid effect dependencies
+  useEffect(() => {
+    currentServiceIndexRef.current = currentServiceIndex;
+  }, [currentServiceIndex]);
+
+  useEffect(() => {
+    servicesRef.current = services;
+  }, [services]);
+
+  useEffect(() => {
+    refreshTokenRef.current = refreshToken;
+  }, [refreshToken]);
 
   // Fetch user's assigned clients
   useEffect(() => {
@@ -554,8 +571,8 @@ const MySites = () => {
 
   // Preload next service data
   const preloadNextService = useCallback(async (nextIndex) => {
-    if (!selectedClient || !services.length) return;
-    const nextService = services[nextIndex];
+    if (!selectedClient || !servicesRef.current.length) return;
+    const nextService = servicesRef.current[nextIndex];
     if (!nextService) return;
 
     try {
@@ -583,51 +600,57 @@ const MySites = () => {
         setConnectionError(true);
       }
     }
-  }, [selectedClient, services, timeFilter]);
+  }, [selectedClient, timeFilter]);
+
+  // Keep ref in sync for slideshow timer
+  preloadNextServiceRef.current = preloadNextService;
 
   // Switch to next service in slideshow
   const switchToNextService = useCallback(() => {
-    if (services.length === 0) return;
+    if (servicesRef.current.length === 0) return;
 
     // Fade out transition
     setIsTransitioning(true);
 
     setTimeout(() => {
-      // Use preloaded data from ref (avoids stale closure)
-      const preloaded = nextServiceDataRef.current;
-      if (preloaded?.inaccessible) {
-        // Service returned 403 — skip it and move to the next one
-        nextServiceDataRef.current = null;
-        setNextServiceData(null);
-        const nextIndex = (currentServiceIndex + 1) % services.length;
-        setCurrentServiceIndex(nextIndex);
-        setSelectedService(services[nextIndex].id);
+      // Get current index from state (always fresh since this runs inside setTimeout)
+      setCurrentServiceIndex(currentIndex => {
+        const nextIndex = (currentIndex + 1) % servicesRef.current.length;
+        
+        // Use preloaded data from ref (avoids stale closure)
+        const preloaded = nextServiceDataRef.current;
+        if (preloaded?.inaccessible) {
+          // Service returned 403 — skip it and move to the next one
+          nextServiceDataRef.current = null;
+          setNextServiceData(null);
+          setSelectedService(servicesRef.current[nextIndex].id);
+          setIsTransitioning(false);
+          // Immediately trigger another switch to skip the inaccessible service
+          setTimeout(() => switchToNextServiceRef.current?.(), 100);
+          return nextIndex;
+        }
+        
+        if (preloaded) {
+          setServiceDetails(preloaded.details);
+          setTelemetryData(preloaded.telemetry);
+          setFailedMetrics(preloaded.failedMetrics || new Set());
+          setNextServiceData(null);
+          nextServiceDataRef.current = null;
+          // Skip the normal fetch since we already have the data
+          skipNextFetchRef.current = true;
+        }
+
+        setSelectedService(servicesRef.current[nextIndex].id);
+        if (!preloaded) {
+          setFailedMetrics(new Set());
+        }
+
+        // Fade in
         setIsTransitioning(false);
-        // Immediately trigger another switch to skip the inaccessible service
-        setTimeout(() => switchToNextService(), 100);
-        return;
-      }
-      if (preloaded) {
-        setServiceDetails(preloaded.details);
-        setTelemetryData(preloaded.telemetry);
-        setFailedMetrics(preloaded.failedMetrics || new Set());
-        setNextServiceData(null);
-        nextServiceDataRef.current = null;
-        // Skip the normal fetch since we already have the data
-        skipNextFetchRef.current = true;
-      }
-
-      const nextIndex = (currentServiceIndex + 1) % services.length;
-      setCurrentServiceIndex(nextIndex);
-      setSelectedService(services[nextIndex].id);
-      if (!preloaded) {
-        setFailedMetrics(new Set());
-      }
-
-      // Fade in
-      setIsTransitioning(false);
+        return nextIndex;
+      });
     }, 300);
-  }, [services, currentServiceIndex, setCurrentServiceIndex, setSelectedService]);
+  }, [setCurrentServiceIndex, setSelectedService]);
 
   // Keep ref in sync so fetchServiceData can call it without forward reference
   switchToNextServiceRef.current = switchToNextService;
@@ -648,7 +671,9 @@ const MySites = () => {
 
   // Start slideshow when isPlaying becomes true
   useEffect(() => {
-    if (isPlaying && !isPaused && services.length > 0) {
+    const servicesLength = servicesRef.current.length;
+    console.log('[Slideshow] Effect triggered - setting up timers', { isPlaying, isPaused, servicesLength, slideInterval });
+    if (isPlaying && !isPaused && servicesLength > 0) {
       // Start countdown
       setSlideCountdown(slideInterval);
 
@@ -660,14 +685,14 @@ const MySites = () => {
         });
       }, 1000);
 
-      // Slideshow switch timer
+      // Slideshow switch timer - uses ref to always call latest callback
       slideshowTimerRef.current = setInterval(() => {
-        switchToNextService();
+        switchToNextServiceRef.current();
       }, slideInterval * 1000);
 
-      // Preload next service immediately
-      const nextIndex = (currentServiceIndex + 1) % services.length;
-      preloadNextService(nextIndex);
+      // Preload next service immediately - uses ref for latest callback
+      const nextIndex = (currentServiceIndexRef.current + 1) % servicesRef.current.length;
+      preloadNextServiceRef.current(nextIndex);
 
       // Keep-alive ping every 25 minutes (before 30-min session timeout)
       // Also refreshes the JWT token to prevent session expiry
@@ -675,7 +700,7 @@ const MySites = () => {
         try {
           const response = await axios.get(`${API_BASE_URL}/api/keep-alive`);
           if (response.data.token) {
-            refreshToken(response.data.token);
+            refreshTokenRef.current(response.data.token);
           }
         } catch (err) {
           console.error('Keep-alive ping failed:', err);
@@ -697,7 +722,7 @@ const MySites = () => {
       if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
       if (keepAliveRef.current) clearInterval(keepAliveRef.current);
     };
-  }, [isPlaying, isPaused, services.length, slideInterval, switchToNextService, preloadNextService, currentServiceIndex, refreshToken]);
+  }, [isPlaying, isPaused, slideInterval]);
 
   // Stop slideshow completely
   const stopSlideshow = useCallback(() => {

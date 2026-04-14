@@ -3,6 +3,7 @@ const cors = require('cors');
 const mysql = require('mysql2');
 const NodeCache = require('node-cache');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 // Import routes
@@ -164,13 +165,17 @@ app.get('/api/keep-alive', (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
+  console.log('[Keep-Alive] Received request, auth header present:', !!authHeader, 'token present:', !!token);
+
   if (!token) {
+    console.log('[Keep-Alive] No token provided');
     return res.status(401).json({ error: 'No token provided.', code: 'NO_TOKEN' });
   }
 
   try {
     // First try normal verification (token still valid)
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('[Keep-Alive] Token valid, user:', decoded.username);
     const sessionTimeout = parseInt(process.env.SESSION_TIMEOUT_MINUTES) || 30;
     const newToken = jwt.sign(
       { id: decoded.id, username: decoded.username, email: decoded.email, role: decoded.role, loginTime: decoded.loginTime },
@@ -179,11 +184,14 @@ app.get('/api/keep-alive', (req, res) => {
     );
     return res.json({ success: true, timestamp: Date.now(), token: newToken });
   } catch (error) {
+    console.log('[Keep-Alive] Token verification error:', error.name, error.message);
     if (error.name === 'TokenExpiredError') {
       // Token expired — check if within grace period (2x session timeout)
       try {
         const decoded = jwt.decode(token);
+        console.log('[Keep-Alive] Decoded expired token:', decoded ? { id: decoded.id, exp: decoded.exp } : null);
         if (!decoded || !decoded.exp) {
+          console.log('[Keep-Alive] Invalid decoded token');
           return res.status(401).json({ error: 'Invalid token.', code: 'INVALID_TOKEN' });
         }
 
@@ -191,12 +199,17 @@ app.get('/api/keep-alive', (req, res) => {
         const gracePeriodMs = sessionTimeout * 60 * 1000 * 2; // 2x session timeout
         const expiredAt = decoded.exp * 1000;
         const now = Date.now();
+        const timeSinceExpiry = now - expiredAt;
 
-        if (now - expiredAt > gracePeriodMs) {
+        console.log('[Keep-Alive] Token expired at:', new Date(expiredAt).toISOString(), 'Time since expiry (ms):', timeSinceExpiry, 'Grace period (ms):', gracePeriodMs);
+
+        if (timeSinceExpiry > gracePeriodMs) {
+          console.log('[Keep-Alive] Token beyond grace period');
           return res.status(401).json({ error: 'Token expired beyond grace period. Please login again.', code: 'TOKEN_EXPIRED' });
         }
 
         // Within grace period — issue a fresh token
+        console.log('[Keep-Alive] Token within grace period, issuing new token');
         const newToken = jwt.sign(
           { id: decoded.id, username: decoded.username, email: decoded.email, role: decoded.role, loginTime: decoded.loginTime },
           process.env.JWT_SECRET,
@@ -204,10 +217,12 @@ app.get('/api/keep-alive', (req, res) => {
         );
         return res.json({ success: true, timestamp: Date.now(), token: newToken });
       } catch (decodeError) {
+        console.log('[Keep-Alive] Decode error:', decodeError.message);
         return res.status(401).json({ error: 'Invalid token.', code: 'INVALID_TOKEN' });
       }
     }
 
+    console.log('[Keep-Alive] Non-expiry error, returning INVALID_TOKEN');
     return res.status(401).json({ error: 'Invalid token.', code: 'INVALID_TOKEN' });
   }
 });

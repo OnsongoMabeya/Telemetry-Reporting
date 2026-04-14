@@ -71,10 +71,13 @@ axios.interceptors.response.use(
         isRefreshing = true;
 
         try {
+          console.log('[Interceptor] Attempting token refresh via keep-alive...');
           const response = await axios.get(`${API_BASE_URL}/api/keep-alive`, {
             _skipAuthRefresh: true
           });
+          console.log('[Interceptor] Keep-alive response:', response.data);
           if (response.data.token) {
+            console.log('[Interceptor] Token refreshed successfully');
             localStorage.setItem('token', response.data.token);
             if (authContextRefreshToken) {
               authContextRefreshToken(response.data.token);
@@ -84,12 +87,15 @@ axios.interceptors.response.use(
             return axios(originalRequest);
           }
         } catch (refreshError) {
+          console.log('[Interceptor] Keep-alive refresh failed:', refreshError.response?.data || refreshError.message);
           processQueue(refreshError, null);
+          // Don't logout here - let the error propagate and handle in the else block below
         } finally {
           isRefreshing = false;
         }
 
-        // Refresh failed — force logout
+        // Only logout if we reach here without returning above
+        console.log('[Interceptor] Refresh failed, forcing logout');
         localStorage.removeItem('token');
         if (authContextLogout) {
           authContextLogout();
