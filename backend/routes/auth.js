@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { authenticateToken } = require('../middleware/auth');
+const logger = require('../utils/logger');
 
 // Get database connection from app
 let db;
@@ -41,6 +42,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     );
 
     if (users.length === 0) {
+      logger.auth.failedLogin(username, 'User not found', { ip: req.ip });
       return res.status(401).json({ 
         error: 'Invalid credentials',
         code: 'INVALID_CREDENTIALS'
@@ -51,6 +53,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     // Check if user is active
     if (!user.is_active) {
+      logger.auth.failedLogin(username, 'Account disabled', { userId: user.id, ip: req.ip });
       return res.status(403).json({ 
         error: 'Account is disabled',
         code: 'ACCOUNT_DISABLED'
@@ -61,6 +64,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     
     if (!isValidPassword) {
+      logger.auth.failedLogin(username, 'Invalid password', { userId: user.id, ip: req.ip });
       return res.status(401).json({ 
         error: 'Invalid credentials',
         code: 'INVALID_CREDENTIALS'
@@ -70,12 +74,8 @@ router.post('/login', loginLimiter, async (req, res) => {
     // Update last login timestamp
     await db.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
 
-    // Log activity
-    await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, ip_address)
-       VALUES (?, ?, ?, ?)`,
-      [user.id, 'LOGIN', 'auth', req.ip]
-    );
+    // Log activity (logger handles both console + DB)
+    logger.auth.login(user.username, { userId: user.id, ip: req.ip });
 
     // Generate JWT token
     const sessionTimeout = parseInt(process.env.SESSION_TIMEOUT_MINUTES) || 30;
@@ -108,7 +108,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('AUTH', 'Login error', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'An error occurred during login',
       code: 'SERVER_ERROR',
@@ -148,23 +148,15 @@ router.post('/logout', async (req, res) => {
       }
     }
 
-    console.log(`User ${username} logged out at ${new Date().toISOString()}`);
-    
-    // Log activity if we could identify the user
-    if (userId) {
-      await db.query(
-        `INSERT INTO user_activity_log (user_id, action, resource, ip_address)
-         VALUES (?, ?, ?, ?)`,
-        [userId, 'LOGOUT', 'auth', req.ip]
-      );
-    }
+    // Log activity (logger handles both console + DB)
+    logger.auth.logout(username, { userId, ip: req.ip });
     
     res.json({
       success: true,
       message: 'Logout successful'
     });
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error('AUTH', 'Logout error', { userId, ip: req.ip, metadata: { error: error.message } });
     // Still return success even if logging fails
     res.json({
       success: true,

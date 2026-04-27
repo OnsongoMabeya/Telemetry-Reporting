@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const logger = require('../utils/logger');
 
 // Get database connection from app
 let db;
@@ -25,7 +26,7 @@ const requireAdmin = (req, res, next) => {
 
 // GET /api/clients - Get all clients
 router.get('/', requireAdmin, async (req, res) => {
-  console.log('GET /api/clients - Request received from user:', req.user);
+  logger.crud.read('clients', { userId: req.user.id, ip: req.ip });
   try {
     const [clients] = await db.query(`
       SELECT 
@@ -51,7 +52,7 @@ router.get('/', requireAdmin, async (req, res) => {
       count: clients.length
     });
   } catch (error) {
-    console.error('Error fetching clients:', error);
+    logger.error('CRUD', 'Error fetching clients', { userId: req.user.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch clients',
@@ -93,7 +94,7 @@ router.get('/:id', requireAdmin, async (req, res) => {
       data: clients[0]
     });
   } catch (error) {
-    console.error('Error fetching client:', error);
+    logger.error('CRUD', 'Error fetching client', { userId: req.user.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch client',
@@ -155,7 +156,7 @@ router.post('/', requireAdmin, async (req, res) => {
       data: newClient[0]
     });
   } catch (error) {
-    console.error('Error creating client:', error);
+    logger.error('CRUD', 'Error creating client', { userId: req.user.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to create client',
@@ -231,7 +232,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
       data: updatedClient[0]
     });
   } catch (error) {
-    console.error('Error updating client:', error);
+    logger.error('CRUD', 'Error updating client', { userId: req.user.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to update client',
@@ -269,7 +270,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
       message: `Client "${existing[0].name}" deleted successfully`
     });
   } catch (error) {
-    console.error('Error deleting client:', error);
+    logger.error('CRUD', 'Error deleting client', { userId: req.user.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to delete client',
@@ -322,7 +323,7 @@ router.get('/:id/services', requireAdmin, async (req, res) => {
       count: services.length
     });
   } catch (error) {
-    console.error('Error fetching client services:', error);
+    logger.error('CRUD', 'Error fetching client services', { userId: req.user.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch client services',
@@ -395,7 +396,7 @@ router.post('/:id/services', requireAdmin, async (req, res) => {
       message: `Service "${service[0].name}" assigned to client "${client[0].name}" successfully`
     });
   } catch (error) {
-    console.error('Error assigning service to client:', error);
+    logger.error('CRUD', 'Error assigning service to client', { userId: req.user.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to assign service to client',
@@ -439,7 +440,7 @@ router.delete('/:id/services/:serviceId', requireAdmin, async (req, res) => {
       message: `Service "${assignment[0].service_name}" removed from client "${assignment[0].client_name}" successfully`
     });
   } catch (error) {
-    console.error('Error removing service from client:', error);
+    logger.error('CRUD', 'Error removing service from client', { userId: req.user.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to remove service from client',

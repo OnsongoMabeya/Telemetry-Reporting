@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
+const logger = require('../utils/logger');
 
 // Rate limiter for user creation
 const createUserLimiter = rateLimit({
@@ -132,7 +133,7 @@ router.post('/signup', requireAdmin, createUserLimiter, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error creating user:', error);
+    logger.error('CRUD', 'Error creating user', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to create user',
@@ -169,7 +170,7 @@ router.get('/', requireAdminOrManager, async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error fetching users:', error);
+    logger.error('CRUD', 'Error fetching users', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to fetch users',
@@ -225,7 +226,7 @@ router.get('/:id', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching user:', error);
+    logger.error('CRUD', 'Error fetching user', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to fetch user',
@@ -370,7 +371,7 @@ router.put('/:id', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error updating user:', error);
+    logger.error('CRUD', 'Error updating user', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to update user',
@@ -424,7 +425,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
       message: 'User deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting user:', error);
+    logger.error('CRUD', 'Error deleting user', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to delete user',
@@ -477,7 +478,7 @@ router.get('/activity/logs', requireAdmin, async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error fetching activity logs:', error);
+    logger.error('CRUD', 'Error fetching activity logs', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to fetch activity logs',
