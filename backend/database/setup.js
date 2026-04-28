@@ -42,7 +42,20 @@ async function importMetricMappings(connection) {
     // Check if export file exists
     await fs.access(exportFile);
     
-    console.log('\n📦 Importing metric mappings...');
+    console.log('\n⚠️  WARNING: Found metric_mappings_export.sql');
+    console.log('   This will DELETE all existing metric mappings on this server!');
+    
+    // Check if FORCE_IMPORT environment variable is set
+    if (!process.env.FORCE_IMPORT_MAPPINGS) {
+      console.log('\n   To proceed with import, run:');
+      console.log('   FORCE_IMPORT_MAPPINGS=true npm run db:setup');
+      console.log('\n   To keep existing mappings, delete the export file:');
+      console.log(`   rm ${exportFile}\n`);
+      console.log('   Skipping import to preserve existing configurations.\n');
+      return false;
+    }
+    
+    console.log('\n📦 Importing metric mappings (FORCE_IMPORT_MAPPINGS is set)...');
     
     // Clear existing data only if we have an export file to import
     console.log('   Clearing existing mappings...');

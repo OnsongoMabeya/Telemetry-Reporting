@@ -31,6 +31,9 @@ backend/logs/
 *.log
 logs/
 
+# Database exports (environment-specific, do not commit)
+backend/database/metric_mappings_export.sql
+
 # macOS
 .DS_Store
 **/.DS_Store
