@@ -25,3 +25,12 @@ yarn-error.log*
 # IDE
 .idea/
 .vscode/
+
+# Logs
+backend/logs/
+*.log
+logs/
+
+# macOS
+.DS_Store
+**/.DS_Store
