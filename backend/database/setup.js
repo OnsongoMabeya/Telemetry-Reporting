@@ -148,6 +148,22 @@ async function setupDatabase() {
       }
     }
     
+    // Check for level column in user_activity_log table (migration 006)
+    if (await checkTableExists(connection, 'user_activity_log')) {
+      const [columns] = await connection.query(
+        `SELECT COUNT(*) as count FROM information_schema.columns 
+         WHERE table_schema = ? AND table_name = 'user_activity_log' AND column_name = 'level'`,
+        [dbConfig.database]
+      );
+      
+      if (columns[0].count === 0) {
+        console.log('❌ Column: user_activity_log.level (missing - needs migration 006)');
+        migrationsToRun.add('006_enhance_activity_log.sql');
+      } else {
+        console.log('✅ Column: user_activity_log.level (structured logging ready)');
+      }
+    }
+    
     console.log('\n================================\n');
     
     if (migrationsToRun.size === 0) {
