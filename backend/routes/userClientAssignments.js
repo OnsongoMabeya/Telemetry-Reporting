@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const logger = require('../utils/logger');
 
 // Get database connection from app
 let db;
@@ -53,7 +54,7 @@ router.get('/', requireAdmin, async (req, res) => {
       count: assignments.length
     });
   } catch (error) {
-    console.error('Error fetching user-client assignments:', error);
+    logger.error('CRUD', 'Error fetching user-client assignments', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch user-client assignments',
@@ -104,7 +105,7 @@ router.get('/user/:userId', requireAdmin, async (req, res) => {
       count: clients.length
     });
   } catch (error) {
-    console.error('Error fetching user clients:', error);
+    logger.error('CRUD', 'Error fetching user clients', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch user clients',
@@ -156,7 +157,7 @@ router.get('/client/:clientId', requireAdmin, async (req, res) => {
       count: users.length
     });
   } catch (error) {
-    console.error('Error fetching client users:', error);
+    logger.error('CRUD', 'Error fetching client users', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch client users',
@@ -228,7 +229,7 @@ router.post('/', requireAdmin, async (req, res) => {
       message: `Client "${client[0].name}" assigned to user "${user[0].username}" successfully`
     });
   } catch (error) {
-    console.error('Error assigning client to user:', error);
+    logger.error('CRUD', 'Error assigning client to user', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to assign client to user',
@@ -312,7 +313,7 @@ router.post('/bulk', requireAdmin, async (req, res) => {
       results
     });
   } catch (error) {
-    console.error('Error bulk assigning clients to user:', error);
+    logger.error('CRUD', 'Error bulk assigning clients to user', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to bulk assign clients to user',
@@ -356,7 +357,7 @@ router.delete('/:userId/:clientId', requireAdmin, async (req, res) => {
       message: `Client "${assignment[0].client_name}" removed from user "${assignment[0].username}" successfully`
     });
   } catch (error) {
-    console.error('Error removing client from user:', error);
+    logger.error('CRUD', 'Error removing client from user', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to remove client from user',

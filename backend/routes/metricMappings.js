@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const logger = require('../utils/logger');
 
 // Get database connection from app
 let db;
@@ -94,22 +95,16 @@ router.get('/columns', requireAdminOrManager, async (req, res) => {
           
           const [stats] = await db.query(query, params);
           
-          // Debug logging
+          // Debug logging (use logger.debug instead of console.log)
           if (nodeName === 'MediaMax1' && baseStation === 'MERU' && columnName === 'Analog1Value') {
-            console.log('Debug MediaMax1/MERU Analog1Value:');
-            console.log('Query:', query);
-            console.log('Params:', params);
-            console.log('Stats:', stats[0]);
-            console.log('Total rows for node:', total);
-            console.log('About to calculate hasData...');
+            logger.debug('CRUD', 'Debug MediaMax1/MERU Analog1Value', { metadata: { query, params, stats: stats[0], total, columnName } });
           }
           
           const hasData = stats[0].count > 0;
           const percentage = total > 0 ? ((stats[0].count / total) * 100).toFixed(1) : 0;
           
           if (nodeName === 'MediaMax1' && baseStation === 'MERU' && columnName === 'Analog1Value') {
-            console.log('hasData calculated:', hasData);
-            console.log('percentage calculated:', percentage);
+            logger.debug('CRUD', 'hasData/percentage calculated', { metadata: { hasData, percentage } });
           }
           
           const result = {
@@ -124,13 +119,13 @@ router.get('/columns', requireAdminOrManager, async (req, res) => {
           
           // Debug logging
           if (nodeName === 'MediaMax1' && baseStation === 'MERU' && columnName === 'Analog1Value') {
-            console.log('Result object being pushed:', result);
+            logger.debug('CRUD', 'Result object being pushed', { metadata: { result } });
           }
           
           results.push(result);
         } catch (err) {
           // Column might not exist, skip it
-          console.error(`Error analyzing column ${columnName}:`, err.message);
+          logger.error('CRUD', `Error analyzing column ${columnName}`, { metadata: { error: err.message } });
           results.push({
             name: columnName,
             hasData: false,
@@ -167,14 +162,13 @@ router.get('/columns', requireAdminOrManager, async (req, res) => {
     
     // Debug logging
     if (nodeName === 'MediaMax1' && baseStation === 'MERU') {
-      console.log('Final response analog[0]:', response.analog[0]);
-      console.log('Summary:', response.summary);
+      logger.debug('CRUD', 'Final response analog[0]', { metadata: { analog0: response.analog[0], summary: response.summary } });
     }
     
     res.json(response);
 
   } catch (error) {
-    console.error('Error fetching columns:', error);
+    logger.error('CRUD', 'Error fetching columns', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'Failed to fetch available columns',
       code: 'SERVER_ERROR'
@@ -231,7 +225,7 @@ router.get('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching metric mappings:', error);
+    logger.error('CRUD', 'Error fetching metric mappings', { metadata: { error: error.message } });
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch metric mappings',
@@ -268,7 +262,7 @@ router.get('/nodes', requireAdminOrManager, async (req, res) => {
     res.json(nodesWithStatus);
 
   } catch (error) {
-    console.error('Error fetching nodes:', error);
+    logger.error('CRUD', 'Error fetching nodes', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'Failed to fetch nodes',
       code: 'SERVER_ERROR'
@@ -300,7 +294,7 @@ router.get('/unmapped', requireAdmin, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching unmapped nodes:', error);
+    logger.error('CRUD', 'Error fetching unmapped nodes', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'Failed to fetch unmapped nodes',
       code: 'SERVER_ERROR'
@@ -331,7 +325,7 @@ router.post('/', requireAdmin, async (req, res) => {
 
     // Validate user exists
     if (!req.user || !req.user.id) {
-      console.error('User authentication error: req.user =', req.user);
+      logger.error('AUTH', 'User authentication error', { metadata: { reqUser: req.user } });
       return res.status(401).json({ 
         error: 'User authentication failed',
         code: 'AUTH_ERROR'
@@ -341,7 +335,7 @@ router.post('/', requireAdmin, async (req, res) => {
     // Verify user exists in database
     const [userCheck] = await db.query('SELECT id FROM users WHERE id = ?', [req.user.id]);
     if (userCheck.length === 0) {
-      console.error('User ID not found in database:', req.user.id);
+      logger.error('AUTH', 'User ID not found in database', { metadata: { userId: req.user.id } });
       return res.status(401).json({ 
         error: 'User not found in database',
         code: 'USER_NOT_FOUND'
@@ -420,13 +414,7 @@ router.post('/', requireAdmin, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error creating metric mapping:', error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      sqlMessage: error.sqlMessage,
-      sql: error.sql
-    });
+    logger.error('CRUD', 'Error creating metric mapping', { userId: req.user?.id, metadata: { error: error.message, code: error.code, sqlMessage: error.sqlMessage } });
     res.status(500).json({ 
       error: 'Failed to create metric mapping',
       code: 'SERVER_ERROR'
@@ -493,7 +481,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error updating metric mapping:', error);
+    logger.error('CRUD', 'Error updating metric mapping', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'Failed to update metric mapping',
       code: 'SERVER_ERROR'
@@ -556,7 +544,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error deleting metric mapping:', error);
+    logger.error('CRUD', 'Error deleting metric mapping', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'Failed to delete metric mapping',
       code: 'SERVER_ERROR'
@@ -584,7 +572,7 @@ router.get('/audit/:id', requireAdmin, async (req, res) => {
     res.json(audit);
 
   } catch (error) {
-    console.error('Error fetching audit trail:', error);
+    logger.error('CRUD', 'Error fetching audit trail', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'Failed to fetch audit trail',
       code: 'SERVER_ERROR'

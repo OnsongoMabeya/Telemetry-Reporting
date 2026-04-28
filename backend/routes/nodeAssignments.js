@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const logger = require('../utils/logger');
 
 // Get database connection from app
 let db;
@@ -57,7 +58,7 @@ router.get('/user/:userId', async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error fetching node assignments:', error);
+    logger.error('CRUD', 'Error fetching node assignments', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to fetch node assignments',
@@ -80,7 +81,7 @@ router.get('/available-nodes', requireAdmin, async (req, res) => {
       nodes: nodes.map(n => n.NodeName)
     });
   } catch (error) {
-    console.error('Error fetching available nodes:', error);
+    logger.error('CRUD', 'Error fetching available nodes', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to fetch available nodes',
@@ -128,7 +129,7 @@ router.post('/', requireAdmin, async (req, res) => {
           assignments.push({ nodeName, status: 'assigned' });
         }
       } catch (err) {
-        console.error(`Error assigning node ${nodeName}:`, err);
+        logger.error('CRUD', `Error assigning node ${nodeName}`, { metadata: { error: err.message } });
         assignments.push({ nodeName, status: 'error', error: err.message });
       }
     }
@@ -152,7 +153,7 @@ router.post('/', requireAdmin, async (req, res) => {
       assignments
     });
   } catch (error) {
-    console.error('Error assigning nodes:', error);
+    logger.error('CRUD', 'Error assigning nodes', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to assign nodes',
@@ -202,7 +203,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
       message: 'Node assignment removed successfully'
     });
   } catch (error) {
-    console.error('Error removing node assignment:', error);
+    logger.error('CRUD', 'Error removing node assignment', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to remove node assignment',
@@ -249,7 +250,7 @@ router.delete('/user/:userId/node/:nodeName', requireAdmin, async (req, res) => 
       message: 'Node assignment removed successfully'
     });
   } catch (error) {
-    console.error('Error removing node assignment:', error);
+    logger.error('CRUD', 'Error removing node assignment', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to remove node assignment',
@@ -296,7 +297,7 @@ router.put('/user/:userId/access-all', requireAdmin, async (req, res) => {
       message: `User ${accessAllNodes ? 'granted' : 'revoked'} access to all nodes`
     });
   } catch (error) {
-    console.error('Error updating node access:', error);
+    logger.error('CRUD', 'Error updating node access', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       message: 'Failed to update node access',

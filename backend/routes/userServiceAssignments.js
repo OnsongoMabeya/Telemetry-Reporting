@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const logger = require('../utils/logger');
 
 // Get database connection from app
 let db;
@@ -65,7 +66,7 @@ router.get('/user/:userId', requireAdmin, async (req, res) => {
       count: services.length
     });
   } catch (error) {
-    console.error('Error fetching user services:', error);
+    logger.error('CRUD', 'Error fetching user services', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch user services',
@@ -117,7 +118,7 @@ router.get('/service/:serviceId', requireAdmin, async (req, res) => {
       count: users.length
     });
   } catch (error) {
-    console.error('Error fetching service users:', error);
+    logger.error('CRUD', 'Error fetching service users', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch service users',
@@ -189,7 +190,7 @@ router.post('/', requireAdmin, async (req, res) => {
       message: `Service "${service[0].name}" assigned to user "${user[0].username}" successfully`
     });
   } catch (error) {
-    console.error('Error assigning service to user:', error);
+    logger.error('CRUD', 'Error assigning service to user', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to assign service to user',
@@ -273,7 +274,7 @@ router.post('/bulk', requireAdmin, async (req, res) => {
       results
     });
   } catch (error) {
-    console.error('Error bulk assigning services to user:', error);
+    logger.error('CRUD', 'Error bulk assigning services to user', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to bulk assign services to user',
@@ -325,7 +326,7 @@ router.delete('/', requireAdmin, async (req, res) => {
       message: `Service "${assignment[0].service_name}" removed from user "${assignment[0].username}" successfully`
     });
   } catch (error) {
-    console.error('Error removing service from user:', error);
+    logger.error('CRUD', 'Error removing service from user', { metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to remove service from user',

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const logger = require('../utils/logger');
 
 // Get database connection from app
 let db;
@@ -53,7 +54,7 @@ router.get('/', requireAdmin, async (req, res) => {
       count: services.length
     });
   } catch (error) {
-    console.error('Error fetching services:', error);
+    logger.error('CRUD', 'Error fetching services', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch services',
@@ -95,7 +96,7 @@ router.get('/:id', requireAdmin, async (req, res) => {
       data: services[0]
     });
   } catch (error) {
-    console.error('Error fetching service:', error);
+    logger.error('CRUD', 'Error fetching service', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch service',
@@ -157,7 +158,7 @@ router.post('/', requireAdmin, async (req, res) => {
       data: newService[0]
     });
   } catch (error) {
-    console.error('Error creating service:', error);
+    logger.error('CRUD', 'Error creating service', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to create service',
@@ -233,7 +234,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
       data: updatedService[0]
     });
   } catch (error) {
-    console.error('Error updating service:', error);
+    logger.error('CRUD', 'Error updating service', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to update service',
@@ -271,7 +272,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
       message: `Service "${existing[0].name}" deleted successfully`
     });
   } catch (error) {
-    console.error('Error deleting service:', error);
+    logger.error('CRUD', 'Error deleting service', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to delete service',
@@ -331,7 +332,7 @@ router.get('/:id/metrics', requireAdmin, async (req, res) => {
       count: assignments.length
     });
   } catch (error) {
-    console.error('Error fetching service metric assignments:', error);
+    logger.error('CRUD', 'Error fetching service metric assignments', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch service metric assignments',
@@ -387,7 +388,7 @@ router.get('/:id/metric-assignments', requireAdmin, async (req, res) => {
       count: assignments.length
     });
   } catch (error) {
-    console.error('Error fetching service metric assignments:', error);
+    logger.error('CRUD', 'Error fetching service metric assignments', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch service metric assignments',
@@ -474,7 +475,7 @@ router.post('/:id/metrics', requireAdmin, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error assigning metric to service:', error);
+    logger.error('CRUD', 'Error assigning metric to service', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to assign metric to service',
@@ -573,7 +574,7 @@ router.post('/:id/metric-assignments', requireAdmin, async (req, res) => {
       data: newAssignment[0]
     });
   } catch (error) {
-    console.error('Error assigning metric to service:', error);
+    logger.error('CRUD', 'Error assigning metric to service', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to assign metric to service',
@@ -642,7 +643,7 @@ router.put('/metric-assignments/:assignmentId', requireAdmin, async (req, res) =
       data: updatedAssignment[0]
     });
   } catch (error) {
-    console.error('Error updating metric assignment:', error);
+    logger.error('CRUD', 'Error updating metric assignment', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to update metric assignment',
@@ -686,7 +687,7 @@ router.delete('/:serviceId/metrics/:metricMappingId', requireAdmin, async (req, 
       message: `Metric "${assignment[0].metric_name}" removed from service "${assignment[0].service_name}" successfully`
     });
   } catch (error) {
-    console.error('Error removing metric assignment:', error);
+    logger.error('CRUD', 'Error removing metric assignment', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to remove metric assignment',
@@ -730,7 +731,7 @@ router.delete('/metric-assignments/:assignmentId', requireAdmin, async (req, res
       message: `Metric "${assignment[0].metric_name}" removed from service "${assignment[0].service_name}" successfully`
     });
   } catch (error) {
-    console.error('Error removing metric assignment:', error);
+    logger.error('CRUD', 'Error removing metric assignment', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to remove metric assignment',

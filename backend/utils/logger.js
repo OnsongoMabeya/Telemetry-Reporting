@@ -1,7 +1,50 @@
+const fs = require('fs');
+const path = require('path');
+
 const LEVELS = { DEBUG: 0, INFO: 1, WARN: 2, ERROR: 3 };
 const CATEGORIES = ['AUTH', 'API', 'SLIDESHOW', 'CRUD', 'SYSTEM'];
 
 let dbPool = null;
+let currentLogFile = null;
+let currentWeekStart = null;
+
+// Log directory - create if not exists
+const LOG_DIR = path.join(__dirname, '..', 'logs');
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+}
+
+/**
+ * Get the Sunday of the current week (week starts on Sunday)
+ * Returns date string like '2026-04-26'
+ */
+function getWeekStartDate() {
+  const now = new Date();
+  const day = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const diff = now.getDate() - day; // go back to Sunday
+  const sunday = new Date(now.setDate(diff));
+  return sunday.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+/**
+ * Get the current log file path based on week
+ */
+function getLogFilePath() {
+  const weekStart = getWeekStartDate();
+  return path.join(LOG_DIR, `logs_${weekStart}.jsonl`);
+}
+
+/**
+ * Ensure we're writing to the correct weekly file
+ */
+function ensureLogFile() {
+  const weekStart = getWeekStartDate();
+  if (weekStart !== currentWeekStart) {
+    currentWeekStart = weekStart;
+    currentLogFile = getLogFilePath();
+  }
+  return currentLogFile;
+}
 
 /**
  * Initialize the logger with a MySQL pool reference.
@@ -12,9 +55,9 @@ function initLogger(poolRef) {
 }
 
 /**
- * Format a log entry as structured JSON for console output.
+ * Format a log entry as structured JSON.
  */
-function formatConsole(entry) {
+function formatLogEntry(entry) {
   const { timestamp, level, category, message, userId, ip, metadata } = entry;
   const base = {
     timestamp,
@@ -26,6 +69,21 @@ function formatConsole(entry) {
   if (ip) base.ip = ip;
   if (metadata && Object.keys(metadata).length > 0) base.metadata = metadata;
   return JSON.stringify(base);
+}
+
+/**
+ * Write log entry to weekly file.
+ */
+function writeToFile(entry) {
+  try {
+    const logFile = ensureLogFile();
+    const line = formatLogEntry(entry) + '\n';
+    fs.appendFileSync(logFile, line, { encoding: 'utf8' });
+  } catch (err) {
+    // Fallback to console only if file write fails
+    console.error('[Logger] File write failed:', err.message);
+    console.error(formatLogEntry(entry));
+  }
 }
 
 /**
@@ -56,7 +114,7 @@ async function insertToDB(entry) {
 }
 
 /**
- * Core log function. Outputs structured JSON to console and inserts to DB.
+ * Core log function. Writes to weekly file and inserts to DB.
  *
  * @param {string} level   - DEBUG | INFO | WARN | ERROR
  * @param {string} category - AUTH | API | SLIDESHOW | CRUD | SYSTEM
@@ -80,19 +138,26 @@ function log(level, category, message, options = {}) {
     metadata: options.metadata || null
   };
 
-  // Console output (structured JSON)
-  if (level === 'ERROR') {
-    console.error(formatConsole(entry));
-  } else if (level === 'WARN') {
-    console.warn(formatConsole(entry));
-  } else {
-    console.log(formatConsole(entry));
-  }
+  // Write to weekly log file (primary output)
+  writeToFile(entry);
 
   // DB insert (async, non-blocking)
   // Only insert INFO and above to DB to avoid noise
   if (LEVELS[level] >= LEVELS['INFO']) {
     insertToDB(entry);
+  }
+
+  // Optional: Also log errors to console for immediate visibility (can be disabled)
+  // Set LOG_TO_CONSOLE=false in .env to disable
+  if (process.env.LOG_TO_CONSOLE === 'true' || level === 'ERROR') {
+    const formatted = formatLogEntry(entry);
+    if (level === 'ERROR') {
+      console.error(formatted);
+    } else if (level === 'WARN') {
+      console.warn(formatted);
+    } else {
+      console.log(formatted);
+    }
   }
 }
 

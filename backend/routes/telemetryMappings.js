@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const logger = require('../utils/logger');
 
 // Get database connection from app
 let db;
@@ -46,7 +47,7 @@ router.get('/:nodeName/:baseStation', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching telemetry mappings:', error);
+    logger.error('CRUD', 'Error fetching telemetry mappings', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'Failed to fetch telemetry mappings',
       code: 'SERVER_ERROR'

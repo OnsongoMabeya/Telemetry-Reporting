@@ -4,6 +4,7 @@ const multer = require('multer');
 const nodemailer = require('nodemailer');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const logger = require('../utils/logger');
 
 // Configure multer for file uploads
 const upload = multer({
@@ -86,10 +87,10 @@ router.post('/send-report', emailLimiter, upload.single('file'), async (req, res
     const transporter = createTransporter();
     const info = await transporter.sendMail(mailOptions);
 
-    console.log('Email sent:', info.messageId);
+    logger.info('SYSTEM', 'Email sent', { metadata: { messageId: info.messageId } });
     res.json({ success: true, message: 'Email sent successfully', messageId: info.messageId });
   } catch (error) {
-    console.error('Error sending email:', error);
+    logger.error('SYSTEM', 'Error sending email', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'Failed to send email',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined 

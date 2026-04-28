@@ -300,10 +300,10 @@ app.get('/api/nodes', authenticateToken, async (req, res) => {
     
     res.json(nodes);
   } catch (error) {
-    console.error('Error fetching nodes:', error);
-    res.status(500).json({ 
-      error: 'Internal server error', 
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined 
+    logger.error('CRUD', 'Error fetching nodes for dropdown', { metadata: { error: error.message } });
+    res.status(500).json({
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -323,7 +323,7 @@ app.get('/api/basestations/:nodeName', authenticateToken, async (req, res) => {
     
     res.json(baseStations);
   } catch (error) {
-    console.error('Error fetching base stations:', error);
+    logger.error('CRUD', 'Error fetching base stations', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'Internal server error',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined 
@@ -358,7 +358,7 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
 
   // If no mappings exist, return empty data
   if (!mappings || mappings.length === 0) {
-    console.log('No metric mappings found for', nodeName, baseStation);
+    logger.debug('CRUD', 'No metric mappings found', { metadata: { nodeName, baseStation } });
     return {
       data: [],
       total: 0,
@@ -368,7 +368,7 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
     };
   }
 
-  console.log('Found metric mappings:', mappings);
+    logger.debug('CRUD', 'Found metric mappings', { metadata: { mappingsCount: mappings.length } });
 
   // Set time range based on filter
   let timeRangeMinutes;
@@ -442,18 +442,14 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
     WHERE NodeName = ? AND NodeBaseStationName = ?
   `;
 
-  console.log('Fetching time range for:', { nodeName, baseStation });
+    logger.debug('CRUD', 'Fetching time range', { metadata: { nodeName, baseStation } });
   const [[timeRange]] = await pool.promise().query(timeRangeQuery, [nodeName, baseStation]);
   
-  console.log('Available time range in database (EAT):', {
-    earliest: timeRange.earliest_time,
-    latest: timeRange.latest_time,
-    now: new Date().toISOString()
-  });
+    logger.debug('CRUD', 'Available time range in database', { metadata: { earliest: timeRange.earliest_time, latest: timeRange.latest_time } });
 
   // If no data is found, return empty result
   if (!timeRange.earliest_time || !timeRange.latest_time) {
-    console.log('No data found for the specified node and base station');
+    logger.debug('CRUD', 'No data found for specified node/base station', { metadata: { nodeName, baseStation } });
     return {
       data: [],
       total: 0,
@@ -467,22 +463,13 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
   const endTime = new Date(timeRange.latest_time);
   const startTime = new Date(endTime.getTime() - (timeRangeMinutes * 60 * 1000));
   
-  console.log('Calculated query time range:', {
-    startTime: startTime.toISOString(),
-    endTime: endTime.toISOString(),
-    timeRangeMinutes,
-    timeRangeMs: endTime - startTime
-  });
+  logger.debug('CRUD', 'Calculated query time range', { metadata: { startTime: startTime.toISOString(), endTime: endTime.toISOString(), timeRangeMinutes } });
 
   // Calculate optimal number of data points and time step
   const dataPointCount = calculateDataPoints(timeRangeMinutes);
   const timeStep = Math.max(1, Math.ceil(timeRangeMinutes / (dataPointCount / 2)));
   
-  console.log('Sampling configuration:', {
-    dataPointCount,
-    timeStepMinutes: timeStep,
-    estimatedPoints: Math.ceil(timeRangeMinutes / timeStep)
-  });
+  logger.debug('CRUD', 'Sampling configuration', { metadata: { dataPointCount, timeStepMinutes: timeStep } });
 
   // Build dynamic column selections based on metric mappings
   const columnSelections = mappings.map(m => 
@@ -535,19 +522,9 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
     ) as time_buckets
   `;
 
-  console.log('Executing queries with params:', {
-    timeRangeMinutes,
-    nodeName,
-    baseStation,
-    pageSize,
-    offset,
-    timeStep,
-    startTime: startTime.toISOString(),
-    endTime: endTime.toISOString()
-  });
-  
-  // Log the first few characters of the query for debugging
-  console.log('Query preview:', query.substring(0, 200) + '...');
+  logger.debug('CRUD', 'Executing queries with params', { metadata: { timeRangeMinutes, nodeName, baseStation } });
+
+  logger.debug('CRUD', 'Query preview', { metadata: { queryPreview: query.substring(0, 200) } });
 
   // Define max time range (30 days in milliseconds)
   const maxTimeRangeMs = 30 * 24 * 60 * 60 * 1000;
@@ -556,13 +533,7 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
   const actualEndTime = new Date(timeRange.latest_time);
   const actualStartTime = new Date(actualEndTime.getTime() - (Math.min(timeRangeMinutes * 60 * 1000, maxTimeRangeMs)));
   
-  console.log('Query parameters:', {
-    startTime: actualStartTime,
-    endTime: actualEndTime,
-    timeStep: timeStep + ' minutes',
-    pageSize,
-    offset
-  });
+  logger.debug('CRUD', 'Query parameters', { metadata: { nodeName, baseStation, timeStepMinutes } });
 
   // Execute the queries with proper parameter binding
   const queryParams = [
@@ -581,8 +552,7 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
     actualEndTime
   ];
 
-  console.log('Executing query with params:', queryParams);
-  console.log('Executing count query with params:', countParams);
+  logger.debug('CRUD', 'Executing queries', { metadata: { queryParamsCount: queryParams.length } });
 
   const [[{ total }], data] = await Promise.all([
     pool.promise().query(countQuery, countParams),
@@ -592,19 +562,7 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
   // Debug time range of returned data
   if (data[0].length > 0) {
     const returnedData = data[0];
-    console.log('Returned data time range:', {
-      start: returnedData[returnedData.length - 1]?.sample_time || 'N/A',
-      end: returnedData[0]?.sample_time || 'N/A',
-      requestedMinutes: timeRangeMinutes,
-      recordCount: total,
-      dataPoints: returnedData.length
-    });
-    
-    // Log first and last few data points for debugging
-    console.log('First data point:', returnedData[0]);
-    if (returnedData.length > 1) {
-      console.log('Last data point:', returnedData[returnedData.length - 1]);
-    }
+    logger.debug('CRUD', 'Returned data time range', { metadata: { pointsReturned: returnedData.length, requestedMinutes: timeRangeMinutes } });
   }
 
   return {
@@ -639,7 +597,7 @@ app.get('/api/nodes', async (req, res) => {
 
     res.json(rows);
   } catch (error) {
-    console.error('Error fetching nodes:', error);
+    logger.error('CRUD', 'Error fetching nodes', { metadata: { error: error.message } });
     res.status(500).json({ error: 'Failed to fetch nodes', details: error.message });
   }
 });
@@ -656,28 +614,14 @@ app.get('/api/telemetry/:nodeName/:baseStation', authenticateToken, async (req, 
   const cacheKey = `telemetry:${nodeName}:${baseStation}:${timeFilter}:${page}:${pageSize}`;
   const ttl = getCacheTTL(timeFilter);
   
-  // Log request details
-  console.log(`[${requestId}] [START] Telemetry request`, {
-    nodeName,
-    baseStation,
-    timeFilter,
-    page,
-    pageSize,
-    cacheKey,
-    ttl,
-    timestamp: new Date().toISOString(),
-    url: req.originalUrl
-  });
-  
+  logger.api.request('GET', `/api/telemetry/${nodeName}/${baseStation}`, { ip: req.ip, metadata: { timeFilter, requestId } });
+
   // Try to get cached data first
   try {
     const cachedData = cache.get(cacheKey);
     if (cachedData) {
       const duration = Date.now() - startTime;
-      console.log(`[${requestId}] [CACHE HIT] Served from cache in ${duration}ms`, {
-        recordsReturned: cachedData.data?.length || 0,
-        cacheKey
-      });
+      logger.debug('API', 'Cache hit', { metadata: { requestId, duration, recordsReturned: cachedData.data?.length || 0 } });
       
       res.set({
         'X-Response-Time': `${duration}ms`,
@@ -688,14 +632,14 @@ app.get('/api/telemetry/:nodeName/:baseStation', authenticateToken, async (req, 
       return res.json(cachedData);
     }
   } catch (cacheError) {
-    console.warn(`[${requestId}] Cache check failed:`, cacheError);
+    logger.warn('API', 'Cache check failed', { metadata: { requestId, error: cacheError.message } });
     // Continue with fresh data if cache check fails
   }
   
   // Validate time filter
   if (!isValidTimeFilter(timeFilter)) {
     const errorMsg = `Invalid time filter: ${timeFilter}`;
-    console.error(`[${requestId}] [ERROR] ${errorMsg}`);
+    logger.error('API', `Invalid time filter: ${timeFilter}`, { metadata: { requestId } });
     return res.status(400).json({ 
       error: `Invalid time filter. Must be one of: 5m, 10m, 30m, 1h, 2h, 6h, 1d, 2d, 5d, 1w, 2w, 30d`,
       requestId,
@@ -710,18 +654,9 @@ app.get('/api/telemetry/:nodeName/:baseStation', authenticateToken, async (req, 
     
     const duration = Date.now() - startTime;
     
+    logger.api.response('GET', `/api/telemetry/${nodeName}/${baseStation}`, 200, duration, { metadata: { requestId, recordsReturned: data.data?.length || 0, totalRecords: data.total } });
+
     // Log successful response
-    console.log(`[${requestId}] [SUCCESS] Query executed in ${duration}ms`, {
-      recordsReturned: data.data?.length || 0,
-      totalRecords: data.total || 0,
-      timeRange: timeFilter,
-      queryDuration: duration,
-      page,
-      pageSize,
-      totalPages: data.totalPages || 1
-    });
-    
-    // Add response headers
     res.set({
       'X-Response-Time': `${duration}ms`,
       'X-Query-Time': `${duration}ms`,
@@ -739,13 +674,8 @@ app.get('/api/telemetry/:nodeName/:baseStation', authenticateToken, async (req, 
     const errorDuration = Date.now() - startTime;
     const errorId = `err_${Math.random().toString(36).substring(2, 8)}`;
     
-    console.error(`[${requestId}] [ERROR] Request failed after ${errorDuration}ms`, {
-      error: error.message,
-      errorId,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      params: { nodeName, baseStation, timeFilter, page, pageSize }
-    });
-    
+    logger.error('API', 'Telemetry request failed', { metadata: { requestId, error: error.message, nodeName, baseStation, timeFilter, errorDuration } });
+
     return res.status(500).json({ 
       error: 'Failed to fetch telemetry data',
       errorId,
@@ -855,7 +785,7 @@ app.get('/api/basestations-map', authenticateToken, async (req, res) => {
         };
       } else {
         // For stations not in our mapping, assign approximate coordinates
-        console.log(`Station not found in mapping: ${stationName}, using random coordinates`);
+        logger.debug('CRUD', `Station not found in mapping: ${stationName}`);
         return {
           id: stationName,
           name: stationName,
@@ -868,7 +798,7 @@ app.get('/api/basestations-map', authenticateToken, async (req, res) => {
     
     res.json(baseStations);
   } catch (error) {
-    console.error('Error fetching base stations for map:', error);
+    logger.error('CRUD', 'Error fetching base stations for map', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'Internal server error',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined 
@@ -879,5 +809,5 @@ app.get('/api/basestations-map', authenticateToken, async (req, res) => {
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+    logger.info('SYSTEM', `Server is running on port ${PORT}`);
 });

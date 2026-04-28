@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const logger = require('../utils/logger');
 
 // Get database connection from app
 let db;
@@ -53,7 +54,7 @@ router.get('/clients', async (req, res) => {
       count: clientsWithCounts.length
     });
   } catch (error) {
-    console.error('Error fetching my sites clients:', error);
+    logger.error('CRUD', 'Error fetching my sites clients', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch my sites clients',
@@ -115,7 +116,7 @@ router.get('/clients/:clientId/services', async (req, res) => {
       count: servicesWithMetrics.length
     });
   } catch (error) {
-    console.error('Error fetching client services:', error);
+    logger.error('CRUD', 'Error fetching client services', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch client services',
@@ -197,7 +198,7 @@ router.get('/clients/:clientId/services/:serviceId', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching service details:', error);
+    logger.error('CRUD', 'Error fetching service details', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch service details',
@@ -380,7 +381,7 @@ router.get('/clients/:clientId/services/:serviceId/metrics/:metricId/telemetry',
       count: telemetryData.length
     });
   } catch (error) {
-    console.error('Error fetching telemetry data:', error);
+    logger.error('CRUD', 'Error fetching telemetry data', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch telemetry data',
