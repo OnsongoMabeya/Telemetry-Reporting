@@ -533,7 +533,7 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
   const actualEndTime = new Date(timeRange.latest_time);
   const actualStartTime = new Date(actualEndTime.getTime() - (Math.min(timeRangeMinutes * 60 * 1000, maxTimeRangeMs)));
   
-  logger.debug('CRUD', 'Query parameters', { metadata: { nodeName, baseStation, timeStepMinutes } });
+  logger.debug('CRUD', 'Query parameters', { metadata: { nodeName, baseStation, timeStep } });
 
   // Execute the queries with proper parameter binding
   const queryParams = [
