@@ -52,6 +52,9 @@ mysql -u your_user -p your_database < database/migrations/003_create_metric_mapp
 
 # Add optional graph color support (metric_mappings.color)
 mysql -u your_user -p your_database < database/migrations/004_add_color_to_metric_mappings.sql
+
+# Enhance activity log with structured logging support
+mysql -u your_user -p your_database < database/migrations/006_enhance_activity_log.sql
 ```
 
 Replace `your_user` and `your_database` with your MySQL credentials.
@@ -118,9 +121,12 @@ The setup creates the following tables:
    - Tracks active user sessions
    - Session tokens and expiry
 
-3. **`user_activity_log`** - Audit trail
-   - Logs all user actions (login, logout, CRUD operations)
-   - IP addresses and timestamps
+3. **`user_activity_log`** - Structured audit trail (enhanced in v2.2)
+   - Logs all user actions with structured JSON format
+   - Log levels: DEBUG, INFO, WARN, ERROR
+   - Categories: AUTH, API, SLIDESHOW, CRUD, SYSTEM
+   - Metadata column (JSON) for structured data
+   - IP addresses, user IDs, and timestamps
 
 ### Node Assignment Tables
 

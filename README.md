@@ -100,6 +100,13 @@ The system features a completely redesigned user interface with a professional S
 
 ### 📊 Core Functionality
 
+- **Structured Logging & Audit Trails**: Comprehensive JSON logging system (v2.2)
+  - Weekly rotating log files (`backend/logs/logs_YYYY-MM-DD.jsonl`)
+  - Dual output: File + Database (`user_activity_log` table)
+  - Log levels: DEBUG, INFO, WARN, ERROR with categories (AUTH, API, SLIDESHOW, CRUD, SYSTEM)
+  - Non-blocking async DB inserts for performance
+  - Query logs via SQL for security auditing and compliance
+
 - **Real-time Monitoring**: Live telemetry data visualization with accurate base station mapping
 - **Interactive Maps**: Kenya-wide base station monitoring with verified GPS coordinates
 - **User Management**: Role-based access control with admin, manager, and viewer roles

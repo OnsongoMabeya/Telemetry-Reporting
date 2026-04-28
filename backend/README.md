@@ -610,7 +610,129 @@ The script will:
 
 This ensures consistent metric configurations across all environments without manual reconfiguration.
 
-## �🔧 Troubleshooting
+## 📝 Logging System
+
+The backend includes a comprehensive structured logging system for audit trails, debugging, and monitoring.
+
+### Features
+
+- **Structured JSON Format** — All logs in JSON Lines format for easy parsing
+- **Weekly File Rotation** — New log file created every Sunday (`logs_YYYY-MM-DD.jsonl`)
+- **Dual Output** — Logs written to both file and database (`user_activity_log` table)
+- **Log Levels** — DEBUG, INFO, WARN, ERROR
+- **Categories** — AUTH, API, SLIDESHOW, CRUD, SYSTEM
+- **Non-Blocking** — Async DB inserts never slow down the application
+
+### Log Location
+
+```
+backend/logs/logs_2026-04-26.jsonl  (example: week starting Sunday, April 26)
+```
+
+### Log Format
+
+```json
+{"timestamp":"2026-04-28T09:23:32.094Z","level":"INFO","category":"AUTH","message":"User BSI logged in","userId":1,"ip":"::1"}
+{"timestamp":"2026-04-28T09:23:38.580Z","level":"INFO","category":"API","message":"GET /api/nodes → 200 (223ms)","userId":1,"ip":"::1","metadata":{"method":"GET","path":"/api/nodes","status":200,"duration":223}}
+```
+
+### Logger Usage
+
+```javascript
+const logger = require('./utils/logger');
+
+// Basic logging
+logger.info('SYSTEM', 'Server started');
+logger.warn('AUTH', 'Token expired', { userId: 1, ip: '127.0.0.1' });
+logger.error('CRUD', 'Database error', { metadata: { error: err.message } });
+
+// Auth events
+logger.auth.login('username', { userId: 1, ip: '127.0.0.1' });
+logger.auth.logout('username', { userId: 1, ip: '127.0.0.1' });
+logger.auth.failedLogin('username', 'Invalid password', { ip: '127.0.0.1' });
+
+// API events
+logger.api.request('GET', '/api/nodes', { userId: 1, ip: '127.0.0.1' });
+logger.api.response('GET', '/api/nodes', 200, 150, { userId: 1, ip: '127.0.0.1' });
+
+// CRUD events
+logger.crud.create('users', 123, { userId: 1, ip: '127.0.0.1' });
+logger.crud.read('telemetry', { userId: 1, ip: '127.0.0.1' });
+logger.crud.update('mappings', 456, { userId: 1, ip: '127.0.0.1' });
+
+// Slideshow events
+logger.slideshow.start({ userId: 1, ip: '127.0.0.1' });
+logger.slideshow.switch('serviceId', { userId: 1, ip: '127.0.0.1' });
+```
+
+### Database Schema
+
+The `user_activity_log` table stores structured logs:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | INT | Auto-increment primary key |
+| `user_id` | INT | User ID (nullable) |
+| `level` | ENUM | DEBUG, INFO, WARN, ERROR |
+| `category` | ENUM | AUTH, API, SLIDESHOW, CRUD, SYSTEM |
+| `action` | VARCHAR(50) | Action type (LOGIN, LOGOUT, REQUEST, etc.) |
+| `resource` | VARCHAR(100) | Resource being accessed |
+| `details` | TEXT | Human-readable description |
+| `ip_address` | VARCHAR(45) | Client IP address |
+| `metadata` | JSON | Structured additional data |
+| `created_at` | TIMESTAMP | Log timestamp |
+
+### Querying Logs
+
+```sql
+-- Recent login attempts
+SELECT * FROM user_activity_log 
+WHERE category = 'AUTH' AND action = 'LOGIN' 
+ORDER BY created_at DESC LIMIT 10;
+
+-- API errors in last hour
+SELECT * FROM user_activity_log 
+WHERE level = 'ERROR' AND category = 'API' 
+AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR);
+
+-- User activity summary
+SELECT category, action, COUNT(*) as count 
+FROM user_activity_log 
+WHERE user_id = 1 AND created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
+GROUP BY category, action;
+```
+
+### Environment Variables
+
+```env
+# Optional: Enable console output in addition to file/DB (default: errors only)
+LOG_TO_CONSOLE=true
+```
+
+### Log Rotation
+
+- Logs automatically rotate weekly (new file every Sunday)
+- Old log files are not automatically deleted
+- Manually archive or delete old logs as needed:
+
+```bash
+# Archive logs older than 30 days
+find backend/logs/ -name "logs_*.jsonl" -mtime +30 -exec gzip {} \;
+
+# Delete logs older than 90 days
+find backend/logs/ -name "logs_*.jsonl" -mtime +90 -delete
+```
+
+### Git Ignore
+
+Log files are excluded from Git:
+
+```gitignore
+backend/logs/
+*.log
+```
+
+## 🔧 Troubleshooting
 
 ### Node Filtering Issues
 

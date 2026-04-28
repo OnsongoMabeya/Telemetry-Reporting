@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Structured Logging System (April 28, 2026)
+
+#### Backend Logging Infrastructure
+
+- **Structured JSON Logging** — All backend actions now logged in JSON format
+  - Log levels: DEBUG, INFO, WARN, ERROR
+  - Categories: AUTH, API, SLIDESHOW, CRUD, SYSTEM
+  - Dual output: Weekly file rotation + Database audit trail
+  - Log location: `backend/logs/logs_YYYY-MM-DD.jsonl` (week starts on Sunday)
+
+- **Database Migration (006_enhance_activity_log.sql)**
+  - Added `level` column (ENUM: DEBUG, INFO, WARN, ERROR)
+  - Added `category` column (ENUM: AUTH, API, SLIDESHOW, CRUD, SYSTEM)
+  - Added `metadata` column (JSON for structured data)
+  - Added indexes for efficient log queries
+
+- **Logger Utility (`backend/utils/logger.js`)**
+  - JSON structured format with timestamp, level, category, message
+  - Helper methods: `logger.auth.login()`, `logger.api.request()`, `logger.crud.read()`
+  - API request logging middleware with timing and user context
+  - Async DB inserts that never block the application
+
+- **Comprehensive Coverage**
+  - Authentication events (login, logout, token refresh, failed attempts)
+  - API requests (method, path, status, duration, user info)
+  - CRUD operations on all entities
+  - Slideshow events and keep-alive pings
+  - System events (startup, errors, DB connection)
+
+- **Security & Privacy**
+  - Logs excluded from Git (added to `.gitignore`)
+  - Weekly rotation prevents unbounded log growth
+  - User IDs and IP addresses captured for audit trails
+
 ### Added - Graph Quality Upgrade & Token Refresh (April 13, 2026)
 
 #### My Sites Graph Quality Upgrade
