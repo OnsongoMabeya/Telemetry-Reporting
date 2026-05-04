@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Base Station Map with Live Coordinates (May 4, 2026)
+
+#### Dynamic Map Data from mapviewtable
+
+- **Real-time Coordinates** — Map now uses live coordinates from `mapviewtable` instead of hardcoded values
+  - Queries latest entry per base station (most recent `time`)
+  - Supports 17+ stations: KITUI, KIBWEZI, LIMURU, KAKAMEGA, NAKURU, KISUMU, MERU, ELDORET, WEBUYE, NAROK, MAZERAS, NYERI, KISII, KAPENGURIA, MALINDI, MANDERA, NYADUNDO
+  - Fallback coordinates for stations not yet in `mapviewtable`
+
+- **Status-based Color Coding** — Markers now reflect `BaseStationStatus` values
+  - **1-10**: Green (#1FC700) — Good status
+  - **11-30**: Orange (#CF8700) — Warning status  
+  - **31-50**: Red (#D92A00) — Critical status
+  - Online/offline determined by `node_status_table.time` within 3 hours
+
+- **API Changes** (`/api/basestations-map`)
+  - New response fields: `statusTier` (good/warning/critical), `statusValue`, `statusColor`, `lastStatusUpdate`
+  - Removed "unknown" status — only online/offline
+  - Filter by node with `?nodeName=` query parameter
+
+- **Frontend Changes** (`KenyaMap.js`)
+  - Markers use dynamic `statusColor` from API
+  - Popup shows status tier and value
+  - Pulsing animation only for online stations
+
+#### Required Database Table
+
+```sql
+CREATE TABLE mapviewtable (
+  BaseStationName VARCHAR(100) NOT NULL,
+  Latitude DECIMAL(10,8) NOT NULL,
+  Longitude DECIMAL(11,8) NOT NULL,
+  BaseStationStatus INT NOT NULL,
+  time DATETIME NOT NULL,
+  INDEX idx_station_time (BaseStationName, time)
+);
+```
+
+---
+
 ### Added - Structured Logging System (April 28, 2026)
 
 #### Backend Logging Infrastructure

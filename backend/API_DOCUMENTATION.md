@@ -898,6 +898,90 @@ Retrieve telemetry data for a specific metric within a service.
 
 ---
 
+## Base Station Map API
+
+### Get Base Stations for Map
+
+Retrieve all base stations with GPS coordinates and status for map visualization.
+
+**Endpoint:** `GET /basestations-map`
+
+**Access:** All authenticated users
+
+**Query Parameters:**
+
+- `nodeName` (optional): Filter to stations belonging to specific node
+  - Example: `?nodeName=Aviation%20FM`
+
+**Response:**
+
+```json
+[
+  {
+    "id": "KITUI",
+    "name": "KITUI",
+    "lat": -1.27639,
+    "lng": 38.0325,
+    "status": "online",
+    "statusTier": "good",
+    "statusValue": 4,
+    "statusColor": "#1FC700",
+    "lastStatusUpdate": "2026-05-04T09:23:00.000Z"
+  },
+  {
+    "id": "KAKAMEGA",
+    "name": "KAKAMEGA",
+    "lat": 0.28273,
+    "lng": 34.751,
+    "status": "online",
+    "statusTier": "warning",
+    "statusValue": 15,
+    "statusColor": "#CF8700",
+    "lastStatusUpdate": "2026-05-04T09:20:00.000Z"
+  }
+]
+```
+
+**Response Fields:**
+
+| Field              | Type   | Description                         |
+|--------------------|--------|-------------------------------------|
+| `id`               | string | Station identifier (same as name)   |
+| `name`             | string | Base station name                   |
+| `lat`              | number | Latitude coordinate                 |
+| `lng`              | number | Longitude coordinate                |
+| `status`           | string | Online/offline status               |
+| `statusTier`       | string | good / warning / critical           |
+| `statusValue`      | number | BaseStationStatus counter (1-50)    |
+| `statusColor`      | string | Hex color code for marker           |
+| `lastStatusUpdate` | string | ISO timestamp of last status        |
+
+**Status Color Mapping:**
+
+| Status Value Range | Color             | Tier     |
+|--------------------|-------------------|----------|
+| 1-10               | #1FC700 (Green)   | good     |
+| 11-30              | #CF8700 (Orange)  | warning  |
+| 31-50              | #D92A00 (Red)     | critical |
+
+**Online/Offline Logic:**
+
+- **Online**: Station has reported to `node_status_table` within last 3 hours
+- **Offline**: No report in last 3 hours
+
+**Data Sources:**
+
+1. **Coordinates**: Latest entry from `mapviewtable` per station
+2. **Status Counter**: `BaseStationStatus` from same `mapviewtable` entry
+3. **Online Detection**: `MAX(time)` from `node_status_table` per station
+
+**Error Responses:**
+
+- `401`: Unauthorized (missing/invalid token)
+- `500`: Server error (database query failed)
+
+---
+
 ## Versioning
 
 Current API version: v1

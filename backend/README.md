@@ -732,7 +732,108 @@ backend/logs/
 *.log
 ```
 
-## 🔧 Troubleshooting
+## �️ Base Station Map
+
+The system includes an interactive map visualization showing all base stations across Kenya with real-time status indicators.
+
+### Data Sources
+
+The map combines data from two tables:
+
+1. **`mapviewtable`** — GPS coordinates and status counter
+   - `BaseStationName`: Station identifier
+   - `Latitude` / `Longitude`: GPS coordinates
+   - `BaseStationStatus`: Counter value (1-50)
+   - `time`: Timestamp of reading
+
+2. **`node_status_table`** — Online/offline detection
+   - Uses `MAX(time)` per station to determine if station reported within last 3 hours
+   - Online: Latest `time` within 3 hours of server time
+   - Offline: Latest `time` older than 3 hours
+
+### Status Color Coding
+
+Marker colors reflect `BaseStationStatus` value:
+
+| Range   | Color       | Hex Code  | Status   |
+|---------|-------------|-----------|----------|
+| 1-10    | 🟢 Green    | #1FC700   | Good     |
+| 11-30   | 🟠 Orange   | #CF8700   | Warning  |
+| 31-50   | 🔴 Red      | #D92A00   | Critical |
+
+### API Endpoint
+
+**`GET /api/basestations-map`**
+
+Returns all base stations with coordinates and status.
+
+**Query Parameters:**
+
+- `nodeName` (optional): Filter to stations belonging to specific node
+
+**Response:**
+
+```json
+[
+  {
+    "id": "KITUI",
+    "name": "KITUI",
+    "lat": -1.27639,
+    "lng": 38.0325,
+    "status": "online",
+    "statusTier": "good",
+    "statusValue": 4,
+    "statusColor": "#1FC700",
+    "lastStatusUpdate": "2026-05-04T09:23:00.000Z"
+  }
+]
+```
+
+### Fallback Coordinates
+
+For stations not yet in `mapviewtable`, the system uses hardcoded coordinates for 34+ known locations across Kenya. These are defined in the `/api/basestations-map` endpoint.
+
+### Frontend Component
+
+The `KenyaMap` React component (`frontend/src/components/KenyaMap.js`) renders the map using:
+
+- **Leaflet** for map tiles and markers
+- **Framer Motion** for marker animations
+- **Material-UI** for popup styling
+
+Features:
+
+- Auto-fit to Kenya boundaries on load
+- Pulsing animation for online stations
+- Click/hover interactions with station details
+- Color-coded markers based on status tier
+
+### Setting Up mapviewtable
+
+If the `mapviewtable` doesn't exist, create it:
+
+```sql
+CREATE TABLE mapviewtable (
+  BaseStationName VARCHAR(100) NOT NULL,
+  Latitude DECIMAL(10,8) NOT NULL,
+  Longitude DECIMAL(11,8) NOT NULL,
+  BaseStationStatus INT NOT NULL,
+  time DATETIME NOT NULL,
+  INDEX idx_station_time (BaseStationName, time)
+);
+```
+
+Insert sample data:
+
+```sql
+INSERT INTO mapviewtable (BaseStationName, Latitude, Longitude, BaseStationStatus, time)
+VALUES 
+  ('KITUI', -1.27639, 38.0325, 4, NOW()),
+  ('KAKAMEGA', 0.28273, 34.751, 15, NOW()),
+  ('KISUMU', -0.0917, 34.7679, 25, NOW());
+```
+
+## �� Troubleshooting
 
 ### Node Filtering Issues
 

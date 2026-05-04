@@ -147,6 +147,33 @@ The setup creates the following tables:
    - Tracks all metric mapping changes (CREATE, UPDATE, DELETE)
    - Stores old/new values, user, timestamp, IP address
 
+### Map Data Tables
+
+1. **`mapviewtable`** - Base station coordinates and status (v2.3+)
+   - Stores GPS coordinates (Latitude, Longitude) for each base station
+   - Stores `BaseStationStatus` counter value (1-50)
+   - Timestamp for each entry (supports time-series data)
+   - Used by `/api/basestations-map` for real-time map display
+   - Latest entry per station determines marker color on map
+
+   **Schema:**
+
+   ```sql
+   CREATE TABLE mapviewtable (
+     BaseStationName VARCHAR(100) NOT NULL,
+     Latitude DECIMAL(10,8) NOT NULL,
+     Longitude DECIMAL(11,8) NOT NULL,
+     BaseStationStatus INT NOT NULL,
+     time DATETIME NOT NULL,
+     INDEX idx_station_time (BaseStationName, time)
+   );
+   ```
+
+   **Status Color Mapping:**
+   - **1-10**: Green (#1FC700) — Good status
+   - **11-30**: Orange (#CF8700) — Warning status
+   - **31-50**: Red (#D92A00) — Critical status
+
 ### Additional Columns
 
 - **`users.access_all_nodes`** - Boolean flag for unrestricted node access
