@@ -390,4 +390,203 @@ router.get('/clients/:clientId/services/:serviceId/metrics/:metricId/telemetry',
   }
 });
 
+// ============================================================================
+// MY SITES MAP - Base Station Locations
+// ============================================================================
+
+// GET /api/my-sites/clients/:clientId/map-stations - Get base stations for client's map
+// Query param: serviceId (optional) - if provided, filters to service-specific stations
+router.get('/clients/:clientId/map-stations', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { clientId } = req.params;
+    const { serviceId } = req.query;
+
+    // Check if user has access to this client
+    const [access] = await db.query(
+      'SELECT id FROM user_client_assignments WHERE user_id = ? AND client_id = ? AND is_active = TRUE',
+      [userId, clientId]
+    );
+
+    if (access.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. You do not have access to this client.'
+      });
+    }
+
+    // Build query to get unique base stations
+    let baseStationsQuery;
+    let queryParams;
+
+    if (serviceId) {
+      // Service-level view: get base stations for specific service only
+      baseStationsQuery = `
+        SELECT DISTINCT mm.base_station_name
+        FROM client_services cs
+        INNER JOIN service_metric_assignments sma ON sma.service_id = cs.service_id
+        INNER JOIN metric_mappings mm ON mm.id = sma.metric_mapping_id
+        WHERE cs.client_id = ? 
+          AND cs.service_id = ?
+          AND mm.base_station_name IS NOT NULL 
+          AND mm.base_station_name != ''
+          AND mm.is_active = TRUE
+          AND sma.is_active = TRUE
+      `;
+      queryParams = [clientId, serviceId];
+    } else {
+      // Client-level view: get all base stations across all services
+      baseStationsQuery = `
+        SELECT DISTINCT mm.base_station_name
+        FROM client_services cs
+        INNER JOIN service_metric_assignments sma ON sma.service_id = cs.service_id
+        INNER JOIN metric_mappings mm ON mm.id = sma.metric_mapping_id
+        WHERE cs.client_id = ? 
+          AND mm.base_station_name IS NOT NULL 
+          AND mm.base_station_name != ''
+          AND mm.is_active = TRUE
+          AND sma.is_active = TRUE
+      `;
+      queryParams = [clientId];
+    }
+
+    const [baseStationRows] = await db.query(baseStationsQuery, queryParams);
+
+    if (baseStationRows.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'No base stations found for this client/service'
+      });
+    }
+
+    // Get unique base station names
+    const baseStationNames = baseStationRows.map(row => row.base_station_name.toUpperCase());
+    const placeholders = baseStationNames.map(() => '?').join(',');
+
+    // Query mapviewtable for latest coordinates and status per station
+    const [mapData] = await db.query(`
+      SELECT 
+        BaseStationName,
+        Latitude,
+        Longitude,
+        BaseStationStatus,
+        time
+      FROM mapviewtable mv1
+      WHERE time = (
+        SELECT MAX(time) 
+        FROM mapviewtable mv2 
+        WHERE mv2.BaseStationName = mv1.BaseStationName
+      )
+      AND UPPER(BaseStationName) IN (${placeholders})
+    `, baseStationNames);
+
+    // Get latest status time from node_status_table for online/offline determination
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    
+    const [statusRows] = await db.query(`
+      SELECT 
+        NodeBaseStationName,
+        MAX(time) as latestStatusTime
+      FROM node_status_table
+      WHERE UPPER(NodeBaseStationName) IN (${placeholders})
+      GROUP BY NodeBaseStationName
+    `, baseStationNames);
+
+    const statusTimeMap = new Map();
+    statusRows.forEach(row => {
+      statusTimeMap.set(row.NodeBaseStationName.toUpperCase(), new Date(row.latestStatusTime));
+    });
+
+    // Helper functions for status determination
+    const getStatusTier = (status) => {
+      if (status >= 1 && status <= 10) return 'good';
+      if (status >= 11 && status <= 30) return 'warning';
+      return 'critical';
+    };
+
+    const getStatusColor = (status) => {
+      if (status >= 1 && status <= 10) return '#1FC700';
+      if (status >= 11 && status <= 30) return '#CF8700';
+      return '#D92A00';
+    };
+
+    // Fallback coordinates for stations not in mapviewtable
+    const fallbackCoordinates = {
+      'KITUI': { lat: -1.27639, lng: 38.0325 },
+      'KIBWEZI': { lat: -2.23333, lng: 37.96667 },
+      'LIMURU': { lat: -1.11667, lng: 36.65 },
+      'KAKAMEGA': { lat: 0.28273, lng: 34.751 },
+      'NAKURU': { lat: -0.28333, lng: 36.06667 },
+      'KISUMU': { lat: -0.0917, lng: 34.7679 },
+      'MERU': { lat: 0.047, lng: 37.649 },
+      'ELDORET': { lat: 0.52036, lng: 35.26992 },
+      'WEBUYE': { lat: 0.594, lng: 34.769 },
+      'NAROK': { lat: -1.08001, lng: 35.8711 },
+      'MAZERAS': { lat: -3.9333, lng: 39.55 },
+      'NYERI': { lat: -0.42013, lng: 36.94759 },
+      'KISII': { lat: -0.68166, lng: 34.76666 },
+      'KAPENGURIA': { lat: 1.25809, lng: 35.1059 },
+      'MALINDI': { lat: -3.21799, lng: 40.11655 },
+      'MANDERA': { lat: 3.93726, lng: 41.85688 },
+      'NYADUNDO': { lat: -0.041, lng: 34.55 },
+      'NAIROBI': { lat: -1.286389, lng: 36.817223 },
+      'MOMBASA': { lat: -4.043477, lng: 39.668205 }
+    };
+
+    // Build response
+    const stations = baseStationNames.map(stationName => {
+      const mapRow = mapData.find(row => row.BaseStationName.toUpperCase() === stationName);
+      const fallback = fallbackCoordinates[stationName];
+      
+      let lat, lng, status, lastUpdate;
+      
+      if (mapRow) {
+        lat = mapRow.Latitude;
+        lng = mapRow.Longitude;
+        status = mapRow.BaseStationStatus;
+        lastUpdate = mapRow.time;
+      } else if (fallback) {
+        lat = fallback.lat;
+        lng = fallback.lng;
+        status = 0;
+        lastUpdate = null;
+      } else {
+        return null; // Skip stations without coordinates
+      }
+
+      // Determine online/offline status
+      const latestStatusTime = statusTimeMap.get(stationName);
+      const isOnline = latestStatusTime && (latestStatusTime > threeHoursAgo);
+
+      return {
+        id: stationName,
+        name: stationName,
+        lat,
+        lng,
+        status: isOnline ? 'online' : 'offline',
+        statusTier: getStatusTier(status),
+        statusValue: status,
+        statusColor: getStatusColor(status),
+        lastStatusUpdate: latestStatusTime ? latestStatusTime.toISOString() : null,
+        hasLiveData: !!mapRow
+      };
+    }).filter(station => station !== null);
+
+    res.json({
+      success: true,
+      data: stations,
+      count: stations.length,
+      viewType: serviceId ? 'service' : 'client'
+    });
+  } catch (error) {
+    logger.error('CRUD', 'Error fetching map stations', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch map stations',
+      message: error.message
+    });
+  }
+});
+
 module.exports = router;

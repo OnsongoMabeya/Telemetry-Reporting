@@ -849,7 +849,35 @@ VALUES
   ('KISUMU', -0.0917, 34.7679, 25, NOW());
 ```
 
-## �� Troubleshooting
+## 🗺️ My Sites Map
+
+The My Sites page includes a client-specific map showing base stations for each client:
+
+**API Endpoint:** `GET /api/my-sites/clients/:clientId/map-stations`
+
+**Features:**
+
+- **Client View**: Shows all base stations across all client services
+- **Service View**: Shows only base stations for the currently selected service
+- **Status Filters**: Toggle visibility of green (good), orange (warning), red (critical) stations
+- **Online/Offline Toggle**: Filter by connectivity status
+- **Slideshow Integration**: Map updates automatically when service changes during slideshow
+
+**How it works:**
+
+1. Queries `service_metric_assignments` joined with `metric_mappings` to find unique `base_station_name`s
+2. Fetches coordinates and status from `mapviewtable`
+3. Determines online/offline from `node_status_table.time`
+4. Returns stations with same color coding as dashboard map
+
+**Example Use Case:**
+
+- MediaMax client has services across Nairobi, Mombasa, and Kisumu
+- Client View shows all 3 stations on the map
+- Switching to "Weather Service" (Service View) shows only Kisumu station
+- User can filter to see only "critical" (red) stations
+
+## 🤝 Troubleshooting
 
 ### Node Filtering Issues
 

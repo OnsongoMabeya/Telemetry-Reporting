@@ -898,6 +898,93 @@ Retrieve telemetry data for a specific metric within a service.
 
 ---
 
+## My Sites Map API
+
+### Get Base Stations for Client Map
+
+Retrieve base stations with GPS coordinates for a specific client (optionally filtered by service).
+
+**Endpoint:** `GET /my-sites/clients/:clientId/map-stations`
+
+**Access:** Authenticated users with client assignment
+
+**Path Parameters:**
+
+- `clientId` (required): Client ID to fetch stations for
+
+**Query Parameters:**
+
+- `serviceId` (optional): Filter to stations belonging to specific service only
+  - When omitted: Returns all stations across all client services (client-level view)
+  - When provided: Returns only stations for that service (service-level view)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "NAIROBI",
+      "name": "NAIROBI",
+      "lat": -1.286389,
+      "lng": 36.817223,
+      "status": "online",
+      "statusTier": "good",
+      "statusValue": 4,
+      "statusColor": "#1FC700",
+      "lastStatusUpdate": "2026-05-04T09:23:00.000Z",
+      "hasLiveData": true
+    },
+    {
+      "id": "MOMBASA",
+      "name": "MOMBASA",
+      "lat": -4.043477,
+      "lng": 39.668205,
+      "status": "offline",
+      "statusTier": "warning",
+      "statusValue": 15,
+      "statusColor": "#CF8700",
+      "lastStatusUpdate": "2026-05-04T06:15:00.000Z",
+      "hasLiveData": true
+    }
+  ],
+  "count": 2,
+  "viewType": "client"
+}
+```
+
+**Response Fields:**
+
+| Field              | Type    | Description                                          |
+|--------------------|---------|------------------------------------------------------|
+| `id`               | string  | Station identifier (uppercase)                       |
+| `name`             | string  | Base station name                                    |
+| `lat`              | number  | Latitude coordinate                                  |
+| `lng`              | number  | Longitude coordinate                                 |
+| `status`           | string  | online / offline                                     |
+| `statusTier`       | string  | good/warning/critical based on status value          |
+| `statusValue`      | number  | BaseStationStatus counter value                      |
+| `statusColor`      | string  | Hex color for marker (#1FC700/#CF8700/#D92A00)       |
+| `lastStatusUpdate` | string  | ISO timestamp of latest node_status_table entry      |
+| `hasLiveData`      | boolean | True if coordinates from mapviewtable                |
+| `viewType`         | string  | "client" or "service" based on query                 |
+
+**Data Sources:**
+
+1. **Base Station Discovery**: Queries `metric_mappings` joined with `service_metric_assignments` to find all unique `base_station_name`s for the client/service
+2. **Coordinates**: Latest entry from `mapviewtable` per station (or fallback coordinates)
+3. **Status Counter**: `BaseStationStatus` from `mapviewtable`
+4. **Online Detection**: `MAX(time)` from `node_status_table` within last 3 hours
+
+**Error Responses:**
+
+- `403`: Access denied (user not assigned to client)
+- `404`: Client not found or no stations available
+- `500`: Database error
+
+---
+
 ## Base Station Map API
 
 ### Get Base Stations for Map

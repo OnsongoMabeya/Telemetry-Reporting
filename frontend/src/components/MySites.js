@@ -36,6 +36,7 @@ import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
 import { useMySites } from '../context/MySitesContext';
 import { useAuth } from '../context/AuthContext';
+import MySitesMap from './MySitesMap';
 
 const TIME_FILTERS = [
   { value: '5m', label: 'Last 5 minutes' },
@@ -969,6 +970,33 @@ const MySites = () => {
                 }),
               }}
             >
+              {/* Map Card - 2x2 size, placed first */}
+              {selectedClient && (
+                <Paper
+                  elevation={3}
+                  sx={{
+                    gridColumn: { xs: 'span 1', sm: 'span 2', md: 'span 2' },
+                    gridRow: 'span 2',
+                    p: isFullscreen ? 1.5 : 2,
+                    backgroundColor: 'background.paper',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    minHeight: isFullscreen ? 360 : 600,
+                  }}
+                >
+                  <MySitesMap
+                    clientId={selectedClient}
+                    serviceId={selectedService}
+                    clientName={clients.find(c => c.id === selectedClient)?.name || ''}
+                    serviceName={serviceDetails?.name || ''}
+                    isPlaying={isPlaying}
+                    isFullscreen={isFullscreen}
+                  />
+                </Paper>
+              )}
+
               {serviceDetails.metrics && serviceDetails.metrics.length > 0 ? (
                 serviceDetails.metrics.map((metric) => (
                   <Paper
