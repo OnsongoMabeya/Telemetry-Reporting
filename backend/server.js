@@ -686,119 +686,184 @@ app.get('/api/telemetry/:nodeName/:baseStation', authenticateToken, async (req, 
   }
 });
 
-// Base stations with coordinates for Kenya map
+// Base stations with coordinates for Kenya map - uses mapviewtable for coordinates and status
 app.get('/api/basestations-map', authenticateToken, async (req, res) => {
   try {
     const { nodeName } = req.query;
     
-    // Get base station names - filter by node if provided
-    let query = 'SELECT DISTINCT NodeBaseStationName FROM node_status_table WHERE NodeBaseStationName IS NOT NULL AND NodeBaseStationName != ""';
-    let queryParams = [];
+    // Get base station names from node_status_table - filter by node if provided
+    let nodeQuery = 'SELECT DISTINCT NodeBaseStationName FROM node_status_table WHERE NodeBaseStationName IS NOT NULL AND NodeBaseStationName != ""';
+    let nodeQueryParams = [];
     
     if (nodeName) {
-      query += ' AND NodeName = ?';
-      queryParams.push(nodeName);
+      nodeQuery += ' AND NodeName = ?';
+      nodeQueryParams.push(nodeName);
     }
     
-    query += ' ORDER BY NodeBaseStationName';
+    nodeQuery += ' ORDER BY NodeBaseStationName';
     
-    const [rows] = await pool.promise().query(query, queryParams);
+    const [nodeRows] = await pool.promise().query(nodeQuery, nodeQueryParams);
     
-    // Kenya base station coordinates mapping
-    const kenyaBaseStations = {
-      'Nairobi': { lat: -1.2921, lng: 36.8219, status: 'online' },
-      'Mombasa': { lat: -4.0435, lng: 39.6682, status: 'online' },
-      'Kisumu': { lat: -0.0917, lng: 34.7679, status: 'online' },
-      'Nakuru': { lat: -0.3031, lng: 36.0695, status: 'online' },
-      'Eldoret': { lat: 0.5143, lng: 35.2698, status: 'online' },
-      'Kitale': { lat: 1.0149, lng: 35.0013, status: 'online' },
-      'Garissa': { lat: -0.4528, lng: 39.6460, status: 'offline' },
-      'Kakamega': { lat: 0.2842, lng: 34.7519, status: 'online' },
-      'Nyeri': { lat: -0.4243, lng: 36.9568, status: 'online' },
-      'Meru': { lat: 0.0470, lng: 37.6555, status: 'online' },
-      'Thika': { lat: -1.0361, lng: 37.0695, status: 'online' },
-      'Malindi': { lat: -3.2192, lng: 40.1164, status: 'online' },
-      'Lamu': { lat: -2.2715, lng: 40.9020, status: 'offline' },
-      'Busia': { lat: 0.4608, lng: 34.1114, status: 'online' },
-      'Machakos': { lat: -1.5178, lng: 37.2628, status: 'online' },
-      'Kericho': { lat: -0.3675, lng: 35.2850, status: 'online' },
-      'Narok': { lat: -1.0785, lng: 35.8619, status: 'online' },
-      'Bungoma': { lat: 0.5635, lng: 34.5605, status: 'online' },
-      'Moyale': { lat: 3.5216, lng: 39.0546, status: 'offline' },
-      'Marsabit': { lat: 2.3287, lng: 37.9909, status: 'offline' },
-      'Isiolo': { lat: 0.3549, lng: 37.5821, status: 'online' },
-      'Wajir': { lat: 1.7471, lng: 40.0575, status: 'offline' },
-      'Mandera': { lat: 3.9377, lng: 41.8569, status: 'offline' },
-      'Garba Tula': { lat: 0.8333, lng: 38.9333, status: 'offline' },
-      'Lodwar': { lat: 3.1186, lng: 35.6201, status: 'offline' },
-      'Lokichoggio': { lat: 4.2045, lng: 34.3547, status: 'offline' },
-      'Kapenguria': { lat: 1.2388, lng: 35.1167, status: 'online' },
-      'Kapsowar': { lat: 1.0833, lng: 35.6500, status: 'online' },
-      'Iten': { lat: 0.9500, lng: 35.4167, status: 'online' },
-      'Kabarnet': { lat: 0.4929, lng: 35.7355, status: 'online' },
-      'Marigat': { lat: 0.4667, lng: 36.0333, status: 'online' },
-      // Add uppercase versions to match database entries
-      'NAIROBI': { lat: -1.2921, lng: 36.8219, status: 'online' },
-      'MOMBASA': { lat: -4.0435, lng: 39.6682, status: 'online' },
-      'KISUMU': { lat: -0.0917, lng: 34.7679, status: 'online' },
-      'NAKURU': { lat: -0.3031, lng: 36.0695, status: 'online' },
-      'ELDORET': { lat: 0.5143, lng: 35.2698, status: 'online' },
-      'KITALE': { lat: 1.0149, lng: 35.0013, status: 'online' },
-      'GARISSA': { lat: -0.4528, lng: 39.6460, status: 'offline' },
-      'KAKAMEGA': { lat: 0.2842, lng: 34.7519, status: 'online' },
-      'NYERI': { lat: -0.4243, lng: 36.9568, status: 'online' },
-      'MERU': { lat: 0.0470, lng: 37.6555, status: 'online' },
-      'THIKA': { lat: -1.0361, lng: 37.0695, status: 'online' },
-      'MALINDI': { lat: -3.2192, lng: 40.1164, status: 'online' },
-      'LAMU': { lat: -2.2715, lng: 40.9020, status: 'offline' },
-      'BUSIA': { lat: 0.4608, lng: 34.1114, status: 'online' },
-      'MACHAKOS': { lat: -1.5178, lng: 37.2628, status: 'online' },
-      'KERICHO': { lat: -0.3675, lng: 35.2850, status: 'online' },
-      'NAROK': { lat: -1.0785, lng: 35.8619, status: 'online' },
-      'BUNGOMA': { lat: 0.5635, lng: 34.5605, status: 'online' },
-      'MOYALE': { lat: 3.5216, lng: 39.0546, status: 'offline' },
-      'MARSABIT': { lat: 2.3287, lng: 37.9909, status: 'offline' },
-      'ISIOLO': { lat: 0.3549, lng: 37.5821, status: 'online' },
-      'WAJIR': { lat: 1.7471, lng: 40.0575, status: 'offline' },
-      'MANDERA': { lat: 3.9377, lng: 41.8569, status: 'offline' },
-      'LIMURU': { lat: -1.1085, lng: 36.6421, status: 'online' },
-      'LIMURU_NMG': { lat: -1.1085, lng: 36.6421, status: 'online' },
-      'WEBUYE': { lat: 0.6069, lng: 34.7399, status: 'online' },
-      'MAZERAS': { lat: -3.6739, lng: 39.4927, status: 'online' }
-    };
+    // Get latest coordinates and status from mapviewtable for all stations
+    const [mapViewRows] = await pool.promise().query(`
+      SELECT 
+        BaseStationName,
+        Latitude,
+        Longitude,
+        BaseStationStatus,
+        time
+      FROM mapviewtable mv1
+      WHERE time = (
+        SELECT MAX(time) 
+        FROM mapviewtable mv2 
+        WHERE mv2.BaseStationName = mv1.BaseStationName
+      )
+    `);
     
-    // Map database stations to coordinates
-    const baseStations = rows.map(row => {
-      const stationName = row.NodeBaseStationName;
-      // Try to find coordinates using case-insensitive matching
-      const coords = kenyaBaseStations[stationName] || 
-                   kenyaBaseStations[stationName.toLowerCase()] ||
-                   kenyaBaseStations[stationName.charAt(0).toUpperCase() + stationName.slice(1).toLowerCase()];
-      
-      if (coords) {
-        return {
-          id: stationName,
-          name: stationName,
-          lat: coords.lat,
-          lng: coords.lng,
-          status: coords.status
-        };
-      } else {
-        // For stations not in our mapping, assign approximate coordinates
-        logger.debug('CRUD', `Station not found in mapping: ${stationName}`);
-        return {
-          id: stationName,
-          name: stationName,
-          lat: -1.2921 + (Math.random() - 0.5) * 4, // Random around Nairobi
-          lng: 36.8219 + (Math.random() - 0.5) * 4,
-          status: 'unknown'
-        };
-      }
+    // Create a map of station data from mapviewtable
+    const stationDataMap = new Map();
+    mapViewRows.forEach(row => {
+      stationDataMap.set(row.BaseStationName.toUpperCase(), {
+        lat: parseFloat(row.Latitude),
+        lng: parseFloat(row.Longitude),
+        statusValue: parseInt(row.BaseStationStatus),
+        lastUpdate: row.time
+      });
     });
     
-    res.json(baseStations);
+    // Get latest update time from node_status_table for each station to determine online/offline
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    
+    const [statusRows] = await pool.promise().query(`
+      SELECT 
+        NodeBaseStationName,
+        MAX(time) as latestStatusTime
+      FROM node_status_table
+      WHERE NodeBaseStationName IS NOT NULL AND NodeBaseStationName != ""
+      GROUP BY NodeBaseStationName
+    `);
+    
+    const statusTimeMap = new Map();
+    statusRows.forEach(row => {
+      statusTimeMap.set(row.NodeBaseStationName.toUpperCase(), new Date(row.latestStatusTime));
+    });
+    
+    // Hardcoded fallback coordinates for stations not in mapviewtable
+    const fallbackCoordinates = {
+      'NAIROBI': { lat: -1.2921, lng: 36.8219 },
+      'MOMBASA': { lat: -4.0435, lng: 39.6682 },
+      'KISUMU': { lat: -0.0917, lng: 34.7679 },
+      'NAKURU': { lat: -0.3031, lng: 36.0695 },
+      'ELDORET': { lat: 0.5143, lng: 35.2698 },
+      'KITALE': { lat: 1.0149, lng: 35.0013 },
+      'GARISSA': { lat: -0.4528, lng: 39.6460 },
+      'KAKAMEGA': { lat: 0.2842, lng: 34.7519 },
+      'NYERI': { lat: -0.4243, lng: 36.9568 },
+      'MERU': { lat: 0.0470, lng: 37.6555 },
+      'THIKA': { lat: -1.0361, lng: 37.0695 },
+      'MALINDI': { lat: -3.2192, lng: 40.1164 },
+      'LAMU': { lat: -2.2715, lng: 40.9020 },
+      'BUSIA': { lat: 0.4608, lng: 34.1114 },
+      'MACHAKOS': { lat: -1.5178, lng: 37.2628 },
+      'KERICHO': { lat: -0.3675, lng: 35.2850 },
+      'NAROK': { lat: -1.0785, lng: 35.8619 },
+      'BUNGOMA': { lat: 0.5635, lng: 34.5605 },
+      'MOYALE': { lat: 3.5216, lng: 39.0546 },
+      'MARSABIT': { lat: 2.3287, lng: 37.9909 },
+      'ISIOLO': { lat: 0.3549, lng: 37.5821 },
+      'WAJIR': { lat: 1.7471, lng: 40.0575 },
+      'MANDERA': { lat: 3.9377, lng: 41.8569 },
+      'LIMURU': { lat: -1.1085, lng: 36.6421 },
+      'LIMURU_NMG': { lat: -1.1424, lng: 36.6409 },
+      'WEBUYE': { lat: 0.6069, lng: 34.7399 },
+      'MAZERAS': { lat: -3.6739, lng: 39.4927 },
+      'KITUI': { lat: -1.3667, lng: 38.0167 },
+      'KIBWEZI': { lat: -2.4167, lng: 37.9667 },
+      'KISII': { lat: -0.6833, lng: 34.7667 },
+      'KAPENGURIA': { lat: 1.2388, lng: 35.1167 },
+      'NYADUNDO': { lat: -0.1167, lng: 34.9000 }
+    };
+    
+    // Helper function to get status color based on BaseStationStatus value
+    const getStatusColor = (statusValue) => {
+      if (statusValue >= 1 && statusValue <= 10) return '#1FC700';  // Green
+      if (statusValue >= 11 && statusValue <= 30) return '#CF8700';  // Orange
+      if (statusValue >= 31 && statusValue <= 50) return '#D92A00';  // Red
+      return '#CF8700'; // Default to orange for unknown values
+    };
+    
+    // Helper function to get status tier for frontend display
+    const getStatusTier = (statusValue) => {
+      if (statusValue >= 1 && statusValue <= 10) return 'good';
+      if (statusValue >= 11 && statusValue <= 30) return 'warning';
+      if (statusValue >= 31 && statusValue <= 50) return 'critical';
+      return 'warning';
+    };
+    
+    // Map database stations to coordinates and status
+    const baseStations = await Promise.all(nodeRows.map(async (row) => {
+      const stationName = row.NodeBaseStationName;
+      const stationNameUpper = stationName.toUpperCase();
+      
+      // Check if we have data from mapviewtable
+      const mapData = stationDataMap.get(stationNameUpper);
+      
+      let lat, lng, statusValue, statusTier, statusColor;
+      
+      if (mapData) {
+        // Use coordinates and status from mapviewtable
+        lat = mapData.lat;
+        lng = mapData.lng;
+        statusValue = mapData.statusValue;
+      } else {
+        // Try fallback coordinates
+        const fallback = fallbackCoordinates[stationNameUpper] || 
+                        fallbackCoordinates[stationName] ||
+                        fallbackCoordinates[stationName.charAt(0).toUpperCase() + stationName.slice(1).toUpperCase()];
+        
+        if (fallback) {
+          lat = fallback.lat;
+          lng = fallback.lng;
+        } else {
+          // Last resort: try to geocode from station name
+          logger.debug('API', `Attempting geocode for station: ${stationName}`);
+          // For now, skip stations we can't locate
+          return null;
+        }
+        statusValue = 0; // Unknown status
+      }
+      
+      // Determine online/offline status based on node_status_table timestamp
+      const latestStatusTime = statusTimeMap.get(stationNameUpper);
+      const isOnline = latestStatusTime && latestStatusTime >= threeHoursAgo;
+      
+      statusTier = getStatusTier(statusValue);
+      statusColor = getStatusColor(statusValue);
+      
+      return {
+        id: stationName,
+        name: stationName,
+        lat: lat,
+        lng: lng,
+        status: isOnline ? 'online' : 'offline',
+        statusTier: statusTier,
+        statusValue: statusValue,
+        statusColor: statusColor,
+        lastStatusUpdate: latestStatusTime ? latestStatusTime.toISOString() : null
+      };
+    }));
+    
+    // Filter out null entries (stations we couldn't locate)
+    const validStations = baseStations.filter(station => station !== null);
+    
+    res.json(validStations);
   } catch (error) {
-    logger.error('CRUD', 'Error fetching base stations for map', { metadata: { error: error.message } });
+    logger.error('API', 'Error fetching base stations for map', { 
+      metadata: { 
+        error: error.message,
+        stack: error.stack
+      } 
+    });
     res.status(500).json({ 
       error: 'Internal server error',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined 

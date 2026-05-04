@@ -13,8 +13,7 @@ import {
 import { 
   Refresh, 
   Wifi, 
-  WifiOff, 
-  HelpOutline
+  WifiOff
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from '../services/axiosInterceptor';
@@ -22,21 +21,14 @@ import { API_BASE_URL } from '../config/api';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// Enhanced custom marker icons with animations
-const createCustomIcon = (status, isSelected = false) => {
-  const colors = {
-    online: '#4CAF50',
-    offline: '#F44336', 
-    unknown: '#FF9800'
-  };
-  
-  const color = colors[status] || colors.unknown;
+// Enhanced custom marker icons with animations - uses statusColor from API
+const createCustomIcon = (statusColor, isOnline, isSelected = false) => {
   const scale = isSelected ? 1.5 : 1;
-  const pulseAnimation = status === 'online' ? `
+  const pulseAnimation = isOnline ? `
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(76, 175, 80, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+      0% { box-shadow: 0 0 0 0 ${statusColor}B3; }
+      70% { box-shadow: 0 0 0 10px ${statusColor}00; }
+      100% { box-shadow: 0 0 0 0 ${statusColor}00; }
     }
   ` : '';
 
@@ -44,7 +36,7 @@ const createCustomIcon = (status, isSelected = false) => {
     html: `
       <style>${pulseAnimation}</style>
       <div style="
-        background: linear-gradient(135deg, ${color} 0%, ${alpha(color, 0.8)} 100%);
+        background: linear-gradient(135deg, ${statusColor} 0%, ${alpha(statusColor, 0.8)} 100%);
         width: ${24 * scale}px; 
         height: ${24 * scale}px; 
         border-radius: 50%; 
@@ -53,7 +45,7 @@ const createCustomIcon = (status, isSelected = false) => {
         display: flex;
         align-items: center;
         justify-content: center;
-        animation: ${status === 'online' ? 'pulse 2s infinite' : 'none'};
+        animation: ${isOnline ? 'pulse 2s infinite' : 'none'};
         position: relative;
       ">
         <div style="
@@ -126,24 +118,32 @@ const KenyaMap = ({ selectedNode, onStatusUpdate }) => {
     return () => clearInterval(interval);
   }, [selectedNode, isAuthenticated, fetchBaseStations]);
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'online': return <Wifi />;
-      case 'offline': return <WifiOff />;
-      default: return <HelpOutline />;
-    }
+  const getStatusIcon = (isOnline) => {
+    return isOnline ? <Wifi /> : <WifiOff />;
   };
 
+  // Count stations by status tier (good/warning/critical)
+  const goodCount = baseStations.filter(station => station.statusTier === 'good').length;
+  const warningCount = baseStations.filter(station => station.statusTier === 'warning').length;
+  const criticalCount = baseStations.filter(station => station.statusTier === 'critical').length;
+  
+  // Also count online/offline for compatibility
   const onlineCount = baseStations.filter(station => station.status === 'online').length;
   const offlineCount = baseStations.filter(station => station.status === 'offline').length;
-  const unknownCount = baseStations.filter(station => station.status === 'unknown').length;
 
   // Update parent component with status counts
   useEffect(() => {
     if (onStatusUpdate) {
-      onStatusUpdate({ onlineCount, offlineCount, unknownCount });
+      onStatusUpdate({ 
+        onlineCount, 
+        offlineCount, 
+        goodCount,
+        warningCount,
+        criticalCount,
+        total: baseStations.length 
+      });
     }
-  }, [onlineCount, offlineCount, unknownCount, onStatusUpdate]);
+  }, [onlineCount, offlineCount, goodCount, warningCount, criticalCount, baseStations.length, onStatusUpdate]);
 
   if (loading) {
     return (
@@ -245,7 +245,11 @@ const KenyaMap = ({ selectedNode, onStatusUpdate }) => {
             >
               <Marker
                 position={[station.lat, station.lng]}
-                icon={createCustomIcon(station.status, selectedStation === station.id)}
+                icon={createCustomIcon(
+                  station.statusColor || '#CF8700', 
+                  station.status === 'online', 
+                  selectedStation === station.id
+                )}
                 eventHandlers={{
                   click: () => setSelectedStation(station.id),
                   mouseover: () => setHoveredStation(station.id),
@@ -270,15 +274,20 @@ const KenyaMap = ({ selectedNode, onStatusUpdate }) => {
                         {station.name}
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                        {getStatusIcon(station.status)}
+                        {getStatusIcon(station.status === 'online')}
                         <Typography variant="body2" sx={{ 
                           fontWeight: 600,
-                          color: station.status === 'online' ? '#4CAF50' : 
-                                 station.status === 'offline' ? '#F44336' : '#FF9800'
+                          color: station.statusColor || '#CF8700'
                         }}>
-                          {station.status?.toUpperCase()}
+                          {station.status === 'online' ? 'ONLINE' : 'OFFLINE'} 
+                          {' '}
+                          ({station.statusValue !== undefined ? station.statusValue : 'N/A'})
                         </Typography>
                       </Box>
+                      <Typography variant="caption" sx={{ color: '#666' }}>
+                        Status: {station.statusTier?.toUpperCase() || 'UNKNOWN'}
+                      </Typography>
+                      <br />
                       <Typography variant="caption" sx={{ color: '#666' }}>
                         Lat: {station.lat.toFixed(4)}, Lng: {station.lng.toFixed(4)}
                       </Typography>

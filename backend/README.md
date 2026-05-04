@@ -625,7 +625,7 @@ The backend includes a comprehensive structured logging system for audit trails,
 
 ### Log Location
 
-```
+```bash
 backend/logs/logs_2026-04-26.jsonl  (example: week starting Sunday, April 26)
 ```
 
@@ -665,22 +665,22 @@ logger.slideshow.start({ userId: 1, ip: '127.0.0.1' });
 logger.slideshow.switch('serviceId', { userId: 1, ip: '127.0.0.1' });
 ```
 
-### Database Schema
+### Database Schema 2
 
 The `user_activity_log` table stores structured logs:
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | INT | Auto-increment primary key |
-| `user_id` | INT | User ID (nullable) |
-| `level` | ENUM | DEBUG, INFO, WARN, ERROR |
-| `category` | ENUM | AUTH, API, SLIDESHOW, CRUD, SYSTEM |
-| `action` | VARCHAR(50) | Action type (LOGIN, LOGOUT, REQUEST, etc.) |
-| `resource` | VARCHAR(100) | Resource being accessed |
-| `details` | TEXT | Human-readable description |
-| `ip_address` | VARCHAR(45) | Client IP address |
-| `metadata` | JSON | Structured additional data |
-| `created_at` | TIMESTAMP | Log timestamp |
+| Column       | Type         | Description                                |
+|--------------|--------------|--------------------------------------------|
+| `id`         | INT          | Auto-increment primary key                 |
+| `user_id`    | INT          | User ID (nullable)                         |
+| `level`      | ENUM         | DEBUG, INFO, WARN, ERROR                   |
+| `category`   | ENUM         | AUTH, API, SLIDESHOW, CRUD, SYSTEM         |
+| `action`     | VARCHAR(50)  | Action type (LOGIN, LOGOUT, REQUEST, etc.) |
+| `resource`   | VARCHAR(100) | Resource being accessed                    |
+| `details`    | TEXT         | Human-readable description                 |
+| `ip_address` | VARCHAR(45)  | Client IP address                          |
+| `metadata`   | JSON         | Structured additional data                 |
+| `created_at` | TIMESTAMP    | Log timestamp                              |
 
 ### Querying Logs
 
@@ -702,7 +702,7 @@ WHERE user_id = 1 AND created_at > DATE_SUB(NOW(), INTERVAL 7 DAY)
 GROUP BY category, action;
 ```
 
-### Environment Variables
+### Environment Variables 2
 
 ```env
 # Optional: Enable console output in addition to file/DB (default: errors only)
