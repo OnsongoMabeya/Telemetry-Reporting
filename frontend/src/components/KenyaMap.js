@@ -22,8 +22,14 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
 // Enhanced custom marker icons with animations - uses statusColor from API
+// Offline stations: 10% opacity, gray center, no pulse
+// Online stations: full opacity, white center, pulsing animation
 const createCustomIcon = (statusColor, isOnline, isSelected = false) => {
   const scale = isSelected ? 1.5 : 1;
+  const opacity = isOnline ? '1' : '0.9';
+  const centerColor = isOnline ? 'white' : '#999999';
+  const borderColor = isOnline ? 'white' : '#cccccc';
+
   const pulseAnimation = isOnline ? `
     @keyframes pulse {
       0% { box-shadow: 0 0 0 0 ${statusColor}B3; }
@@ -37,19 +43,21 @@ const createCustomIcon = (statusColor, isOnline, isSelected = false) => {
       <style>${pulseAnimation}</style>
       <div style="
         background: linear-gradient(135deg, ${statusColor} 0%, ${alpha(statusColor, 0.8)} 100%);
-        width: ${24 * scale}px; 
-        height: ${24 * scale}px; 
-        border-radius: 50%; 
-        border: 3px solid white;
+        width: ${24 * scale}px;
+        height: ${24 * scale}px;
+        border-radius: 50%;
+        border: 3px solid ${borderColor};
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         display: flex;
         align-items: center;
         justify-content: center;
         animation: ${isOnline ? 'pulse 2s infinite' : 'none'};
         position: relative;
+        opacity: ${opacity};
+        filter: ${isOnline ? 'none' : 'grayscale(30%)'};
       ">
         <div style="
-          background: white;
+          background: ${centerColor};
           width: ${8 * scale}px;
           height: ${8 * scale}px;
           border-radius: 50%;

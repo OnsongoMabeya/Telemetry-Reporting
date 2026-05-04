@@ -753,13 +753,29 @@ The map combines data from two tables:
 
 ### Status Color Coding
 
-Marker colors reflect `BaseStationStatus` value:
+Marker colors reflect `BaseStationStatus` value, with visual distinction for online vs offline:
 
-| Range   | Color       | Hex Code  | Status   |
+#### Status Tier (BaseStationStatus)
+
+| Range   | Color       | Hex Code  | Tier     |
 |---------|-------------|-----------|----------|
 | 1-10    | 🟢 Green    | #1FC700   | Good     |
 | 11-30   | 🟠 Orange   | #CF8700   | Warning  |
 | 31-50   | 🔴 Red      | #D92A00   | Critical |
+
+#### Online vs Offline Visual Style
+
+| State   | Opacity | Center Dot | Border       | Animation    | Filter          |
+|---------|---------|------------|--------------|--------------|-----------------|
+| Online  | 100%    | White      | White        | Pulsing glow | Full color      |
+| Offline | 50%     | Gray       | Light gray   | Static       | 30% grayscale   |
+
+**Examples:**
+
+- **Bright green + pulse** = Online, status good
+- **Dimmed orange + static** = Offline, was in warning state
+- **Bright red + pulse** = Online, status critical (needs attention!)
+- **Dimmed red + static** = Offline, was critical before going offline
 
 ### API Endpoint
 
