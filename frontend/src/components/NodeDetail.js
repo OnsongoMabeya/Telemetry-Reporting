@@ -503,7 +503,7 @@ const NodeDetail = () => {
               xs: '1fr',
               sm: 'repeat(2, 1fr)',
               md: 'repeat(3, 1fr)',
-              lg: 'repeat(4, 1fr)',
+              lg: 'repeat(5, 1fr)',
             },
             gap: 3,
             gridAutoRows: '300px',

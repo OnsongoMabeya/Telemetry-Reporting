@@ -957,8 +957,8 @@ const MySites = () => {
                 gridTemplateColumns: {
                   xs: '1fr',
                   sm: 'repeat(2, 1fr)',
-                  md: isFullscreen ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
-                  lg: 'repeat(4, 1fr)',
+                  md: isFullscreen ? 'repeat(5, 1fr)' : 'repeat(3, 1fr)',
+                  lg: 'repeat(5, 1fr)',
                 },
                 gap: isFullscreen ? 1.5 : 3,
                 gridAutoRows: isFullscreen ? 'minmax(180px, 1fr)' : '300px',
