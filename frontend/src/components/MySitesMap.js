@@ -21,7 +21,7 @@ import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 
 // Helper function for color alpha (since alpha from @mui/material/styles may not work as expected)
 const getAlphaColor = (color, opacity) => {
@@ -85,6 +85,24 @@ const createCustomIcon = (statusColor, isOnline, isSelected = false) => {
   });
 };
 
+
+// Component to set fixed Kenya view - doesn't zoom in on sites
+const MapBounds = () => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (map) {
+      // Fixed bounds for all of Kenya (no zooming into sites)
+      const kenyaBounds = [
+        [-4.5, 34],    // Southwest corner
+        [5, 41.5]      // Northeast corner
+      ];
+      map.fitBounds(kenyaBounds, { padding: [10, 10] });
+    }
+  }, [map]);
+  
+  return null;
+};
 
 const MySitesMap = ({ 
   clientId, 
@@ -318,14 +336,17 @@ const MySitesMap = ({
       {/* Map Container */}
       <Box sx={{ flex: 1, position: 'relative', minHeight: 300 }}>
         <MapContainer
-          center={[0.1769, 37.9083]} // Kenya center
+          center={[0.1769, 37.9083]} // Kenya center (fallback)
           zoom={6}
+          minZoom={3}
           style={{ height: '100%', width: '100%', borderRadius: 8 }}
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
+          
+          <MapBounds />
           
           {filteredStations.map((station) => (
             <Marker
