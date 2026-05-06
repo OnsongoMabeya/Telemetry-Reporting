@@ -92,14 +92,18 @@ const MapBounds = ({ isFullscreen }) => {
   
   useEffect(() => {
     if (map) {
-      // Tight bounds for Kenya - exact country borders
-      const kenyaBounds = [
-        [-4.7, 34.0],    // Southwest corner (Lake Victoria area)
-        [5.0, 41.9]      // Northeast corner (Mandera/Somalia border)
-      ];
+      // Fullscreen: slightly zoomed in bounds to spread out stations
+      // Normal: full Kenya bounds with padding
+      const kenyaBounds = isFullscreen
+        ? [
+            [-3.5, 35.5],    // Zoomed in SW (cuts off southern border)
+            [3.5, 41.0]      // Zoomed in NE (cuts off northern border)
+          ]
+        : [
+            [-4.7, 34.0],    // Full Kenya SW
+            [5.0, 41.9]      // Full Kenya NE
+          ];
       
-      // Fullscreen: no padding, tight fit edge-to-edge
-      // Normal: 10px padding for aesthetics
       const padding = isFullscreen ? [0, 0] : [10, 10];
       
       map.fitBounds(kenyaBounds, { padding });
