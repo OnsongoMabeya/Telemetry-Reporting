@@ -902,7 +902,7 @@ Retrieve telemetry data for a specific metric within a service.
 
 ### Get Base Stations for Client Map
 
-Retrieve base stations with GPS coordinates for a specific client (optionally filtered by service).
+Retrieve base stations with GPS coordinates for a specific client (optionally filtered by service). The frontend map displays all of Kenya with fixed bounds - stations are plotted on this view without auto-zooming.
 
 **Endpoint:** `GET /my-sites/clients/:clientId/map-stations`
 

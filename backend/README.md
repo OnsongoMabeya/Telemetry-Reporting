@@ -862,6 +862,7 @@ The My Sites page includes a client-specific map showing base stations for each 
 - **Status Filters**: Toggle visibility of green (good), orange (warning), red (critical) stations
 - **Online/Offline Toggle**: Filter by connectivity status
 - **Slideshow Integration**: Map updates automatically when service changes during slideshow
+- **Fixed Kenya View**: Map displays all of Kenya with fixed bounds (no auto-zoom to stations)
 
 **How it works:**
 
@@ -876,6 +877,7 @@ The My Sites page includes a client-specific map showing base stations for each 
 - Client View shows all 3 stations on the map
 - Switching to "Weather Service" (Service View) shows only Kisumu station
 - User can filter to see only "critical" (red) stations
+- Map maintains fixed view of all Kenya regardless of which stations are visible
 
 ## 🤝 Troubleshooting
 

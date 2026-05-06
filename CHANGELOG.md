@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Grid Layout (May 6, 2026)
+
+- **Dashboard and My Sites Grid** — Changed from 4 columns to 5 columns
+  - Desktop view (`lg` breakpoint): Now displays 5 cards per row
+  - My Sites fullscreen mode: Also displays 5 cards per row
+  - Map cards remain 2×2 size (span 2 columns × 2 rows)
+  - Card heights remain at 300px
+
+### Changed - Map View Behavior (May 6, 2026)
+
+- **Fixed Kenya View** — Map now displays all of Kenya with fixed bounds
+  - Bounds set to `[-4.5, 34]` (SW) to `[5, 41.5]` (NE)
+  - No auto-zoom when stations are filtered or selected
+  - All stations remain visible within the fixed view
+  - 10px padding around map edges
+
 ### Added - Base Station Map with Live Coordinates (May 4, 2026)
 
 #### Dynamic Map Data from mapviewtable
