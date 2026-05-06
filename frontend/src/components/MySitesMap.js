@@ -86,20 +86,25 @@ const createCustomIcon = (statusColor, isOnline, isSelected = false) => {
 };
 
 
-// Component to set fixed Kenya view - doesn't zoom in on sites
-const MapBounds = () => {
+// Component to set fixed Kenya view - tight fit in fullscreen, normal with padding otherwise
+const MapBounds = ({ isFullscreen }) => {
   const map = useMap();
   
   useEffect(() => {
     if (map) {
-      // Fixed bounds for all of Kenya (no zooming into sites)
+      // Tight bounds for Kenya - exact country borders
       const kenyaBounds = [
-        [-4.5, 34],    // Southwest corner
-        [5, 41.5]      // Northeast corner
+        [-4.7, 34.0],    // Southwest corner (Lake Victoria area)
+        [5.0, 41.9]      // Northeast corner (Mandera/Somalia border)
       ];
-      map.fitBounds(kenyaBounds, { padding: [10, 10] });
+      
+      // Fullscreen: no padding, tight fit edge-to-edge
+      // Normal: 10px padding for aesthetics
+      const padding = isFullscreen ? [0, 0] : [10, 10];
+      
+      map.fitBounds(kenyaBounds, { padding });
     }
-  }, [map]);
+  }, [map, isFullscreen]);
   
   return null;
 };
@@ -346,7 +351,7 @@ const MySitesMap = ({
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
           
-          <MapBounds />
+          <MapBounds isFullscreen={isFullscreen} />
           
           {filteredStations.map((station) => (
             <Marker
