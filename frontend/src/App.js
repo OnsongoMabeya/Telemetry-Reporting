@@ -7,6 +7,7 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import NodeDetail from './components/NodeDetail';
 import UserManagement from './components/UserManagement';
 import VisualizationSettings from './components/VisualizationSettings';
+import MetricViewSettings from './components/MetricViewSettings';
 import Alerts from './pages/Alerts';
 import MySites from './components/MySites';
 import MySitesCustomization from './components/MySitesCustomization';
@@ -367,6 +368,7 @@ const AppContent = () => {
                   <Route path="/my-sites-customization" element={<MySitesCustomization />} />
                   <Route path="/users" element={<UserManagement />} />
                   <Route path="/visualization-settings" element={<VisualizationSettings />} />
+                  <Route path="/metric-view-settings" element={<MetricViewSettings />} />
                   <Route path="/alerts" element={<Alerts />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

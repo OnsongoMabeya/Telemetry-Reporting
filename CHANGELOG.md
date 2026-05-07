@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Metric View Settings (May 7, 2026)
+
+- **Graph/Dial Toggle** — Metrics can now display as either:
+  - Line Graph (time-series with historical data)
+  - Dial/Gauge (current value with color-coded zones)
+
+- **Merge Groups** — Combine multiple metrics into a single multi-line graph
+  - Admin can select any metrics to merge
+  - Shared X-axis (time) with individual colored lines per metric
+  - Group name displayed on the merged card
+
+- **Admin Configuration Page** (`/metric-view-settings`)
+  - List all metrics with current view type
+  - Toggle individual metrics: Line Graph ↔ Dial
+  - Create merge groups via dialog with metric selection
+  - Batch actions: "All Line Graphs", "All Dials", "Ungroup All"
+  - Ungroup individual merge groups
+
+- **Database Schema**
+  - New `metric_view_settings` table
+  - Fields: `view_type` (line/dial), `merge_group_id`, `merge_group_name`, `display_order`
+  - Foreign key to `metric_mappings`
+
+- **API Endpoints**
+  - `GET /api/metric-view-settings` — Fetch all settings
+  - `POST /api/metric-view-settings` — Create/update setting
+  - `POST /api/metric-view-settings/merge` — Create merge group
+  - `POST /api/metric-view-settings/ungroup/:groupId` — Ungroup metrics
+
+- **Frontend Components**
+  - `DialView.js` — Animated gauge with color zones (green/orange/red)
+  - `MergedGraphView.js` — Multi-metric line graph with legend
+  - `MetricViewSettings.js` — Admin configuration page
+  - Integrated into Dashboard (`NodeDetail.js`) and My Sites (`MySites.js`)
+
 ### Changed - Grid Layout (May 6, 2026)
 
 - **Dashboard and My Sites Grid** — Changed from 4 columns to 5 columns

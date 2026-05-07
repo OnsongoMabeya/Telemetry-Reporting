@@ -15,6 +15,8 @@ import {
 } from '@mui/icons-material';
 import KenyaMap from './KenyaMap';
 import StatusCard from './StatusCard';
+import DialView from './DialView';
+import MergedGraphView from './MergedGraphView';
 import { ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
@@ -353,6 +355,41 @@ const NodeDetail = () => {
     unknownCount: 0
   });
 
+  // State for metric view settings
+  const [viewSettings, setViewSettings] = useState({});
+
+  // Helper function to group metrics by merge groups
+  const groupMetricsByView = useCallback((mappings, settings) => {
+    const groups = {};
+    const individual = [];
+
+    mappings.forEach(mapping => {
+      const setting = settings[mapping.id];
+
+      if (setting?.merge_group_id) {
+        if (!groups[setting.merge_group_id]) {
+          groups[setting.merge_group_id] = {
+            groupId: setting.merge_group_id,
+            groupName: setting.merge_group_name || 'Merged Group',
+            viewType: 'merged',
+            metrics: []
+          };
+        }
+        groups[setting.merge_group_id].metrics.push({
+          ...mapping,
+          viewSetting: setting
+        });
+      } else {
+        individual.push({
+          ...mapping,
+          viewSetting: setting || { view_type: 'line' }
+        });
+      }
+    });
+
+    return { groups, individual };
+  }, []);
+
   const handleStatusUpdate = useCallback((counts) => {
     setStatusCounts(counts);
   }, []);
@@ -451,6 +488,24 @@ const NodeDetail = () => {
         const mappings = response.data.metricMappings || [];
         setMetricMappings(mappings);
         setHasMappings(mappings.length > 0);
+
+        // Fetch view settings for these metrics
+        if (mappings.length > 0) {
+          try {
+            const settingsRes = await axios.get(`${API_BASE_URL}/api/metric-view-settings`);
+            if (settingsRes.data.success) {
+              // Create a map of metric_mapping_id -> settings
+              const settingsMap = {};
+              settingsRes.data.data.forEach(setting => {
+                settingsMap[setting.metric_mapping_id] = setting;
+              });
+              setViewSettings(settingsMap);
+            }
+          } catch (settingsErr) {
+            console.error('Error fetching view settings:', settingsErr);
+            setViewSettings({});
+          }
+        }
       } else {
         throw new Error('Invalid telemetry data format');
       }
@@ -461,7 +516,7 @@ const NodeDetail = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedNode, selectedBaseStation, timeFilter, setIsLoading, setError, setTelemetryData, setMetricMappings, setHasMappings]);
+  }, [selectedNode, selectedBaseStation, timeFilter, setIsLoading, setError, setTelemetryData, setMetricMappings, setHasMappings, setViewSettings]);
 
   useEffect(() => {
     if (selectedNode && selectedBaseStation) {
@@ -533,41 +588,97 @@ const NodeDetail = () => {
             unknownCount={statusCounts.unknownCount}
           />
 
-          {/* Graph Cards - Dynamic */}
-          {metricMappings.length > 0 ? (
-            metricMappings.map((mapping, index) => {
-              const dataKey = mapping.metric_name;
-              
-              return (
-                <Paper
-                  key={`${mapping.column_name}-${index}`}
-                  elevation={3}
-                  sx={{
-                    gridColumn: 'span 1',
-                    gridRow: 'span 1',
-                    p: 2,
-                    backgroundColor: 'background.paper',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <TelemetryGraph
-                    data={telemetryData}
-                    title={mapping.metric_name}
-                    dataKey={dataKey}
-                    unit={mapping.unit}
-                    isLoading={isLoading}
-                    timeFilter={timeFilter}
-                    lineColor={mapping.color || "#30a1e4"}
-                    hasCustomColor={!!mapping.color}
-                  />
-                </Paper>
-              );
-            })
-          ) : (
-            !isLoading && selectedBaseStation && (
+          {/* Graph/Dial Cards - Dynamic with View Settings */}
+          {(() => {
+            const { groups, individual } = groupMetricsByView(metricMappings, viewSettings);
+
+            return (
+              <>
+                {/* Render Merged Groups */}
+                {Object.values(groups).map(group => (
+                  <Paper
+                    key={group.groupId}
+                    elevation={3}
+                    sx={{
+                      gridColumn: 'span 1',
+                      gridRow: 'span 1',
+                      p: 2,
+                      backgroundColor: 'background.paper',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <MergedGraphView
+                      metrics={group.metrics.map(m => ({
+                        data: telemetryData,
+                        title: m.metric_name,
+                        dataKey: m.metric_name,
+                        color: m.color || '#30a1e4',
+                        unit: m.unit
+                      }))}
+                      groupName={group.groupName}
+                      isLoading={isLoading}
+                      timeFilter={timeFilter}
+                    />
+                  </Paper>
+                ))}
+
+                {/* Render Individual Metrics */}
+                {individual.map((mapping, index) => {
+                  const dataKey = mapping.metric_name;
+                  const isDial = mapping.viewSetting?.view_type === 'dial';
+
+                  // Get latest value for dial
+                  const latestData = telemetryData && telemetryData.length > 0
+                    ? telemetryData[telemetryData.length - 1]
+                    : null;
+                  const latestValue = latestData ? latestData[dataKey] : null;
+
+                  return (
+                    <Paper
+                      key={`${mapping.column_name}-${index}`}
+                      elevation={3}
+                      sx={{
+                        gridColumn: 'span 1',
+                        gridRow: 'span 1',
+                        p: 2,
+                        backgroundColor: 'background.paper',
+                        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {isDial ? (
+                        <DialView
+                          value={latestValue}
+                          title={mapping.metric_name}
+                          unit={mapping.unit}
+                          isLoading={isLoading}
+                        />
+                      ) : (
+                        <TelemetryGraph
+                          data={telemetryData}
+                          title={mapping.metric_name}
+                          dataKey={dataKey}
+                          unit={mapping.unit}
+                          isLoading={isLoading}
+                          timeFilter={timeFilter}
+                          lineColor={mapping.color || "#30a1e4"}
+                          hasCustomColor={!!mapping.color}
+                        />
+                      )}
+                    </Paper>
+                  );
+                })}
+              </>
+            );
+          })()}
+
+          {/* No metrics state */}
+          {metricMappings.length === 0 && !isLoading && selectedBaseStation && (
               <Paper
                 elevation={3}
                 sx={{
@@ -608,7 +719,6 @@ const NodeDetail = () => {
                   </Button>
                 )}
               </Paper>
-            )
           )}
         </Box>
       </Box>

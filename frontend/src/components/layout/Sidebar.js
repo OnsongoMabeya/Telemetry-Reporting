@@ -17,6 +17,7 @@ import {
 import {
   Dashboard as DashboardIcon,
   Settings as SettingsIcon,
+  Speed as SpeedIcon,
   People as PeopleIcon,
   Notifications as NotificationsIcon,
   LocationOn as LocationOnIcon,
@@ -72,6 +73,12 @@ const Sidebar = () => {
       title: 'Visualization Settings',
       icon: <SettingsIcon />,
       path: '/visualization-settings',
+      roles: ['admin'],
+    },
+    {
+      title: 'Metric View Settings',
+      icon: <SpeedIcon />,
+      path: '/metric-view-settings',
       roles: ['admin'],
     },
     {

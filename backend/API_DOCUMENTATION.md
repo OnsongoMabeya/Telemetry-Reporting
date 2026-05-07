@@ -1069,6 +1069,158 @@ Retrieve all base stations with GPS coordinates and status for map visualization
 
 ---
 
+## Metric View Settings API
+
+### Get All View Settings
+
+Retrieve all metric view settings with grouping information.
+
+**Endpoint:** `GET /metric-view-settings`
+
+**Access:** Authenticated users
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "metric_mapping_id": 5,
+      "view_type": "line",
+      "merge_group_id": null,
+      "merge_group_name": null,
+      "display_order": 0,
+      "metric_name": "Power Output",
+      "node_name": "NODE-001",
+      "base_station_name": "NAIROBI"
+    },
+    {
+      "id": 2,
+      "metric_mapping_id": 6,
+      "view_type": "dial",
+      "merge_group_id": null,
+      "merge_group_name": null,
+      "display_order": 0,
+      "metric_name": "Temperature",
+      "node_name": "NODE-001",
+      "base_station_name": "NAIROBI"
+    }
+  ],
+  "grouped": {
+    "individual": [...],
+    "merged": {
+      "group-uuid": {
+        "groupId": "group-uuid",
+        "groupName": "Power Metrics",
+        "metrics": [...]
+      }
+    }
+  }
+}
+```
+
+---
+
+### Create/Update View Setting
+
+Set view type (line/dial) for a specific metric.
+
+**Endpoint:** `POST /metric-view-settings`
+
+**Access:** Admin users only
+
+**Request Body:**
+
+```json
+{
+  "metric_mapping_id": 5,
+  "view_type": "dial",
+  "merge_group_id": null,
+  "merge_group_name": null,
+  "display_order": 0
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "View setting created",
+  "data": {
+    "id": 1
+  }
+}
+```
+
+---
+
+### Create Merge Group
+
+Combine multiple metrics into a single multi-line graph.
+
+**Endpoint:** `POST /metric-view-settings/merge`
+
+**Access:** Admin users only
+
+**Request Body:**
+
+```json
+{
+  "metric_mapping_ids": [5, 6, 7],
+  "merge_group_name": "Power Metrics",
+  "view_type": "line"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Merge group created",
+  "data": {
+    "groupId": "550e8400-e29b-41d4-a716-446655440000",
+    "groupName": "Power Metrics",
+    "metricCount": 3
+  }
+}
+```
+
+---
+
+### Ungroup Metrics
+
+Remove metrics from a merge group (makes them individual again).
+
+**Endpoint:** `POST /metric-view-settings/ungroup/:groupId`
+
+**Access:** Admin users only
+
+**Optional Request Body:** (to ungroup specific metrics only)
+
+```json
+{
+  "metric_mapping_ids": [5, 6]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Ungrouped 3 metric(s)",
+  "data": {
+    "ungroupedCount": 3
+  }
+}
+```
+
+---
+
 ## Versioning
 
 Current API version: v1

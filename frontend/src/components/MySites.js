@@ -37,6 +37,8 @@ import { API_BASE_URL } from '../config/api';
 import { useMySites } from '../context/MySitesContext';
 import { useAuth } from '../context/AuthContext';
 import MySitesMap from './MySitesMap';
+import DialView from './DialView';
+import MergedGraphView from './MergedGraphView';
 
 const TIME_FILTERS = [
   { value: '5m', label: 'Last 5 minutes' },
@@ -350,6 +352,39 @@ const MySites = () => {
   const [telemetryData, setTelemetryData] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [viewSettings, setViewSettings] = useState({});
+
+  // Helper function to group metrics by merge groups
+  const groupMetricsByView = useCallback((metrics, settings) => {
+    const groups = {};
+    const individual = [];
+
+    metrics.forEach(metric => {
+      const setting = settings[metric.id];
+
+      if (setting?.merge_group_id) {
+        if (!groups[setting.merge_group_id]) {
+          groups[setting.merge_group_id] = {
+            groupId: setting.merge_group_id,
+            groupName: setting.merge_group_name || 'Merged Group',
+            viewType: 'merged',
+            metrics: []
+          };
+        }
+        groups[setting.merge_group_id].metrics.push({
+          ...metric,
+          viewSetting: setting
+        });
+      } else {
+        individual.push({
+          ...metric,
+          viewSetting: setting || { view_type: 'line' }
+        });
+      }
+    });
+
+    return { groups, individual };
+  }, []);
 
   // Slideshow state
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -466,6 +501,24 @@ const MySites = () => {
         );
         setTelemetryData(telemetryMap);
         setFailedMetrics(failedIds);
+
+        // Fetch view settings for these metrics
+        if (metrics.length > 0) {
+          try {
+            const settingsRes = await axios.get(`${API_BASE_URL}/api/metric-view-settings`);
+            if (settingsRes.data.success) {
+              // Create a map of metric_mapping_id -> settings
+              const settingsMap = {};
+              settingsRes.data.data.forEach(setting => {
+                settingsMap[setting.metric_mapping_id] = setting;
+              });
+              setViewSettings(settingsMap);
+            }
+          } catch (settingsErr) {
+            console.error('Error fetching view settings:', settingsErr);
+            setViewSettings({});
+          }
+        }
       } catch (err) {
         console.error('Error fetching service data:', err);
         if (err.response?.status === 403 && isPlaying) {
@@ -998,35 +1051,91 @@ const MySites = () => {
               )}
 
               {serviceDetails.metrics && serviceDetails.metrics.length > 0 ? (
-                serviceDetails.metrics.map((metric) => (
-                  <Paper
-                    key={metric.id}
-                    elevation={3}
-                    sx={{
-                      gridColumn: 'span 1',
-                      gridRow: 'span 1',
-                      p: isFullscreen ? 1.5 : 2,
-                      backgroundColor: 'background.paper',
-                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      overflow: 'hidden',
-                      minHeight: isFullscreen ? 180 : 'auto',
-                    }}
-                  >
-                    <TelemetryGraph
-                      data={telemetryData[metric.id] || []}
-                      title={`${metric.display_name || metric.metric_name} — ${metric.node_name} - ${metric.base_station_name}`}
-                      dataKey={metric.metric_name}
-                      unit={metric.unit}
-                      isLoading={false}
-                      lineColor={metric.color || '#30a1e4'}
-                      hasCustomColor={!!metric.color}
-                      hasError={failedMetrics.has(metric.id)}
-                      onRetry={() => retryMetric(metric.id)}
-                    />
-                  </Paper>
-                ))
+                (() => {
+                  const { groups, individual } = groupMetricsByView(serviceDetails.metrics, viewSettings);
+
+                  return (
+                    <>
+                      {/* Render Merged Groups */}
+                      {Object.values(groups).map(group => (
+                        <Paper
+                          key={group.groupId}
+                          elevation={3}
+                          sx={{
+                            gridColumn: 'span 1',
+                            gridRow: 'span 1',
+                            p: isFullscreen ? 1.5 : 2,
+                            backgroundColor: 'background.paper',
+                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            overflow: 'hidden',
+                            minHeight: isFullscreen ? 180 : 'auto',
+                          }}
+                        >
+                          <MergedGraphView
+                            metrics={group.metrics.map(m => ({
+                              data: telemetryData[m.id] || [],
+                              title: `${m.display_name || m.metric_name} — ${m.node_name}`,
+                              dataKey: m.metric_name,
+                              color: m.color || '#30a1e4',
+                              unit: m.unit
+                            }))}
+                            groupName={group.groupName}
+                            isLoading={false}
+                          />
+                        </Paper>
+                      ))}
+
+                      {/* Render Individual Metrics */}
+                      {individual.map((metric) => {
+                        const isDial = metric.viewSetting?.view_type === 'dial';
+                        const metricData = telemetryData[metric.id] || [];
+                        const latestData = metricData.length > 0 ? metricData[metricData.length - 1] : null;
+                        const latestValue = latestData ? latestData[metric.metric_name] : null;
+
+                        return (
+                          <Paper
+                            key={metric.id}
+                            elevation={3}
+                            sx={{
+                              gridColumn: 'span 1',
+                              gridRow: 'span 1',
+                              p: isFullscreen ? 1.5 : 2,
+                              backgroundColor: 'background.paper',
+                              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              overflow: 'hidden',
+                              minHeight: isFullscreen ? 180 : 'auto',
+                            }}
+                          >
+                            {isDial ? (
+                              <DialView
+                                value={latestValue}
+                                title={`${metric.display_name || metric.metric_name} — ${metric.node_name}`}
+                                unit={metric.unit}
+                                isLoading={false}
+                              />
+                            ) : (
+                              <TelemetryGraph
+                                data={metricData}
+                                title={`${metric.display_name || metric.metric_name} — ${metric.node_name} - ${metric.base_station_name}`}
+                                dataKey={metric.metric_name}
+                                unit={metric.unit}
+                                isLoading={false}
+                                lineColor={metric.color || '#30a1e4'}
+                                hasCustomColor={!!metric.color}
+                                hasError={failedMetrics.has(metric.id)}
+                                onRetry={() => retryMetric(metric.id)}
+                              />
+                            )}
+                          </Paper>
+                        );
+                      })}
+                    </>
+                  );
+                })()
               ) : (
                 <Paper sx={{ p: 6, gridColumn: '1 / -1', textAlign: 'center' }}>
                   <Typography variant="body1" color="text.secondary">

@@ -12,6 +12,7 @@ const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
 const nodeAssignmentsRoutes = require('./routes/nodeAssignments');
 const metricMappingsRoutes = require('./routes/metricMappings');
+const metricViewSettingsRoutes = require('./routes/metricViewSettings');
 const telemetryMappingsRoutes = require('./routes/telemetryMappings');
 const clientsRoutes = require('./routes/clients');
 const servicesRoutes = require('./routes/services');
@@ -192,6 +193,9 @@ app.use('/api/node-assignments', authenticateToken, nodeAssignmentsRoutes);
 
 // Metric mappings routes (protected)
 app.use('/api/metric-mappings', authenticateToken, metricMappingsRoutes);
+
+// Metric view settings routes (protected)
+app.use('/api/metric-view-settings', authenticateToken, metricViewSettingsRoutes);
 
 // Telemetry mappings routes (protected)
 app.use('/api/telemetry-mappings', authenticateToken, telemetryMappingsRoutes);

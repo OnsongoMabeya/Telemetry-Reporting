@@ -879,6 +879,53 @@ The My Sites page includes a client-specific map showing base stations for each 
 - User can filter to see only "critical" (red) stations
 - Map maintains fixed view of all Kenya regardless of which stations are visible
 
+## 📊 Metric View Settings
+
+Configure how metrics are displayed in Dashboard and My Sites views.
+
+**Admin Page:** `/metric-view-settings`
+
+**Features:**
+
+- **Graph/Dial Toggle** — Switch between line graphs and gauge/dial displays
+  - Line Graph: Time-series with historical data
+  - Dial: Current value with color-coded zones (green/orange/red)
+
+- **Merge Groups** — Combine multiple metrics into one multi-line graph
+  - Select any metrics to merge
+  - Shared time axis with different colored lines
+  - Group name displayed on card
+
+- **Batch Operations**
+  - Set all metrics to Line Graph
+  - Set all metrics to Dial
+  - Ungroup all merged metrics
+
+**Database Table:**
+
+```sql
+CREATE TABLE metric_view_settings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  metric_mapping_id INT NOT NULL,
+  view_type ENUM('line', 'dial') DEFAULT 'line',
+  merge_group_id VARCHAR(36) DEFAULT NULL,
+  merge_group_name VARCHAR(100) DEFAULT NULL,
+  display_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (metric_mapping_id) REFERENCES metric_mappings(id) ON DELETE CASCADE
+);
+```
+
+**API Endpoints:**
+
+- `GET /api/metric-view-settings` — List all settings
+- `POST /api/metric-view-settings` — Create/update setting
+- `POST /api/metric-view-settings/merge` — Create merge group
+- `POST /api/metric-view-settings/ungroup/:groupId` — Ungroup metrics
+
 ## 🤝 Troubleshooting
 
 ### Node Filtering Issues

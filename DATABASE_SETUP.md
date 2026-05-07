@@ -147,6 +147,42 @@ The setup creates the following tables:
    - Tracks all metric mapping changes (CREATE, UPDATE, DELETE)
    - Stores old/new values, user, timestamp, IP address
 
+### Visualization Settings Tables
+
+1. **`metric_view_settings`** - Graph/Dial view configuration (v2.4+)
+   - Controls whether metrics display as line graphs or dial/gauge views
+   - Supports merging multiple metrics into shared multi-line graphs
+   - Admin-configurable, applies to Dashboard and My Sites views
+
+   **Schema:**
+
+   ```sql
+   CREATE TABLE metric_view_settings (
+     id INT AUTO_INCREMENT PRIMARY KEY,
+     metric_mapping_id INT NOT NULL,
+     view_type ENUM('line', 'dial') DEFAULT 'line',
+     merge_group_id VARCHAR(36) DEFAULT NULL,
+     merge_group_name VARCHAR(100) DEFAULT NULL,
+     display_order INT DEFAULT 0,
+     is_active BOOLEAN DEFAULT TRUE,
+     created_by INT NOT NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+     FOREIGN KEY (metric_mapping_id) REFERENCES metric_mappings(id) ON DELETE CASCADE,
+     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
+     INDEX idx_metric_mapping (metric_mapping_id),
+     INDEX idx_merge_group (merge_group_id),
+     INDEX idx_view_type (view_type)
+   );
+   ```
+
+   **Fields:**
+   - `metric_mapping_id` - Links to the metric being configured
+   - `view_type` - 'line' (time-series graph) or 'dial' (gauge display)
+   - `merge_group_id` - UUID grouping metrics into shared graph (NULL = individual card)
+   - `merge_group_name` - Display name for the merged group (e.g., "Power Metrics")
+   - `display_order` - Ordering within a merge group
+
 ### Map Data Tables
 
 1. **`mapviewtable`** - Base station coordinates and status (v2.3+)
