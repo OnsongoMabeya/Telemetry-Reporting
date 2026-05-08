@@ -85,7 +85,25 @@ The system features a completely redesigned user interface with a professional S
 - **Verification Tools**: Built-in scripts to check mapping coverage across all nodes
 - **Per-Node Configuration**: Each node/base station combination has independent metric mappings
 
-### 🌐 Network Access
+### �️ Metric View Settings (v2.4+)
+
+- **Dual View Types**: Toggle between Line Graph and Dial/Gauge visualizations per metric
+  - **Line Graph**: Traditional time-series visualization with historical data
+  - **Dial/Gauge**: Current value display with color-coded thresholds
+- **Merge Groups**: Combine multiple metrics into single multi-line graphs
+  - Group related metrics (e.g., all power metrics) into shared cards
+  - Custom group names for easy identification
+  - Individual display order within groups
+- **Admin-Only Configuration**: Settings controlled via dedicated admin interface
+  - Inline view toggle on metric cards for quick changes
+  - Batch operations for creating and managing merge groups
+  - Persisted settings apply to all users viewing the dashboards
+- **Dashboard Integration**: Settings reflected in both Dashboard and My Sites tabs
+  - Automatic grouping by merge group ID
+  - Conditional rendering based on view type preference
+  - Seamless switching between individual and merged views
+
+### �🌐 Network Access
 
 - **Flexible Deployment**: Access from multiple interfaces
   - Local Development: `http://localhost:3010`

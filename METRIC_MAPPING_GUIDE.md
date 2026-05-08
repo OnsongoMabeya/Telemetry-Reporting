@@ -605,6 +605,154 @@ For issues or questions:
 - Run diagnostic scripts (`verify-nodes.js`)
 - Contact: <support@bsi.com>
 
+## Metric View Settings
+
+The Metric View Settings feature allows administrators to customize how metrics are displayed in the Dashboard and My Sites tabs.
+
+### Features - Metrics
+
+#### View Type Selection
+
+Each metric can be displayed in two formats:
+
+- **Line Graph** (default): Time-series visualization showing historical data trends
+  - Multiple data points over time
+  - Y-axis with configurable units
+  - Hover tooltips with exact values
+  
+- **Dial/Gauge**: Current value display with color-coded zones
+  - Shows latest metric value prominently
+  - Visual needle pointing to value on scale
+  - Color zones (green/yellow/red) based on value ranges
+  - Animated transitions on value changes
+
+#### Merge Groups
+
+Combine multiple related metrics into a single multi-line graph:
+
+**Use Cases:**
+
+- Group all power metrics (Forward Power, Reflected Power, VSWR)
+- Group environmental metrics (Temperature, Humidity)
+- Group status indicators
+
+**Benefits:**
+
+- Reduced dashboard clutter
+- Easy visual correlation between related metrics
+- Shared X-axis for synchronized time comparison
+
+### Configuration
+
+#### Accessing Settings
+
+1. Login as admin user
+2. Click user avatar → **"Metric View Settings"**
+
+#### Changing View Types
+
+##### Method 1: Individual Toggle
+
+1. Find the metric in the list
+2. Click the view type dropdown (Line/Dial)
+3. Change takes effect immediately
+
+##### Method 2: Inline Toggle (on Dashboard/My Sites)
+
+1. Hover over any metric card
+2. Click the view type indicator
+3. Select new view type
+
+#### Creating Merge Groups
+
+1. Select multiple metrics using checkboxes
+2. Click **"Create Merge Group"**
+3. Enter group name (e.g., "Power Metrics")
+4. Metrics now appear in shared card
+
+#### Ungrouping Metrics
+
+1. Click **"Ungroup"** on any merge group card
+2. Or click **"Ungroup All"** to separate all groups
+3. Metrics return to individual cards
+
+### API Reference - Metrics
+
+#### Get All View Settings
+
+```http
+GET /api/metric-view-settings
+Authorization: Bearer <token>
+```
+
+Returns all configured view settings grouped by individual metrics and merge groups.
+
+#### Update View Type
+
+```http
+POST /api/metric-view-settings
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "metric_mapping_id": 5,
+  "view_type": "dial"
+}
+```
+
+#### Create Merge Group
+
+```http
+POST /api/metric-view-settings/merge
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "metric_mapping_ids": [5, 6, 7],
+  "merge_group_name": "Power Metrics",
+  "view_type": "line"
+}
+```
+
+#### Ungroup Metrics
+
+```http
+POST /api/metric-view-settings/ungroup/:groupId
+Authorization: Bearer <admin_token>
+```
+
+### Metric View Settings Schema
+
+View settings are stored in the `metric_view_settings` table:
+
+```sql
+CREATE TABLE metric_view_settings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  metric_mapping_id INT NOT NULL,
+  view_type ENUM('line', 'dial') DEFAULT 'line',
+  merge_group_id VARCHAR(36) DEFAULT NULL,
+  merge_group_name VARCHAR(100) DEFAULT NULL,
+  display_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (metric_mapping_id) REFERENCES metric_mappings(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users(id)
+);
+```
+
+### Migration
+
+The `metric_view_settings` table is created by migration 009:
+
+```bash
+cd backend
+node database/setup.js
+```
+
+The setup script automatically detects and creates this table if missing.
+
 ## Related Documentation
 
 - [README.md](README.md) - Main project overview
