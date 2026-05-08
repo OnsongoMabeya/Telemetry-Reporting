@@ -363,8 +363,11 @@ const NodeDetail = () => {
     const groups = {};
     const individual = [];
 
+    console.log('[NodeDetail] groupMetricsByView called with', mappings.length, 'mappings, settings keys:', Object.keys(settings));
+
     mappings.forEach(mapping => {
       const setting = settings[mapping.id];
+      console.log(`[NodeDetail] Looking up mapping.id=${mapping.id} (${mapping.metric_name}), found setting:`, setting);
 
       if (setting?.merge_group_id) {
         if (!groups[setting.merge_group_id]) {
@@ -499,6 +502,8 @@ const NodeDetail = () => {
               settingsRes.data.data.forEach(setting => {
                 settingsMap[setting.metric_mapping_id] = setting;
               });
+              console.log('[NodeDetail] Loaded view settings:', settingsMap);
+              console.log('[NodeDetail] Metric mappings:', mappings.map(m => ({ id: m.id, name: m.metric_name })));
               setViewSettings(settingsMap);
             }
           } catch (settingsErr) {

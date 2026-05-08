@@ -360,7 +360,7 @@ const MySites = () => {
     const individual = [];
 
     metrics.forEach(metric => {
-      const setting = settings[metric.id];
+      const setting = settings[metric.metric_mapping_id];
 
       if (setting?.merge_group_id) {
         if (!groups[setting.merge_group_id]) {

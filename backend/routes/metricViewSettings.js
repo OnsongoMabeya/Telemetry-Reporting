@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../server');
 const logger = require('../utils/logger');
+
+// Get database connection from app
+let db;
+router.use((req, res, next) => {
+  db = req.app.get('db');
+  next();
+});
 
 // Middleware to check if user is admin
 const isAdmin = (req, res, next) => {
@@ -396,7 +402,9 @@ router.delete('/:id', isAdmin, async (req, res) => {
 router.post('/ungroup/:groupId', isAdmin, async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { metric_mapping_ids } = req.body; // Optional: specific metrics to ungroup
+    const metric_mapping_ids = req.body?.metric_mapping_ids; // Optional: specific metrics to ungroup
+
+    console.log('[ungroup] Request:', { groupId, metric_mapping_ids, user: req.user?.id, role: req.user?.role });
 
     let query = `
       UPDATE metric_view_settings
@@ -413,7 +421,11 @@ router.post('/ungroup/:groupId', isAdmin, async (req, res) => {
       values = [...values, ...metric_mapping_ids];
     }
 
+    console.log('[ungroup] Query:', query, 'Values:', values);
+
     const [result] = await db.query(query, values);
+
+    console.log('[ungroup] Result:', result);
 
     logger.info('API', 'Ungrouped metrics', {
       userId: req.user.id,

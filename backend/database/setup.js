@@ -168,7 +168,7 @@ async function setupDatabase() {
          WHERE table_schema = ? AND table_name = 'user_activity_log' AND column_name = 'level'`,
         [dbConfig.database]
       );
-      
+
       if (columns[0].count === 0) {
         console.log('❌ Column: user_activity_log.level (missing - needs migration 006)');
         migrationsToRun.add('006_enhance_activity_log.sql');
@@ -176,7 +176,15 @@ async function setupDatabase() {
         console.log('✅ Column: user_activity_log.level (structured logging ready)');
       }
     }
-    
+
+    // Check for metric_view_settings table (migration 009)
+    if (await checkTableExists(connection, 'metric_view_settings')) {
+      console.log('✅ Table: metric_view_settings');
+    } else {
+      console.log('❌ Table: metric_view_settings (missing - needs migration 009)');
+      migrationsToRun.add('009_create_metric_view_settings.sql');
+    }
+
     console.log('\n================================\n');
     
     if (migrationsToRun.size === 0) {
