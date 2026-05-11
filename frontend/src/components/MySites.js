@@ -1115,6 +1115,8 @@ const MySites = () => {
                                 value={latestValue}
                                 title={`${metric.display_name || metric.metric_name} — ${metric.node_name}`}
                                 unit={metric.unit}
+                                min={metric.min_value ?? 0}
+                                max={metric.max_value ?? 100}
                                 isLoading={false}
                               />
                             ) : (

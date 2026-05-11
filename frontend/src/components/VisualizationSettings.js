@@ -61,7 +61,9 @@ const VisualizationSettings = () => {
     column_name: '',
     unit: '',
     display_order: 0,
-    color: null
+    color: null,
+    min_value: 0,
+    max_value: 100
   });
 
   const isAdmin = hasRole('admin');
@@ -104,7 +106,9 @@ const VisualizationSettings = () => {
         column_name: mapping.column_name,
         unit: mapping.unit || '',
         display_order: mapping.display_order,
-        color: mapping.color || null
+        color: mapping.color || null,
+        min_value: mapping.min_value ?? 0,
+        max_value: mapping.max_value ?? 100
       });
       // Fetch node-specific columns
       await fetchNodeSpecificColumns(mapping.node_name, mapping.base_station_name);
@@ -117,7 +121,9 @@ const VisualizationSettings = () => {
         column_name: '',
         unit: '',
         display_order: 0,
-        color: null
+        color: null,
+        min_value: 0,
+        max_value: 100
       });
     }
     setOpenDialog(true);
@@ -159,7 +165,9 @@ const VisualizationSettings = () => {
       metric_name: '',
       column_name: '',
       unit: '',
-      display_order: 0
+      display_order: 0,
+      min_value: 0,
+      max_value: 100
     });
   };
 
@@ -640,6 +648,25 @@ const VisualizationSettings = () => {
               fullWidth
               helperText="Order in which metrics appear in graphs (lower numbers first)"
             />
+
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <TextField
+                label="Min Value (Dial)"
+                type="number"
+                value={formData.min_value}
+                onChange={(e) => setFormData({ ...formData, min_value: parseFloat(e.target.value) || 0 })}
+                fullWidth
+                helperText="Minimum for gauge display"
+              />
+              <TextField
+                label="Max Value (Dial)"
+                type="number"
+                value={formData.max_value}
+                onChange={(e) => setFormData({ ...formData, max_value: parseFloat(e.target.value) || 100 })}
+                fullWidth
+                helperText="Maximum for gauge display"
+              />
+            </Box>
 
             <Box>
               <Typography variant="subtitle2" gutterBottom>

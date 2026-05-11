@@ -54,12 +54,11 @@ const DialView = ({
   const centerX = 100;
   const centerY = 100;
   
-  // Background arc (gray track)
-  const backgroundArc = describeArc(centerX, centerY, radius, -135, 135);
+  // Background arc (gray track) - 270° arc from 8:00 to 10:00
+  const backgroundArc = describeArc(centerX, centerY, radius, -120, 150);
   
-  // Value arc (colored)
-  const valueEndAngle = -135 + (normalizedValue / 100) * 270;
-  const valueArc = describeArc(centerX, centerY, radius, -135, valueEndAngle);
+  // Value arc (colored) - full 270° arc, pathLength controls how much is shown
+  const valueArc = describeArc(centerX, centerY, radius, -120, 150);
 
   if (isLoading) {
     return (
@@ -127,7 +126,7 @@ const DialView = ({
           
           {/* Tick marks */}
           {[0, 25, 50, 75, 100].map((tick, i) => {
-            const angle = -135 + (tick / 100) * 270;
+            const angle = -120 + (tick / 100) * 270;
             const rad = (angle * Math.PI) / 180;
             const x1 = centerX + (radius - 20) * Math.cos(rad);
             const y1 = centerY + (radius - 20) * Math.sin(rad);
@@ -196,20 +195,22 @@ const DialView = ({
   );
 };
 
-// Helper function to create SVG arc path
+// Helper function to create SVG arc path (clockwise)
 function describeArc(x, y, radius, startAngle, endAngle) {
-  const start = polarToCartesian(x, y, radius, endAngle);
-  const end = polarToCartesian(x, y, radius, startAngle);
-  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+  const start = polarToCartesian(x, y, radius, startAngle);
+  const end = polarToCartesian(x, y, radius, endAngle);
+  const largeArcFlag = Math.abs(endAngle - startAngle) <= 180 ? '0' : '1';
   
   return [
     'M', start.x, start.y,
-    'A', radius, radius, 0, largeArcFlag, 0, end.x, end.y
+    'A', radius, radius, 0, largeArcFlag, 1, end.x, end.y
   ].join(' ');
 }
 
 function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
-  const angleInRadians = (angleInDegrees * Math.PI) / 180;
+  // Convert to radians and adjust for SVG y-down coordinate system
+  // Subtract 90° to make 0° at 12 o'clock, negate for clockwise
+  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
   return {
     x: centerX + radius * Math.cos(angleInRadians),
     y: centerY + radius * Math.sin(angleInRadians)

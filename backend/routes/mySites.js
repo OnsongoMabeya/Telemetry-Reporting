@@ -182,7 +182,9 @@ router.get('/clients/:clientId/services/:serviceId', async (req, res) => {
         mm.metric_name,
         mm.column_name,
         mm.unit,
-        mm.color
+        mm.color,
+        mm.min_value,
+        mm.max_value
       FROM service_metric_assignments sma
       INNER JOIN metric_mappings mm ON sma.metric_mapping_id = mm.id
       WHERE sma.service_id = ? AND sma.is_active = TRUE AND mm.is_active = TRUE

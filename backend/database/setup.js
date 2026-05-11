@@ -185,6 +185,22 @@ async function setupDatabase() {
       migrationsToRun.add('009_create_metric_view_settings.sql');
     }
 
+    // Check for min_value and max_value columns in metric_mappings (migration 010)
+    if (await checkTableExists(connection, 'metric_mappings')) {
+      const [minValueColumn] = await connection.query(
+        `SELECT COUNT(*) as count FROM information_schema.columns 
+         WHERE table_schema = ? AND table_name = 'metric_mappings' AND column_name = 'min_value'`,
+        [dbConfig.database]
+      );
+      
+      if (minValueColumn[0].count === 0) {
+        console.log('❌ Columns: metric_mappings.min_value/max_value (missing - needs migration 010)');
+        migrationsToRun.add('010_add_min_max_to_metric_mappings.sql');
+      } else {
+        console.log('✅ Columns: metric_mappings.min_value/max_value');
+      }
+    }
+
     console.log('\n================================\n');
     
     if (migrationsToRun.size === 0) {

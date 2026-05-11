@@ -192,6 +192,8 @@ router.get('/', async (req, res) => {
         mm.unit,
         mm.display_order,
         mm.color,
+        mm.min_value,
+        mm.max_value,
         mm.is_active,
         mm.created_at,
         mm.updated_at,
@@ -312,7 +314,9 @@ router.post('/', requireAdmin, async (req, res) => {
       column_name, 
       unit, 
       display_order,
-      color
+      color,
+      min_value,
+      max_value
     } = req.body;
 
     // Validate required fields
@@ -377,9 +381,9 @@ router.post('/', requireAdmin, async (req, res) => {
     // Insert new mapping
     const [result] = await db.query(
       `INSERT INTO metric_mappings 
-       (node_name, base_station_name, metric_name, column_name, unit, display_order, color, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [node_name, base_station_name, metric_name, column_name, unit || null, display_order || 0, color || null, req.user.id]
+       (node_name, base_station_name, metric_name, column_name, unit, display_order, color, min_value, max_value, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [node_name, base_station_name, metric_name, column_name, unit || null, display_order || 0, color || null, min_value ?? 0, max_value ?? 100, req.user.id]
     );
 
     // Log to audit trail
@@ -395,7 +399,7 @@ router.post('/', requireAdmin, async (req, res) => {
         column_name,
         unit || null,
         req.user.id,
-        JSON.stringify({ metric_name, column_name, unit, display_order, color }),
+        JSON.stringify({ metric_name, column_name, unit, display_order, color, min_value, max_value }),
         req.ip
       ]
     );
@@ -426,7 +430,7 @@ router.post('/', requireAdmin, async (req, res) => {
 router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { metric_name, column_name, unit, display_order, color } = req.body;
+    const { metric_name, column_name, unit, display_order, color, min_value, max_value } = req.body;
 
     // Get old values for audit
     const [oldMapping] = await db.query(
@@ -444,9 +448,9 @@ router.put('/:id', requireAdmin, async (req, res) => {
     // Update mapping
     await db.query(
       `UPDATE metric_mappings 
-       SET metric_name = ?, column_name = ?, unit = ?, display_order = ?, color = ?
+       SET metric_name = ?, column_name = ?, unit = ?, display_order = ?, color = ?, min_value = ?, max_value = ?
        WHERE id = ?`,
-      [metric_name, column_name, unit || null, display_order || 0, color || null, id]
+      [metric_name, column_name, unit || null, display_order || 0, color || null, min_value ?? oldMapping[0].min_value, max_value ?? oldMapping[0].max_value, id]
     );
 
     // Log to audit trail
@@ -463,7 +467,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
         unit || null,
         req.user.id,
         JSON.stringify(oldMapping[0]),
-        JSON.stringify({ metric_name, column_name, unit, display_order, color }),
+        JSON.stringify({ metric_name, column_name, unit, display_order, color, min_value, max_value }),
         req.ip
       ]
     );

@@ -353,7 +353,7 @@ const calculateDataPoints = (minutes) => {
 const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 1, pageSize = 500) => {
   // First, fetch the metric mappings for this node/base station
   const [mappings] = await pool.promise().query(
-    `SELECT id, metric_name, column_name, unit, display_order, color 
+    `SELECT id, metric_name, column_name, unit, display_order, color, min_value, max_value
      FROM metric_mappings 
      WHERE node_name = ? AND base_station_name = ? AND is_active = 1
      ORDER BY display_order`,
