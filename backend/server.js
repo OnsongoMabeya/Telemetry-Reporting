@@ -18,6 +18,7 @@ const clientsRoutes = require('./routes/clients');
 const servicesRoutes = require('./routes/services');
 const userClientAssignmentsRoutes = require('./routes/userClientAssignments');
 const mySitesRoutes = require('./routes/mySites');
+const serviceReportsRoutes = require('./routes/serviceReports');
 const { authenticateToken } = require('./middleware/auth');
 const logger = require('./utils/logger');
 
@@ -205,6 +206,7 @@ app.use('/api/clients', authenticateToken, clientsRoutes);
 app.use('/api/services', authenticateToken, servicesRoutes);
 app.use('/api/user-client-assignments', authenticateToken, userClientAssignmentsRoutes);
 app.use('/api/my-sites', authenticateToken, mySitesRoutes);
+app.use('/api', authenticateToken, serviceReportsRoutes);
 
 // Keep-alive endpoint for slideshow session management (with token refresh)
 // Accepts expired tokens within a grace period so the session can be renewed

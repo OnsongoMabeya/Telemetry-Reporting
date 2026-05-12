@@ -29,4 +29,15 @@ const authenticateToken = (req, res, next) => {
   }
 };
 
-module.exports = { authenticateToken };
+const requireAdmin = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    return res.status(403).json({
+      error: 'Access denied. Admin privileges required.',
+      code: 'FORBIDDEN'
+    });
+  }
+};
+
+module.exports = { authenticateToken, requireAdmin };

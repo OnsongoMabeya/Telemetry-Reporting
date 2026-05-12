@@ -39,6 +39,7 @@ import { useAuth } from '../context/AuthContext';
 import MySitesMap from './MySitesMap';
 import DialView from './DialView';
 import MergedGraphView from './MergedGraphView';
+import ServiceReportButton from './reports/ServiceReportButton';
 
 const TIME_FILTERS = [
   { value: '5m', label: 'Last 5 minutes' },
@@ -994,6 +995,15 @@ const MySites = () => {
                 <Typography variant="caption" color="text.secondary">
                   Service {currentServiceIndex + 1} of {services.length}
                 </Typography>
+              )}
+              
+              {/* Generate Service Report Button */}
+              {!isFullscreen && selectedClient && selectedService && (
+                <ServiceReportButton
+                  service={serviceDetails}
+                  clientName={clients.find(c => c.id === selectedClient)?.client_name || ''}
+                  size="small"
+                />
               )}
             </Box>
           </Paper>
