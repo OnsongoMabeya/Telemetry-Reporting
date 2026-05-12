@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
  * @param {string} color - Line color
  * @returns {ReactElement} Canvas element
  */
-const SimpleLineChart = ({ data, color = '#30a1e4' }) => {
+const SimpleLineChart = ({ data, color = '#30a1e4', unit = '' }) => {
   if (!data || data.length < 2) {
     return (
       <View style={styles.chartContainer}>
@@ -337,12 +337,14 @@ const SimpleLineChart = ({ data, color = '#30a1e4' }) => {
           const timeRangeMs = lastTime - firstTime;
           const isShortRange = timeRangeMs <= 24 * 60 * 60 * 1000; // 24 hours or less
           
-          // Format function - show time for short ranges, date for long ranges
+          // Format function - always show full date and time
           const formatLabel = (date) => {
-            if (isShortRange) {
-              return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-            }
-            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+            return date.toLocaleString('en-GB', { 
+              day: '2-digit', 
+              month: 'short',
+              hour: '2-digit', 
+              minute: '2-digit'
+            });
           };
           
           // Start time
@@ -385,9 +387,9 @@ const SimpleLineChart = ({ data, color = '#30a1e4' }) => {
           
           pdfDoc.stroke();
           
-          // Draw Y-axis label
+          // Y-axis label (use unit if provided)
           pdfDoc.fontSize(6).fillColor('#888');
-          pdfDoc.text('Value', padding.left - 35, padding.top - 12, { width: 30, align: 'center' });
+          pdfDoc.text(unit || 'Value', padding.left - 35, padding.top - 12, { width: 30, align: 'center' });
         }}
         style={{ width: '100%', height: '100%' }}
       />
@@ -412,7 +414,7 @@ const SimpleLineChart = ({ data, color = '#30a1e4' }) => {
  * @param {number} max - Maximum value
  * @param {string} color - Gauge color
  */
-const SimpleGauge = ({ value, min, max, color = '#30a1e4' }) => {
+const SimpleGauge = ({ value, min, max, color = '#30a1e4', unit = '' }) => {
   const normalized = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
   
   return (
@@ -480,7 +482,7 @@ const SimpleGauge = ({ value, min, max, color = '#30a1e4' }) => {
         style={{ width: 140, height: 80 }}
       />
       <Text style={[styles.currentValue, { marginTop: 4 }]}>
-        {value !== null ? value.toFixed(2) : 'N/A'}
+        {value !== null ? value.toFixed(2) : 'N/A'} {unit}
       </Text>
     </View>
   );
@@ -546,12 +548,13 @@ const MetricCard = ({ metric }) => (
           min={metric.min_value}
           max={metric.max_value}
           color={metric.color || '#30a1e4'}
+          unit={metric.unit}
         />
       </>
     ) : (
       <>
         {/* Graph View - Full height chart */}
-        <SimpleLineChart data={metric.data} color={metric.color || '#30a1e4'} />
+        <SimpleLineChart data={metric.data} color={metric.color || '#30a1e4'} unit={metric.unit} />
       </>
     )}
     
