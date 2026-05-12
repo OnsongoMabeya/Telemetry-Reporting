@@ -1,7 +1,7 @@
 /**
  * Service PDF Report Generator
  * 
- * Uses @react-pdf/renderer to create landscape PDF reports with:
+ * Uses @react-pdf/renderer to create portrait PDF reports with:
  * - Summary table on first page
  * - Per-base-station pages with 2-column metric layout
  * - Dial/gauge visualizations and time-series graphs
@@ -396,55 +396,6 @@ const SimpleLineChart = ({ data, color = '#30a1e4' }) => {
 };
 
 /**
- * Render a sparkline (mini chart) for dial metrics
- * @param {Array} data - Array of {sample_time, value} objects
- * @param {string} color - Line color
- */
-const SparklineChart = ({ data, color = '#30a1e4' }) => {
-  if (!data || data.length < 2) {
-    return (
-      <View style={styles.sparklineContainer}>
-        <Text style={{ textAlign: 'center', marginTop: 20, color: '#999', fontSize: 8 }}>
-          No trend data
-        </Text>
-      </View>
-    );
-  }
-
-  const values = data.map(d => parseFloat(d.value)).filter(v => !isNaN(v));
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-
-  return (
-    <View style={styles.sparklineContainer}>
-      <Canvas
-        paint={(pdfDoc, width, height) => {
-          const padding = 8;
-          const chartWidth = width - padding * 2;
-          const chartHeight = height - padding * 2;
-          
-          pdfDoc.strokeColor(color).lineWidth(1.5);
-          pdfDoc.moveTo(
-            padding,
-            padding + chartHeight - ((values[0] - min) / range * chartHeight)
-          );
-          
-          values.forEach((value, index) => {
-            const x = padding + (chartWidth * index / (values.length - 1));
-            const y = padding + chartHeight - ((value - min) / range * chartHeight);
-            pdfDoc.lineTo(x, y);
-          });
-          
-          pdfDoc.stroke();
-          
-          // Area fill (semi-transparent)
-          pdfDoc.fillColor(color).fillOpacity(0.1);
-          pdfDoc.moveTo(padding, padding + chartHeight);
-          values.forEach((value, index) => {
-            const x = padding + (chartWidth * index / (values.length - 1));
-            const y = padding + chartHeight - ((value - min) / range * chartHeight);
-            pdfDoc.lineTo(x, y);
           });
           pdfDoc.lineTo(width - padding, padding + chartHeight);
           pdfDoc.fill();
@@ -632,13 +583,13 @@ const MetricCard = ({ metric }) => (
  * Main Service Report Document Component
  */
 const ServiceReportDocument = ({ reportData }) => {
-  const { reportInfo, summaryTable, baseStations, narrative } = reportData;
+  const { reportInfo, summaryTable, baseStations } = reportData;
   const generatedDate = new Date(reportInfo.generatedAt).toLocaleString();
   
   return (
     <Document>
       {/* Page 1: Header + Summary Table */}
-      <Page size="A4" orientation="landscape" style={styles.page}>
+      <Page key="page1" size="A4" orientation="portrait" style={styles.page}>
         <View style={styles.header}>
           <Text style={styles.title}>{reportInfo.clientName} — {reportInfo.serviceName} Report</Text>
           <Text style={styles.subtitle}>Service Telemetry Report</Text>
@@ -672,7 +623,7 @@ const ServiceReportDocument = ({ reportData }) => {
       
       {/* Pages for each base station */}
       {baseStations.map((baseStation, pageIndex) => (
-        <Page key={pageIndex} size="A4" orientation="landscape" style={styles.page}>
+        <Page key={pageIndex} size="A4" orientation="portrait" style={styles.page}>
           <View style={styles.baseStationHeader}>
             <Text style={styles.baseStationName}>{baseStation.base_station_name}</Text>
             <Text style={styles.nodeInfo}>Node: {baseStation.node_name}</Text>
