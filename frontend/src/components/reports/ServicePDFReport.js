@@ -175,10 +175,19 @@ const styles = StyleSheet.create({
   
   // Visualization Areas
   chartContainer: {
-    height: 120,
+    height: 140,
     backgroundColor: '#fafafa',
     borderRadius: 4,
-    marginTop: 8
+    marginTop: 8,
+    marginBottom: 4
+  },
+  
+  dialContainer: {
+    height: 100,
+    marginTop: 8,
+    marginBottom: 4,
+    alignItems: 'center',
+    justifyContent: 'flex-end'
   },
   sparklineContainer: {
     height: 60,
@@ -189,11 +198,11 @@ const styles = StyleSheet.create({
   
   // Current Value Display
   currentValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#30a1e4',
     textAlign: 'center',
-    marginVertical: 8
+    marginTop: 4
   },
   unit: {
     fontSize: 10,
@@ -239,7 +248,7 @@ const styles = StyleSheet.create({
 });
 
 /**
- * Render a simple line chart using PDF Canvas
+ * Render a smooth area line chart using PDF Canvas with X/Y axis labels
  * @param {Array} data - Array of {sample_time, value} objects
  * @param {string} color - Line color
  * @returns {ReactElement} Canvas element
@@ -255,51 +264,120 @@ const SimpleLineChart = ({ data, color = '#30a1e4' }) => {
     );
   }
 
-  const values = data.map(d => parseFloat(d.value)).filter(v => !isNaN(v));
+  // Downsample to max 150 points for cleaner visualization
+  const maxPoints = 150;
+  const rawData = data.filter(d => d.value !== null && !isNaN(parseFloat(d.value)));
+  
+  if (rawData.length < 2) {
+    return (
+      <View style={styles.chartContainer}>
+        <Text style={{ textAlign: 'center', marginTop: 50, color: '#999', fontSize: 9 }}>
+          Insufficient data for chart
+        </Text>
+      </View>
+    );
+  }
+  
+  let chartData = rawData;
+  if (rawData.length > maxPoints) {
+    const step = Math.ceil(rawData.length / maxPoints);
+    chartData = rawData.filter((_, i) => i % step === 0);
+  }
+  
+  const values = chartData.map(d => parseFloat(d.value));
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
+  const baseline = min - (range * 0.1);
+  
+  // Get time range for X-axis
+  const firstTime = new Date(chartData[0].sample_time);
+  const lastTime = new Date(chartData[chartData.length - 1].sample_time);
 
   return (
     <View style={styles.chartContainer}>
       <Canvas
         paint={(pdfDoc, width, height) => {
-          const padding = 20;
-          const chartWidth = width - padding * 2;
-          const chartHeight = height - padding * 2;
+          const padding = { top: 20, right: 20, bottom: 35, left: 45 };
+          const chartWidth = width - padding.left - padding.right;
+          const chartHeight = height - padding.top - padding.bottom;
           
-          // Draw grid lines
+          // Calculate coordinates
+          const getX = (index) => padding.left + (chartWidth * index / (values.length - 1));
+          const getY = (value) => padding.top + chartHeight - ((value - baseline) / (max - baseline) * chartHeight);
+          
+          // Draw Y-axis grid lines and labels (5 lines)
           pdfDoc.strokeColor('#e0e0e0').lineWidth(0.5);
+          pdfDoc.fontSize(7).fillColor('#666');
+          
           for (let i = 0; i <= 4; i++) {
-            const y = padding + (chartHeight * i / 4);
-            pdfDoc.moveTo(padding, y).lineTo(width - padding, y).stroke();
+            const value = min + (range * i / 4);
+            const y = padding.top + chartHeight - ((value - baseline) / (max - baseline) * chartHeight);
+            
+            // Grid line
+            pdfDoc.moveTo(padding.left, y);
+            pdfDoc.lineTo(width - padding.right, y);
+            pdfDoc.stroke();
+            
+            // Y-axis label
+            const labelY = y - 3;
+            pdfDoc.text(value.toFixed(0), padding.left - 40, labelY, { width: 35, align: 'right' });
           }
           
-          // Draw data line
-          pdfDoc.strokeColor(color).lineWidth(2);
-          pdfDoc.moveTo(
-            padding,
-            padding + chartHeight - ((values[0] - min) / range * chartHeight)
-          );
+          // Draw X-axis line
+          pdfDoc.strokeColor('#cccccc').lineWidth(1);
+          pdfDoc.moveTo(padding.left, padding.top + chartHeight);
+          pdfDoc.lineTo(width - padding.right, padding.top + chartHeight);
+          pdfDoc.stroke();
+          
+          // X-axis labels (start, middle, end times)
+          pdfDoc.fontSize(6).fillColor('#666');
+          
+          // Start time
+          const startLabel = firstTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+          pdfDoc.text(startLabel, padding.left, padding.top + chartHeight + 8);
+          
+          // End time
+          const endLabel = lastTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+          pdfDoc.text(endLabel, width - padding.right - 25, padding.top + chartHeight + 8);
+          
+          // Middle time
+          if (chartData.length > 10) {
+            const midIndex = Math.floor(chartData.length / 2);
+            const midTime = new Date(chartData[midIndex].sample_time);
+            const midLabel = midTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+            pdfDoc.text(midLabel, padding.left + chartWidth / 2 - 10, padding.top + chartHeight + 8);
+          }
+          
+          // Draw area fill under the line (semi-transparent)
+          pdfDoc.fillColor(color).fillOpacity(0.15);
+          pdfDoc.moveTo(getX(0), padding.top + chartHeight);
           
           values.forEach((value, index) => {
-            const x = padding + (chartWidth * index / (values.length - 1));
-            const y = padding + chartHeight - ((value - min) / range * chartHeight);
-            pdfDoc.lineTo(x, y);
+            pdfDoc.lineTo(getX(index), getY(value));
           });
+          
+          pdfDoc.lineTo(getX(values.length - 1), padding.top + chartHeight);
+          pdfDoc.fill();
+          
+          // Reset opacity for line
+          pdfDoc.fillOpacity(1);
+          
+          // Draw smooth line
+          pdfDoc.strokeColor(color).lineWidth(2);
+          pdfDoc.moveTo(getX(0), getY(values[0]));
+          
+          for (let i = 1; i < values.length; i++) {
+            pdfDoc.lineTo(getX(i), getY(values[i]));
+          }
           
           pdfDoc.stroke();
           
-          // Draw points
-          pdfDoc.fillColor(color);
-          values.forEach((value, index) => {
-            if (index % Math.ceil(values.length / 20) === 0) { // Show ~20 points max
-              const x = padding + (chartWidth * index / (values.length - 1));
-              const y = padding + chartHeight - ((value - min) / range * chartHeight);
-              pdfDoc.circle(x, y, 2).fill();
-            }
-          });
+          // Draw Y-axis label
+          pdfDoc.fontSize(6).fillColor('#888');
+          pdfDoc.text('Value', padding.left - 35, padding.top - 12, { width: 30, align: 'center' });
         }}
+        style={{ width: '100%', height: '100%' }}
       />
     </View>
   );
@@ -357,7 +435,7 @@ const SparklineChart = ({ data, color = '#30a1e4' }) => {
             pdfDoc.lineTo(x, y);
           });
           pdfDoc.lineTo(width - padding, padding + chartHeight);
-          pdfDoc.closePath().fill();
+          pdfDoc.fill();
         }}
       />
     </View>
@@ -365,7 +443,7 @@ const SparklineChart = ({ data, color = '#30a1e4' }) => {
 };
 
 /**
- * Render a simple horizontal bar gauge visualization
+ * Render a semicircular dial gauge using line segments
  * @param {number} value - Current value
  * @param {number} min - Minimum value
  * @param {number} max - Maximum value
@@ -373,41 +451,73 @@ const SparklineChart = ({ data, color = '#30a1e4' }) => {
  */
 const SimpleGauge = ({ value, min, max, color = '#30a1e4' }) => {
   const normalized = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
-  const barWidth = 100;
-  const barHeight = 8;
   
   return (
-    <View style={{ alignItems: 'center', marginVertical: 8, width: 120 }}>
+    <View style={styles.dialContainer}>
       <Canvas
         paint={(pdfDoc, width, height) => {
-          const startX = (width - barWidth) / 2;
-          const startY = height * 0.6;
+          const centerX = width / 2;
+          const centerY = height - 15;
+          const radius = 55;
+          const innerRadius = 40;
           
-          // Background bar (gray)
-          pdfDoc.fillColor('#e0e0e0');
-          pdfDoc.rect(startX, startY, barWidth, barHeight).fill();
+          // Helper to convert polar to cartesian
+          const polarToCartesian = (r, angleDeg) => {
+            const angleRad = (angleDeg * Math.PI) / 180;
+            return {
+              x: centerX + r * Math.cos(angleRad),
+              y: centerY - r * Math.sin(angleRad)
+            };
+          };
           
-          // Value bar (colored)
-          if (normalized > 0) {
-            const valueWidth = (normalized / 100) * barWidth;
-            pdfDoc.fillColor(color);
-            pdfDoc.rect(startX, startY, valueWidth, barHeight).fill();
+          // Draw background arc (180 degrees, left to right)
+          const bgSegments = 60;
+          for (let i = 0; i <= bgSegments; i++) {
+            const angle = 180 - (i / bgSegments) * 180; // 180 to 0 degrees
+            const outer = polarToCartesian(radius, angle);
+            const inner = polarToCartesian(innerRadius, angle);
+            
+            pdfDoc.strokeColor('#e0e0e0').lineWidth(3);
+            pdfDoc.moveTo(inner.x, inner.y);
+            pdfDoc.lineTo(outer.x, outer.y);
+            pdfDoc.stroke();
           }
           
-          // Border
-          pdfDoc.strokeColor('#cccccc').lineWidth(1);
-          pdfDoc.rect(startX, startY, barWidth, barHeight).stroke();
+          // Draw value arc (colored portion)
+          const valueSegments = Math.floor((normalized / 100) * bgSegments);
+          for (let i = 0; i <= valueSegments; i++) {
+            const angle = 180 - (i / bgSegments) * 180;
+            const outer = polarToCartesian(radius, angle);
+            const inner = polarToCartesian(innerRadius, angle);
+            
+            pdfDoc.strokeColor(color).lineWidth(3);
+            pdfDoc.moveTo(inner.x, inner.y);
+            pdfDoc.lineTo(outer.x, outer.y);
+            pdfDoc.stroke();
+          }
+          
+          // Draw needle
+          const needleAngle = 180 - (normalized / 100) * 180;
+          const needleEnd = polarToCartesian(radius + 5, needleAngle);
+          
+          pdfDoc.strokeColor('#333').lineWidth(2);
+          pdfDoc.moveTo(centerX, centerY);
+          pdfDoc.lineTo(needleEnd.x, needleEnd.y);
+          pdfDoc.stroke();
+          
+          // Needle pivot circle
+          pdfDoc.fillColor('#333');
+          pdfDoc.rect(centerX - 3, centerY - 3, 6, 6).fill();
           
           // Min/Max labels
-          pdfDoc.fontSize(8).fillColor('#666');
-          pdfDoc.text(min.toString(), startX, startY + barHeight + 4);
-          pdfDoc.text(max.toString(), startX + barWidth - 15, startY + barHeight + 4);
+          pdfDoc.fontSize(7).fillColor('#666');
+          pdfDoc.text(min.toString(), centerX - radius - 10, centerY + 5);
+          pdfDoc.text(max.toString(), centerX + radius - 5, centerY + 5);
         }}
-        style={{ width: 120, height: 40 }}
+        style={{ width: 140, height: 80 }}
       />
-      <Text style={styles.currentValue}>
+      <Text style={[styles.currentValue, { marginTop: 4 }]}>
         {value !== null ? value.toFixed(2) : 'N/A'}
-        <Text style={styles.unit}> {min !== undefined && max !== undefined ? '' : ''}</Text>
       </Text>
     </View>
   );
@@ -467,18 +577,17 @@ const MetricCard = ({ metric }) => (
     
     {metric.view_type === 'dial' ? (
       <>
-        {/* Dial View */}
+        {/* Dial View - Just the gauge, no sparkline to save space */}
         <SimpleGauge
           value={metric.stats.latest}
           min={metric.min_value}
           max={metric.max_value}
           color={metric.color || '#30a1e4'}
         />
-        <SparklineChart data={metric.sparkline} color={metric.color || '#30a1e4'} />
       </>
     ) : (
       <>
-        {/* Graph View */}
+        {/* Graph View - Full height chart */}
         <SimpleLineChart data={metric.data} color={metric.color || '#30a1e4'} />
       </>
     )}
@@ -564,11 +673,11 @@ const ServiceReportDocument = ({ reportData }) => {
             ))}
           </View>
           
-          {/* Narrative for this base station (if last page or multiple pages) */}
-          {pageIndex === baseStations.length - 1 && narrative && (
+          {/* Per-base-station Narrative */}
+          {baseStation.narrative && (
             <View style={styles.narrativeSection}>
               <Text style={styles.narrativeTitle}>Data Analysis & Narrative</Text>
-              <Text style={styles.narrativeText}>{narrative}</Text>
+              <Text style={styles.narrativeText}>{baseStation.narrative}</Text>
             </View>
           )}
           

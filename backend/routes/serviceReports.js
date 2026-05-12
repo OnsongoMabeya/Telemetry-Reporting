@@ -83,20 +83,35 @@ function calculateTimeRange(timeFilter) {
 async function fetchTelemetryForMetric(metric, startTime, endTime) {
   try {
     // Query the existing node_status_table directly
-    const [data] = await db.query(
-      `SELECT time as sample_time, ${metric.column_name} as value
+    const query = `SELECT time as sample_time, ${metric.column_name} as value
        FROM node_status_table
        WHERE NodeName = ?
          AND NodeBaseStationName = ?
          AND time BETWEEN ? AND ?
          AND ${metric.column_name} IS NOT NULL
-       ORDER BY time ASC`,
-      [metric.node_name, metric.base_station, startTime, endTime]
-    );
+       ORDER BY time ASC`;
+    
+    logger.info('Fetching telemetry:', { 
+      metric: metric.metric_name, 
+      node: metric.node_name, 
+      baseStation: metric.base_station_name,
+      column: metric.column_name,
+      startTime, 
+      endTime 
+    });
+    
+    const [data] = await db.query(query, [metric.node_name, metric.base_station_name, startTime, endTime]);
+    
+    logger.info('Telemetry fetch result:', { 
+      metric: metric.metric_name, 
+      rowCount: data.length,
+      firstRow: data.length > 0 ? data[0] : null,
+      lastRow: data.length > 0 ? data[data.length - 1] : null
+    });
     
     return data;
   } catch (error) {
-    logger.error('Error fetching telemetry for metric:', { metric: metric.metric_name, node: metric.node_name, baseStation: metric.base_station, error: error.message });
+    logger.error('Error fetching telemetry for metric:', { metric: metric.metric_name, node: metric.node_name, baseStation: metric.base_station_name, error: error.message });
     return [];
   }
 }
@@ -131,51 +146,54 @@ function calculateStats(data) {
 }
 
 /**
+ * Generate auto-narrative for a single metric
+ * @param {Object} metric - Metric data with stats
+ * @returns {string} Narrative text for the metric
+ */
+function generateMetricNarrative(metric) {
+  const { display_name, stats, unit, view_type } = metric;
+  
+  if (!stats || stats.latest === null) {
+    return `${display_name}: No data available for the reporting period.`;
+  }
+  
+  let narrative = `${display_name}: Current value is ${stats.latest}${unit}.`;
+  
+  if (stats.min !== null && stats.max !== null) {
+    const range = stats.max - stats.min;
+    const variation = range > 0 ? ((range / stats.avg) * 100).toFixed(1) : 0;
+    
+    narrative += ` Range: ${stats.min}-${stats.max}${unit} (avg: ${stats.avg}${unit}, ${variation}% variation).`;
+    
+    // Trend analysis
+    if (view_type === 'graph' && metric.data && metric.data.length > 1) {
+      const firstHalf = metric.data.slice(0, Math.floor(metric.data.length / 2));
+      const secondHalf = metric.data.slice(Math.floor(metric.data.length / 2));
+      
+      const firstAvg = firstHalf.reduce((a, b) => a + parseFloat(b.value), 0) / firstHalf.length;
+      const secondAvg = secondHalf.reduce((a, b) => a + parseFloat(b.value), 0) / secondHalf.length;
+      
+      const change = ((secondAvg - firstAvg) / firstAvg * 100).toFixed(1);
+      
+      if (Math.abs(change) > 5) {
+        const direction = change > 0 ? 'increasing' : 'decreasing';
+        narrative += ` Trend shows ${direction} pattern (${Math.abs(change)}% change).`;
+      } else {
+        narrative += ` Trend is stable.`;
+      }
+    }
+  }
+  
+  return narrative;
+}
+
+/**
  * Generate auto-narrative based on data trends
  * @param {Array} metrics - Array of metric data with stats
  * @returns {string} Narrative text
  */
 function generateNarrative(metrics) {
-  const narratives = [];
-  
-  metrics.forEach(metric => {
-    const { display_name, stats, unit, view_type } = metric;
-    
-    if (!stats || stats.latest === null) {
-      narratives.push(`${display_name}: No data available for the reporting period.`);
-      return;
-    }
-    
-    let narrative = `${display_name}: Current value is ${stats.latest}${unit}.`;
-    
-    if (stats.min !== null && stats.max !== null) {
-      const range = stats.max - stats.min;
-      const variation = range > 0 ? ((range / stats.avg) * 100).toFixed(1) : 0;
-      
-      narrative += ` Range: ${stats.min}-${stats.max}${unit} (avg: ${stats.avg}${unit}, ${variation}% variation).`;
-      
-      // Trend analysis
-      if (view_type === 'graph' && metric.data && metric.data.length > 1) {
-        const firstHalf = metric.data.slice(0, Math.floor(metric.data.length / 2));
-        const secondHalf = metric.data.slice(Math.floor(metric.data.length / 2));
-        
-        const firstAvg = firstHalf.reduce((a, b) => a + parseFloat(b.value), 0) / firstHalf.length;
-        const secondAvg = secondHalf.reduce((a, b) => a + parseFloat(b.value), 0) / secondHalf.length;
-        
-        const change = ((secondAvg - firstAvg) / firstAvg * 100).toFixed(1);
-        
-        if (Math.abs(change) > 5) {
-          const direction = change > 0 ? 'increasing' : 'decreasing';
-          narrative += ` Trend shows ${direction} pattern (${Math.abs(change)}% change).`;
-        } else {
-          narrative += ` Trend is stable.`;
-        }
-      }
-    }
-    
-    narratives.push(narrative);
-  });
-  
+  const narratives = metrics.map(generateMetricNarrative);
   return narratives.join('\n\n');
 }
 
@@ -364,7 +382,12 @@ router.post('/services/:serviceId/generate-report', authenticateToken, async (re
     
     const baseStations = Object.values(baseStationsMap);
     
-    // Generate narrative
+    // Generate per-base-station narratives
+    baseStations.forEach(bs => {
+      bs.narrative = generateNarrative(bs.metrics);
+    });
+    
+    // Generate overall narrative (for backward compatibility)
     const narrative = generateNarrative(metricsWithData);
     
     res.json({
