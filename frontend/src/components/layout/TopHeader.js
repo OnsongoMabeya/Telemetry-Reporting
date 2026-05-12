@@ -18,7 +18,6 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useMySites } from '../../context/MySitesContext';
 import DashboardControls from '../dashboard/DashboardControls';
-import GenerateReportButton from '../dashboard/GenerateReportButton';
 import MySitesControls from '../dashboard/MySitesControls';
 
 const TopHeader = () => {
@@ -83,10 +82,8 @@ const TopHeader = () => {
           )}
         </Box>
 
-        {/* Right Section: Generate Report Button & User Menu */}
+        {/* Right Section: User Menu */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          {isDashboard && <GenerateReportButton />}
-
           {/* User Profile Menu */}
           <IconButton
             onClick={handleUserMenuOpen}
