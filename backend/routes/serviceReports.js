@@ -74,7 +74,7 @@ function calculateTimeRange(timeFilter) {
 }
 
 /**
- * Fetch telemetry data for a specific metric
+ * Fetch telemetry data for a specific metric from node_status_table
  * @param {Object} metric - Metric mapping info
  * @param {string} startTime - ISO start time
  * @param {string} endTime - ISO end time
@@ -82,26 +82,21 @@ function calculateTimeRange(timeFilter) {
  */
 async function fetchTelemetryForMetric(metric, startTime, endTime) {
   try {
-    const tableName = `telemetry_${metric.node_name.toLowerCase().replace(/\s+/g, '_')}`;
-    
+    // Query the existing node_status_table directly
     const [data] = await db.query(
-      `SELECT sample_time, ${metric.column_name} as value
-       FROM ${tableName}
-       WHERE base_station = ?
-         AND sample_time BETWEEN ? AND ?
+      `SELECT time as sample_time, ${metric.column_name} as value
+       FROM node_status_table
+       WHERE NodeName = ?
+         AND NodeBaseStationName = ?
+         AND time BETWEEN ? AND ?
          AND ${metric.column_name} IS NOT NULL
-       ORDER BY sample_time ASC`,
-      [metric.base_station_name, startTime, endTime]
+       ORDER BY time ASC`,
+      [metric.node_name, metric.base_station, startTime, endTime]
     );
     
     return data;
   } catch (error) {
-    logger.error('Error fetching telemetry', {
-      metric: metric.metric_name,
-      node: metric.node_name,
-      baseStation: metric.base_station_name,
-      error: error.message
-    });
+    logger.error('Error fetching telemetry for metric:', { metric: metric.metric_name, node: metric.node_name, baseStation: metric.base_station, error: error.message });
     return [];
   }
 }

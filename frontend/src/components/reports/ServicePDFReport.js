@@ -365,40 +365,45 @@ const SparklineChart = ({ data, color = '#30a1e4' }) => {
 };
 
 /**
- * Render a simple dial/gauge visualization
+ * Render a simple horizontal bar gauge visualization
  * @param {number} value - Current value
  * @param {number} min - Minimum value
  * @param {number} max - Maximum value
  * @param {string} color - Gauge color
  */
-const SimpleDial = ({ value, min, max, color = '#30a1e4' }) => {
+const SimpleGauge = ({ value, min, max, color = '#30a1e4' }) => {
   const normalized = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+  const barWidth = 100;
+  const barHeight = 8;
   
   return (
-    <View style={{ alignItems: 'center', marginVertical: 8 }}>
+    <View style={{ alignItems: 'center', marginVertical: 8, width: 120 }}>
       <Canvas
         paint={(pdfDoc, width, height) => {
-          const centerX = width / 2;
-          const centerY = height * 0.7;
-          const radius = Math.min(width, height) * 0.35;
+          const startX = (width - barWidth) / 2;
+          const startY = height * 0.6;
           
-          // Background arc (gray)
-          pdfDoc.strokeColor('#e0e0e0').lineWidth(8);
-          pdfDoc.arc(centerX, centerY, radius, Math.PI * 0.7, Math.PI * 2.3, false).stroke();
+          // Background bar (gray)
+          pdfDoc.fillColor('#e0e0e0');
+          pdfDoc.rect(startX, startY, barWidth, barHeight).fill();
           
-          // Value arc (colored)
+          // Value bar (colored)
           if (normalized > 0) {
-            const endAngle = Math.PI * 0.7 + (normalized / 100) * (Math.PI * 1.6);
-            pdfDoc.strokeColor(color).lineWidth(8);
-            pdfDoc.arc(centerX, centerY, radius, Math.PI * 0.7, endAngle, false).stroke();
+            const valueWidth = (normalized / 100) * barWidth;
+            pdfDoc.fillColor(color);
+            pdfDoc.rect(startX, startY, valueWidth, barHeight).fill();
           }
           
+          // Border
+          pdfDoc.strokeColor('#cccccc').lineWidth(1);
+          pdfDoc.rect(startX, startY, barWidth, barHeight).stroke();
+          
           // Min/Max labels
-          pdfDoc.fontSize(8).fillColor('#999');
-          pdfDoc.text(min.toString(), centerX - radius - 10, centerY + 5);
-          pdfDoc.text(max.toString(), centerX + radius - 5, centerY + 5);
+          pdfDoc.fontSize(8).fillColor('#666');
+          pdfDoc.text(min.toString(), startX, startY + barHeight + 4);
+          pdfDoc.text(max.toString(), startX + barWidth - 15, startY + barHeight + 4);
         }}
-        style={{ width: 120, height: 80 }}
+        style={{ width: 120, height: 40 }}
       />
       <Text style={styles.currentValue}>
         {value !== null ? value.toFixed(2) : 'N/A'}
@@ -463,7 +468,7 @@ const MetricCard = ({ metric }) => (
     {metric.view_type === 'dial' ? (
       <>
         {/* Dial View */}
-        <SimpleDial
+        <SimpleGauge
           value={metric.stats.latest}
           min={metric.min_value}
           max={metric.max_value}
