@@ -93,18 +93,30 @@ function writeToFile(entry) {
 async function insertToDB(entry) {
   if (!dbPool) return;
   try {
+    // Ensure all values are strings (not objects) and truncate if needed
+    let action = typeof (entry.action || entry.message) === 'object' 
+      ? JSON.stringify(entry.action || entry.message) 
+      : (entry.action || entry.message);
+    // Truncate to fit database columns (action: 50 chars, details: 255 chars)
+    action = action ? action.substring(0, 50) : '';
+    
+    let details = typeof (entry.details || entry.message) === 'object' 
+      ? JSON.stringify(entry.details || entry.message) 
+      : (entry.details || entry.message);
+    details = details ? details.substring(0, 255) : '';
+    
     await dbPool.query(
-      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, ip_address, metadata)
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         entry.userId || null,
         entry.level,
         entry.category,
-        entry.action || entry.message,
+        action,
         entry.resource || null,
-        entry.details || entry.message,
-        entry.ip || null,
-        entry.metadata ? JSON.stringify(entry.metadata) : null
+        details,
+        entry.metadata ? JSON.stringify(entry.metadata) : null,
+        entry.ip || null
       ]
     );
   } catch (err) {

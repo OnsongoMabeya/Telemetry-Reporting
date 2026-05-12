@@ -333,19 +333,31 @@ const SimpleLineChart = ({ data, color = '#30a1e4' }) => {
           // X-axis labels (start, middle, end times)
           pdfDoc.fontSize(6).fillColor('#666');
           
+          // Calculate time range to determine format
+          const timeRangeMs = lastTime - firstTime;
+          const isShortRange = timeRangeMs <= 24 * 60 * 60 * 1000; // 24 hours or less
+          
+          // Format function - show time for short ranges, date for long ranges
+          const formatLabel = (date) => {
+            if (isShortRange) {
+              return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            }
+            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+          };
+          
           // Start time
-          const startLabel = firstTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+          const startLabel = formatLabel(firstTime);
           pdfDoc.text(startLabel, padding.left, padding.top + chartHeight + 8);
           
           // End time
-          const endLabel = lastTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+          const endLabel = formatLabel(lastTime);
           pdfDoc.text(endLabel, width - padding.right - 25, padding.top + chartHeight + 8);
           
           // Middle time
           if (chartData.length > 10) {
             const midIndex = Math.floor(chartData.length / 2);
             const midTime = new Date(chartData[midIndex].sample_time);
-            const midLabel = midTime.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+            const midLabel = formatLabel(midTime);
             pdfDoc.text(midLabel, padding.left + chartWidth / 2 - 10, padding.top + chartHeight + 8);
           }
           

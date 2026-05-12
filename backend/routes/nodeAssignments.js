@@ -136,13 +136,16 @@ router.post('/', requireAdmin, async (req, res) => {
 
     // Log activity
     await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, details, ip_address)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
+        'INFO',
+        'node_assignments',
         'ASSIGN_NODES',
         'node_assignments',
         JSON.stringify({ targetUserId: userId, nodes: nodeNames }),
+        null,
         req.ip
       ]
     );
@@ -187,13 +190,16 @@ router.delete('/:id', requireAdmin, async (req, res) => {
 
     // Log activity
     await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, details, ip_address)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
+        'INFO',
+        'node_assignments',
         'REMOVE_NODE_ASSIGNMENT',
         'node_assignments',
         JSON.stringify({ assignmentId, userId: assignments[0].user_id, nodeName: assignments[0].node_name }),
+        null,
         req.ip
       ]
     );
@@ -234,13 +240,16 @@ router.delete('/user/:userId/node/:nodeName', requireAdmin, async (req, res) => 
 
     // Log activity
     await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, details, ip_address)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
+        'INFO',
+        'node_assignments',
         'REMOVE_NODE_ASSIGNMENT',
         'node_assignments',
         JSON.stringify({ userId, nodeName }),
+        null,
         req.ip
       ]
     );
@@ -281,13 +290,16 @@ router.put('/user/:userId/access-all', requireAdmin, async (req, res) => {
 
     // Log activity
     await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, details, ip_address)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
+        'INFO',
+        'users',
         'UPDATE_NODE_ACCESS',
         'users',
         JSON.stringify({ userId, accessAllNodes }),
+        null,
         req.ip
       ]
     );

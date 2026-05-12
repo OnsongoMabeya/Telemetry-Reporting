@@ -406,9 +406,18 @@ router.post('/', requireAdmin, async (req, res) => {
 
     // Log activity
     await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, details, ip_address)
-       VALUES (?, 'CREATE', 'metric_mapping', ?, ?)`,
-      [req.user.id, `Created mapping: ${metric_name} -> ${column_name} for ${node_name}/${base_station_name}`, req.ip]
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.user.id,
+        'INFO',
+        'metric_mappings',
+        'CREATE',
+        'metric_mapping',
+        `Created mapping: ${metric_name} -> ${column_name} for ${node_name}/${base_station_name}`,
+        null,
+        req.ip
+      ]
     );
 
     res.status(201).json({
@@ -474,9 +483,18 @@ router.put('/:id', requireAdmin, async (req, res) => {
 
     // Log activity
     await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, details, ip_address)
-       VALUES (?, 'UPDATE', 'metric_mapping', ?, ?)`,
-      [req.user.id, `Updated mapping: ${metric_name} for ${oldMapping[0].node_name}/${oldMapping[0].base_station_name}`, req.ip]
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.user.id,
+        'INFO',
+        'metric_mappings',
+        'UPDATE',
+        'metric_mapping',
+        `Updated mapping: ${metric_name} for ${oldMapping[0].node_name}/${oldMapping[0].base_station_name}`,
+        null,
+        req.ip
+      ]
     );
 
     res.json({
@@ -537,9 +555,18 @@ router.delete('/:id', requireAdmin, async (req, res) => {
 
     // Log activity
     await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, details, ip_address)
-       VALUES (?, 'DELETE', 'metric_mapping', ?, ?)`,
-      [req.user.id, `Deleted mapping: ${mapping[0].metric_name} for ${mapping[0].node_name}/${mapping[0].base_station_name}`, req.ip]
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.user.id,
+        'INFO',
+        'metric_mappings',
+        'DELETE',
+        'metric_mapping',
+        `Deleted mapping: ${mapping[0].metric_name} for ${mapping[0].node_name}/${mapping[0].base_station_name}`,
+        null,
+        req.ip
+      ]
     );
 
     res.json({

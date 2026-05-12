@@ -104,18 +104,21 @@ router.post('/signup', requireAdmin, createUserLimiter, async (req, res) => {
     const [result] = await db.query(
       `INSERT INTO users (username, email, password_hash, role, first_name, last_name, created_by)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [username, email, passwordHash, userRole, firstName || null, lastName || null, req.user.id]
+      [username, email, passwordHash, role, firstName, lastName, req.user.id]
     );
 
     // Log activity
     await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, details, ip_address)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
+        'INFO',
+        'users',
         'CREATE_USER',
         'users',
         JSON.stringify({ newUserId: result.insertId, username, role: userRole }),
+        null,
         req.ip
       ]
     );
@@ -334,13 +337,16 @@ router.put('/:id', async (req, res) => {
 
     // Log activity
     await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, details, ip_address)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
+        'INFO',
+        'users',
         'UPDATE_USER',
         'users',
         JSON.stringify({ targetUserId: userId, updates: Object.keys(req.body) }),
+        null,
         req.ip
       ]
     );
@@ -409,13 +415,16 @@ router.delete('/:id', requireAdmin, async (req, res) => {
 
     // Log activity
     await db.query(
-      `INSERT INTO user_activity_log (user_id, action, resource, details, ip_address)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         req.user.id,
+        'INFO',
+        'users',
         'DELETE_USER',
         'users',
         JSON.stringify({ deletedUserId: userId, username: users[0].username }),
+        null,
         req.ip
       ]
     );
