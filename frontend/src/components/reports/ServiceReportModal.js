@@ -246,8 +246,8 @@ const ServiceReportModal = ({
             display_name: metric.metric_name,
             latest: metric.current,
             unit: metric.unit,
-            node_name: service.node_name,
-            base_station_name: service.base_station_name
+            node_name: metric.node_name || service.node_name,
+            base_station_name: metric.base_station_name || service.base_station_name
           })) || []
         ) || [],
         totalMetrics: clientReportData.summary?.totalMetrics || 0,

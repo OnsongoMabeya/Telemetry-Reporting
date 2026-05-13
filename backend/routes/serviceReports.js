@@ -763,7 +763,9 @@ router.post('/reports/client/:clientId/generate', authenticateToken, async (req,
           unit: m.unit,
           current: m.stats.latest,
           min: m.stats.min,
-          max: m.stats.max
+          max: m.stats.max,
+          node_name: m.node_name,
+          base_station_name: m.base_station_name
         }))
       );
       

@@ -284,11 +284,18 @@ const SimpleLineChart = ({ data, color = '#30a1e4', unit = '' }) => {
     chartData = rawData.filter((_, i) => i % step === 0);
   }
   
-  const values = chartData.map(d => parseFloat(d.value));
-  const min = Math.min(...values);
+  const values = chartData.map(d => parseFloat(d.value)).filter(v => !isNaN(v));
+  if (values.length === 0) {
+    return (
+      <View style={[styles.sparklineContainer, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ fontSize: 10, color: '#999' }}>No data available</Text>
+      </View>
+    );
+  }
+  const min = 0;
   const max = Math.max(...values);
-  const range = max - min || 1;
-  const baseline = min - (range * 0.1);
+  const range = max > min ? max - min : 1;
+  const baseline = 0;
   
   // Get time range for X-axis
   const firstTime = new Date(chartData[0].sample_time);
@@ -333,9 +340,7 @@ const SimpleLineChart = ({ data, color = '#30a1e4', unit = '' }) => {
           // X-axis labels (start, middle, end times)
           pdfDoc.fontSize(6).fillColor('#666');
           
-          // Calculate time range to determine format
-          const timeRangeMs = lastTime - firstTime;
-          const isShortRange = timeRangeMs <= 24 * 60 * 60 * 1000; // 24 hours or less
+          // Calculate time range
           
           // Format function - always show full date and time
           const formatLabel = (date) => {
@@ -398,16 +403,6 @@ const SimpleLineChart = ({ data, color = '#30a1e4', unit = '' }) => {
 };
 
 /**
-          });
-          pdfDoc.lineTo(width - padding, padding + chartHeight);
-          pdfDoc.fill();
-        }}
-      />
-    </View>
-  );
-};
-
-/**
  * Render a semicircular dial gauge using line segments
  * @param {number} value - Current value
  * @param {number} min - Minimum value
@@ -415,7 +410,12 @@ const SimpleLineChart = ({ data, color = '#30a1e4', unit = '' }) => {
  * @param {string} color - Gauge color
  */
 const SimpleGauge = ({ value, min, max, color = '#30a1e4', unit = '' }) => {
-  const normalized = Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+  // Ensure valid numbers with defaults
+  const safeValue = (typeof value === 'number' && !isNaN(value)) ? value : 0;
+  const safeMin = (typeof min === 'number' && !isNaN(min)) ? min : 0;
+  const safeMax = (typeof max === 'number' && !isNaN(max) && max > safeMin) ? max : safeMin + 100;
+  
+  const normalized = Math.max(0, Math.min(100, ((safeValue - safeMin) / (safeMax - safeMin)) * 100));
   
   return (
     <View style={styles.dialContainer}>
@@ -523,15 +523,22 @@ const SummaryTable = ({ summaryTable }) => (
 /**
  * Metric Card Component
  */
-const MetricCard = ({ metric }) => (
-  <View style={styles.metricCard}>
-    <View style={styles.metricHeader}>
-      <Text style={styles.metricName}>{metric.display_name}</Text>
-      <Text style={[
-        styles.viewTypeBadge,
-        metric.view_type === 'dial' ? styles.dialBadge : styles.graphBadge
-      ]}>
-        {metric.view_type === 'dial' ? 'DIAL' : 'GRAPH'}
+const MetricCard = ({ metric }) => {
+  const { display_name, unit, stats, threshold_value, telemetry } = metric;
+  const min = stats?.min ?? 0;
+  const max = stats?.max ?? 100;
+  const avg = stats?.avg ?? 0;
+  const latest = stats?.latest ?? 0;
+
+  return (
+    <View style={styles.metricCard}>
+      <View style={styles.metricHeader}>
+        <Text style={styles.metricName}>{display_name}</Text>
+        <Text style={[
+          styles.viewTypeBadge,
+          metric.view_type === 'dial' ? styles.dialBadge : styles.graphBadge
+        ]}>
+          {metric.view_type === 'dial' ? 'DIAL' : 'GRAPH'}
       </Text>
     </View>
     
@@ -581,6 +588,65 @@ const MetricCard = ({ metric }) => (
     </View>
   </View>
 );
+};
+
+/**
+ * Generate narrative text for base station metrics
+ */
+const generateNarrative = (baseStation) => {
+  const metrics = baseStation.metrics;
+  if (!metrics || metrics.length === 0) return null;
+  
+  const lines = [];
+  lines.push(`Base station "${baseStation.base_station_name}" (Node: ${baseStation.node_name}) monitoring overview:`);
+  lines.push('');
+  
+  metrics.forEach(metric => {
+    const latest = metric.stats?.latest;
+    const min = metric.stats?.min;
+    const max = metric.stats?.max;
+    const avg = metric.stats?.avg;
+    const threshold = metric.threshold_value;
+    const unit = metric.unit || '';
+    
+    // Skip metrics with no data
+    if (latest === null || latest === undefined || isNaN(latest)) return;
+    
+    let status = 'normal';
+    if (threshold && latest > threshold) {
+      status = 'above threshold';
+    } else if (threshold && latest < threshold * 0.5) {
+      status = 'below expected range';
+    }
+    
+    const safeMin = (min !== null && min !== undefined && !isNaN(min)) ? min.toFixed(2) : 'N/A';
+    const safeMax = (max !== null && max !== undefined && !isNaN(max)) ? max.toFixed(2) : 'N/A';
+    const safeAvg = (avg !== null && avg !== undefined && !isNaN(avg)) ? avg.toFixed(2) : 'N/A';
+    
+    lines.push(`• ${metric.display_name}: Current value ${latest.toFixed(2)}${unit} (${status}). ` +
+               `Range: ${safeMin}${unit} - ${safeMax}${unit}, Average: ${safeAvg}${unit}.`);
+  });
+  
+  lines.push('');
+  lines.push('All metrics are being monitored continuously. Data represents the selected time period.');
+  
+  return lines.join('\n');
+};
+
+/**
+ * Group base stations by service
+ */
+const groupByService = (baseStations) => {
+  const grouped = {};
+  baseStations.forEach(bs => {
+    const serviceName = bs.service_name || 'Unknown Service';
+    if (!grouped[serviceName]) {
+      grouped[serviceName] = [];
+    }
+    grouped[serviceName].push(bs);
+  });
+  return grouped;
+};
 
 /**
  * Main Service Report Document Component
@@ -588,14 +654,33 @@ const MetricCard = ({ metric }) => (
 const ServiceReportDocument = ({ reportData }) => {
   const { reportInfo, summaryTable, baseStations } = reportData;
   const generatedDate = new Date(reportInfo.generatedAt).toLocaleString();
+  const isClientReport = reportInfo.report_type === 'client_comprehensive';
+  
+  // Group by service for client reports
+  const servicesGrouped = isClientReport ? groupByService(baseStations) : null;
+  const serviceNames = isClientReport ? Object.keys(servicesGrouped) : [];
+  
+  // Calculate total pages
+  const totalPages = isClientReport 
+    ? 1 + baseStations.length  // Cover + service/base station pages
+    : baseStations.length + 1;
   
   return (
     <Document>
       {/* Page 1: Header + Summary Table */}
       <Page key="page1" size="A4" orientation="portrait" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.title}>{reportInfo.clientName} — {reportInfo.serviceName} Report</Text>
-          <Text style={styles.subtitle}>Service Telemetry Report</Text>
+          {isClientReport ? (
+            <>
+              <Text style={styles.title}>{reportInfo.clientName} Report</Text>
+              <Text style={styles.subtitle}>Client Telemetry Report — All Services</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.title}>{reportInfo.clientName} — {reportInfo.serviceName} Report</Text>
+              <Text style={styles.subtitle}>Service Telemetry Report</Text>
+            </>
+          )}
           <Text style={styles.metaInfo}>
             Generated: {generatedDate} | Time Range: {reportInfo.timeRange.label} ({new Date(reportInfo.timeRange.start).toLocaleDateString()} — {new Date(reportInfo.timeRange.end).toLocaleDateString()})
           </Text>
@@ -605,53 +690,120 @@ const ServiceReportDocument = ({ reportData }) => {
         
         <Text style={[styles.sectionTitle, { marginTop: 15 }]}>
           Report Contents: {reportData.totalMetrics} metrics from {reportData.totalBaseStations} base station(s)
+          {isClientReport && ` across ${serviceNames.length} services`}
         </Text>
         
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {baseStations.map((bs, idx) => (
-            <View key={idx} style={{ width: '32%', padding: 8, backgroundColor: '#f5f9ff', borderRadius: 4 }}>
-              <Text style={{ fontWeight: 'bold', color: '#163d90' }}>{bs.base_station_name}</Text>
-              <Text style={{ fontSize: 8, color: '#666' }}>{bs.node_name}</Text>
-              <Text style={{ fontSize: 8, marginTop: 4, color: '#999' }}>
-                {bs.metrics.length} metric{bs.metrics.length !== 1 ? 's' : ''}
+        {isClientReport ? (
+          // Client report: Show services with their base stations
+          serviceNames.map((serviceName, sIdx) => (
+            <View key={sIdx} style={{ marginBottom: 10 }}>
+              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#163d90', marginBottom: 5 }}>
+                {serviceName}
               </Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {servicesGrouped[serviceName].map((bs, idx) => (
+                  <View key={idx} style={{ width: '31%', padding: 6, backgroundColor: '#f5f9ff', borderRadius: 4 }}>
+                    <Text style={{ fontWeight: 'bold', fontSize: 8, color: '#163d90' }}>{bs.base_station_name}</Text>
+                    <Text style={{ fontSize: 7, color: '#666' }}>{bs.node_name}</Text>
+                    <Text style={{ fontSize: 7, marginTop: 2, color: '#999' }}>
+                      {bs.metrics.length} metric{bs.metrics.length !== 1 ? 's' : ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          ))}
-        </View>
+          ))
+        ) : (
+          // Service report: Show all base stations flat
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            {baseStations.map((bs, idx) => (
+              <View key={idx} style={{ width: '32%', padding: 8, backgroundColor: '#f5f9ff', borderRadius: 4 }}>
+                <Text style={{ fontWeight: 'bold', color: '#163d90' }}>{bs.base_station_name}</Text>
+                <Text style={{ fontSize: 8, color: '#666' }}>{bs.node_name}</Text>
+                <Text style={{ fontSize: 8, marginTop: 4, color: '#999' }}>
+                  {bs.metrics.length} metric{bs.metrics.length !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
         
         <Text style={styles.footer}>
-          BSI Telemetry Reporting System • Page 1 of {baseStations.length + 1}
+          BSI Telemetry Reporting System • Page 1 of {totalPages}
         </Text>
       </Page>
       
-      {/* Pages for each base station */}
-      {baseStations.map((baseStation, pageIndex) => (
-        <Page key={pageIndex} size="A4" orientation="portrait" style={styles.page}>
-          <View style={styles.baseStationHeader}>
-            <Text style={styles.baseStationName}>{baseStation.base_station_name}</Text>
-            <Text style={styles.nodeInfo}>Node: {baseStation.node_name}</Text>
-          </View>
-          
-          {/* 2-Column Grid of Metrics */}
-          <View style={styles.metricsGrid}>
-            {baseStation.metrics.map((metric, mIndex) => (
-              <MetricCard key={mIndex} metric={metric} />
-            ))}
-          </View>
-          
-          {/* Per-base-station Narrative */}
-          {baseStation.narrative && (
-            <View style={styles.narrativeSection}>
-              <Text style={styles.narrativeTitle}>Data Analysis & Narrative</Text>
-              <Text style={styles.narrativeText}>{baseStation.narrative}</Text>
+      {/* Pages for each service and base station (client report) */}
+      {isClientReport ? (
+        serviceNames.map((serviceName) => 
+          servicesGrouped[serviceName].map((baseStation, pageIndex) => {
+            const globalPageIndex = baseStations.findIndex(bs => 
+              bs.service_name === serviceName && bs.base_station_name === baseStation.base_station_name
+            ) + 1;
+            
+            return (
+              <Page key={`${serviceName}-${pageIndex}`} size="A4" orientation="portrait" style={styles.page}>
+                {/* Service Header */}
+                <View style={{ backgroundColor: '#163d90', padding: 10, marginBottom: 10 }}>
+                  <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>{serviceName}</Text>
+                </View>
+                
+                {/* Base Station Header */}
+                <View style={styles.baseStationHeader}>
+                  <Text style={styles.baseStationName}>{serviceName} — {baseStation.base_station_name}</Text>
+                  <Text style={styles.nodeInfo}>Node: {baseStation.node_name}</Text>
+                </View>
+                
+                {/* 2-Column Grid of Metrics */}
+                <View style={styles.metricsGrid}>
+                  {baseStation.metrics.map((metric, mIndex) => (
+                    <MetricCard key={mIndex} metric={metric} />
+                  ))}
+                </View>
+                
+                {/* Per-base-station Narrative */}
+                <View style={styles.narrativeSection}>
+                  <Text style={styles.narrativeTitle}>Data Analysis & Narrative</Text>
+                  <Text style={styles.narrativeText}>{generateNarrative(baseStation)}</Text>
+                </View>
+                
+                <Text style={styles.footer}>
+                  BSI Telemetry Reporting System • Page {globalPageIndex + 1} of {totalPages}
+                </Text>
+              </Page>
+            );
+          })
+        )
+      ) : (
+        // Service report pages (original structure)
+        baseStations.map((baseStation, pageIndex) => (
+          <Page key={pageIndex} size="A4" orientation="portrait" style={styles.page}>
+            <View style={styles.baseStationHeader}>
+              <Text style={styles.baseStationName}>{baseStation.base_station_name}</Text>
+              <Text style={styles.nodeInfo}>Node: {baseStation.node_name}</Text>
             </View>
-          )}
-          
-          <Text style={styles.footer}>
-            BSI Telemetry Reporting System • Page {pageIndex + 2} of {baseStations.length + 1}
-          </Text>
-        </Page>
-      ))}
+            
+            {/* 2-Column Grid of Metrics */}
+            <View style={styles.metricsGrid}>
+              {baseStation.metrics.map((metric, mIndex) => (
+                <MetricCard key={mIndex} metric={metric} />
+              ))}
+            </View>
+            
+            {/* Per-base-station Narrative */}
+            {baseStation.narrative && (
+              <View style={styles.narrativeSection}>
+                <Text style={styles.narrativeTitle}>Data Analysis & Narrative</Text>
+                <Text style={styles.narrativeText}>{baseStation.narrative}</Text>
+              </View>
+            )}
+            
+            <Text style={styles.footer}>
+              BSI Telemetry Reporting System • Page {pageIndex + 2} of {totalPages}
+            </Text>
+          </Page>
+        ))
+      )}
     </Document>
   );
 };
