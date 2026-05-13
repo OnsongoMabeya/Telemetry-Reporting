@@ -997,11 +997,12 @@ const MySites = () => {
                 </Typography>
               )}
               
-              {/* Generate Service Report Button */}
+              {/* Generate Report Button */}
               {!isFullscreen && selectedClient && selectedService && (
                 <ServiceReportButton
                   service={serviceDetails}
                   clientName={clients.find(c => c.id === selectedClient)?.client_name || ''}
+                  clientId={selectedClient}
                   size="small"
                 />
               )}

@@ -631,4 +631,176 @@ router.delete('/admin/service-reports/schedules/:id', authenticateToken, require
   }
 });
 
+/**
+ * POST /api/reports/client/:clientId/generate
+ * Generate comprehensive report for all services under a client
+ */
+router.post('/reports/client/:clientId/generate', authenticateToken, async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const { timeFilter = '1d' } = req.body;
+    
+    const { startTime, endTime } = calculateTimeRange(timeFilter);
+    
+    // Get client info
+    const [client] = await db.query(
+      `SELECT id, name FROM clients WHERE id = ?`,
+      [clientId]
+    );
+    
+    if (client.length === 0) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+    
+    // Get all services for this client
+    const [services] = await db.query(
+      `SELECT s.id, s.name, mm.node_name, mm.base_station_name
+       FROM services s
+       INNER JOIN client_services cs ON s.id = cs.service_id
+       LEFT JOIN (
+         SELECT DISTINCT id as metric_mapping_id, node_name, base_station_name
+         FROM metric_mappings
+         WHERE is_active = TRUE
+       ) mm ON cs.service_id = mm.metric_mapping_id
+       WHERE cs.client_id = ? AND s.is_active = TRUE
+       ORDER BY s.name`,
+      [clientId]
+    );
+    
+    if (services.length === 0) {
+      return res.status(404).json({ error: 'No services found for this client' });
+    }
+    
+    // Generate report data for each service
+    const servicesWithData = await Promise.all(
+      services.map(async (service) => {
+        // Get metrics for this service
+        const [metrics] = await db.query(
+          `SELECT 
+            sma.id as assignment_id,
+            sma.display_name,
+            sma.display_order,
+            mm.id as metric_mapping_id,
+            mm.node_name,
+            mm.base_station_name,
+            mm.metric_name,
+            mm.column_name,
+            mm.unit,
+            mm.min_value,
+            mm.max_value,
+            mm.color,
+            COALESCE(mvs.view_type, 'graph') as view_type
+           FROM service_metric_assignments sma
+           INNER JOIN metric_mappings mm ON sma.metric_mapping_id = mm.id
+           LEFT JOIN metric_view_settings mvs ON mm.id = mvs.metric_mapping_id
+           WHERE sma.service_id = ? AND sma.is_active = TRUE AND mm.is_active = TRUE
+           ORDER BY sma.display_order, sma.created_at`,
+          [service.id]
+        );
+        
+        // Fetch telemetry for each metric
+        const metricsWithData = await Promise.all(
+          metrics.map(async (metric) => {
+            const data = await fetchTelemetryForMetric(metric, startTime, endTime);
+            const stats = calculateStats(data);
+            
+            return {
+              assignment_id: metric.assignment_id,
+              display_name: metric.display_name,
+              display_order: metric.display_order,
+              metric_name: metric.metric_name,
+              node_name: metric.node_name,
+              base_station_name: metric.base_station_name,
+              column_name: metric.column_name,
+              unit: metric.unit || '',
+              min_value: metric.min_value ?? 0,
+              max_value: metric.max_value ?? 100,
+              color: metric.color,
+              view_type: metric.view_type,
+              data: data,
+              sparkline: data.slice(-20),
+              stats: stats
+            };
+          })
+        );
+        
+        // Group metrics by base station
+        const baseStationsMap = new Map();
+        metricsWithData.forEach(metric => {
+          const key = metric.base_station_name || 'Unknown';
+          if (!baseStationsMap.has(key)) {
+            baseStationsMap.set(key, {
+              base_station_name: key,
+              node_name: metric.node_name,
+              metrics: []
+            });
+          }
+          baseStationsMap.get(key).metrics.push(metric);
+        });
+        
+        return {
+          service_id: service.id,
+          service_name: service.name,
+          node_name: service.node_name,
+          base_station_name: service.base_station_name,
+          baseStations: Array.from(baseStationsMap.values())
+        };
+      })
+    );
+    
+    // Calculate client-level summary
+    const totalServices = servicesWithData.length;
+    const totalNodes = new Set(servicesWithData.map(s => s.node_name).filter(Boolean)).size;
+    const totalBaseStations = new Set(
+      servicesWithData.flatMap(s => s.baseStations.map(bs => bs.base_station_name))
+    ).size;
+    
+    // Generate quick stats table
+    const quickStats = servicesWithData.map(service => {
+      const latestMetrics = service.baseStations.flatMap(bs => 
+        bs.metrics.map(m => ({
+          metric_name: m.display_name,
+          unit: m.unit,
+          current: m.stats.latest,
+          min: m.stats.min,
+          max: m.stats.max
+        }))
+      );
+      
+      return {
+        service_name: service.service_name,
+        node_name: service.node_name,
+        base_station_name: service.base_station_name,
+        metrics: latestMetrics.slice(0, 4) // Top 4 metrics
+      };
+    });
+    
+    res.json({
+      reportInfo: {
+        client_id: client[0].id,
+        client_name: client[0].name,
+        report_type: 'client_comprehensive',
+        generated_at: new Date().toISOString(),
+        time_range: timeFilter,
+        start_time: startTime,
+        end_time: endTime,
+        total_services: totalServices,
+        total_nodes: totalNodes,
+        total_base_stations: totalBaseStations
+      },
+      summary: {
+        quickStats,
+        totalServices,
+        totalNodes,
+        totalBaseStations
+      },
+      services: servicesWithData
+    });
+    
+  } catch (error) {
+    console.error('Error generating client report:', error);
+    res.status(500).json({ error: 'Failed to generate client report' });
+  }
+});
+
 module.exports = router;

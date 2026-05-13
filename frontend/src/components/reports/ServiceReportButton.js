@@ -15,9 +15,11 @@ import ServiceReportModal from './ServiceReportModal';
 const ServiceReportButton = ({ 
   service, 
   clientName,
+  clientId,
   variant = 'contained',
   size = 'medium',
-  fullWidth = false
+  fullWidth = false,
+  initialTab = 'service'
 }) => {
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -52,6 +54,8 @@ const ServiceReportButton = ({
         onClose={handleClose}
         service={service}
         clientName={clientName}
+        clientId={clientId}
+        initialTab={initialTab}
       />
     </>
   );
