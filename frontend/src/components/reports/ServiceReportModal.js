@@ -268,7 +268,7 @@ const ServiceReportModal = ({
       const url = window.URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${clientName}_Client_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      link.download = `${clientName}_All_Services_${new Date().toISOString().split('T')[0]}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

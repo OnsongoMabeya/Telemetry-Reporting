@@ -1001,7 +1001,7 @@ const MySites = () => {
               {!isFullscreen && selectedClient && selectedService && (
                 <ServiceReportButton
                   service={serviceDetails}
-                  clientName={clients.find(c => c.id === selectedClient)?.client_name || ''}
+                  clientName={clients.find(c => c.id === selectedClient)?.name || ''}
                   clientId={selectedClient}
                   size="small"
                 />
