@@ -738,7 +738,7 @@ const MySitesCustomization = () => {
                         <TableCell>
                           <IconButton
                             size="small"
-                            onClick={() => handleRemoveMetricFromService(assignment.service_id, assignment.id)}
+                            onClick={() => handleRemoveMetricFromService(assignment.service_id, assignment.metric_mapping_id)}
                             color="error"
                           >
                             <DeleteIcon fontSize="small" />
