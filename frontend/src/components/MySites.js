@@ -1124,7 +1124,7 @@ const MySites = () => {
                             {isDial ? (
                               <DialView
                                 value={latestValue}
-                                title={`${metric.display_name || metric.metric_name} — ${metric.node_name}`}
+                                title={`${metric.display_name || metric.metric_name} — ${metric.node_name} - ${metric.base_station_name}`}
                                 unit={metric.unit}
                                 min={metric.min_value ?? 0}
                                 max={metric.max_value ?? 100}

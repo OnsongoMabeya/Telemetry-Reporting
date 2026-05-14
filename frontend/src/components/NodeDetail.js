@@ -659,7 +659,7 @@ const NodeDetail = () => {
                       {isDial ? (
                         <DialView
                           value={latestValue}
-                          title={mapping.metric_name}
+                          title={`${mapping.metric_name} — ${mapping.node_name || ''} - ${mapping.base_station_name || ''}`}
                           unit={mapping.unit}
                           min={mapping.min_value ?? 0}
                           max={mapping.max_value ?? 100}
