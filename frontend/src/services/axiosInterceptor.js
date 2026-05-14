@@ -1,6 +1,11 @@
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 
+// Create custom axios instance with base URL
+const apiClient = axios.create({
+  baseURL: API_BASE_URL
+});
+
 let authContextLogout = null;
 let authContextRefreshToken = null;
 
@@ -26,7 +31,7 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
-axios.interceptors.request.use(
+apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
 
@@ -41,7 +46,7 @@ axios.interceptors.request.use(
   }
 );
 
-axios.interceptors.response.use(
+apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
@@ -63,7 +68,7 @@ axios.interceptors.response.use(
             failedQueue.push({ resolve, reject });
           }).then(token => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
-            return axios(originalRequest);
+            return apiClient(originalRequest);
           });
         }
 
@@ -72,7 +77,7 @@ axios.interceptors.response.use(
 
         try {
           console.log('[Interceptor] Attempting token refresh via keep-alive...');
-          const response = await axios.get(`${API_BASE_URL}/api/keep-alive`, {
+          const response = await apiClient.get('/api/keep-alive', {
             _skipAuthRefresh: true
           });
           console.log('[Interceptor] Keep-alive response:', response.data);
@@ -84,7 +89,7 @@ axios.interceptors.response.use(
             }
             processQueue(null, response.data.token);
             originalRequest.headers.Authorization = `Bearer ${response.data.token}`;
-            return axios(originalRequest);
+            return apiClient(originalRequest);
           }
         } catch (refreshError) {
           console.log('[Interceptor] Keep-alive refresh failed:', refreshError.response?.data || refreshError.message);
@@ -112,4 +117,4 @@ axios.interceptors.response.use(
   }
 );
 
-export default axios;
+export default apiClient;

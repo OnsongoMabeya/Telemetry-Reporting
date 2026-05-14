@@ -209,6 +209,14 @@ async function setupDatabase() {
       migrationsToRun.add('011_create_service_report_schedules.sql');
     }
 
+    // Check for report_schedules table (migration 012)
+    if (await checkTableExists(connection, 'report_schedules')) {
+      console.log('✅ Table: report_schedules');
+    } else {
+      console.log('❌ Table: report_schedules (missing - needs migration 012)');
+      migrationsToRun.add('012_create_report_schedules.sql');
+    }
+
     console.log('\n================================\n');
     
     if (migrationsToRun.size === 0) {

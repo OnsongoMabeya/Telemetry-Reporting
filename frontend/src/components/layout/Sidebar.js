@@ -88,7 +88,7 @@ const Sidebar = () => {
       roles: ['admin'],
     },
     {
-      title: 'Alerts',
+      title: 'Alerts & Reports Scheduling',
       icon: <NotificationsIcon />,
       path: '/alerts',
       roles: ['admin'],

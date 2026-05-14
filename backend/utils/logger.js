@@ -59,11 +59,18 @@ function initLogger(poolRef) {
  */
 function formatLogEntry(entry) {
   const { timestamp, level, category, message, userId, ip, metadata } = entry;
+  // Convert Error objects to string
+  let msg = message;
+  if (message instanceof Error) {
+    msg = message.message;
+  } else if (typeof message === 'object' && message !== null) {
+    msg = JSON.stringify(message);
+  }
   const base = {
     timestamp,
     level,
     category,
-    message
+    message: msg
   };
   if (userId) base.userId = userId;
   if (ip) base.ip = ip;

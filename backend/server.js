@@ -19,6 +19,7 @@ const servicesRoutes = require('./routes/services');
 const userClientAssignmentsRoutes = require('./routes/userClientAssignments');
 const mySitesRoutes = require('./routes/mySites');
 const serviceReportsRoutes = require('./routes/serviceReports');
+const reportSchedulesRoutes = require('./routes/reportSchedules');
 const { authenticateToken } = require('./middleware/auth');
 const logger = require('./utils/logger');
 
@@ -207,6 +208,7 @@ app.use('/api/services', authenticateToken, servicesRoutes);
 app.use('/api/user-client-assignments', authenticateToken, userClientAssignmentsRoutes);
 app.use('/api/my-sites', authenticateToken, mySitesRoutes);
 app.use('/api', authenticateToken, serviceReportsRoutes);
+app.use('/api/report-schedules', authenticateToken, reportSchedulesRoutes);
 
 // Keep-alive endpoint for slideshow session management (with token refresh)
 // Accepts expired tokens within a grace period so the session can be renewed
@@ -877,8 +879,17 @@ app.get('/api/basestations-map', authenticateToken, async (req, res) => {
   }
 });
 
+// Initialize report scheduler
+const scheduler = require('./services/scheduler');
+scheduler.setDatabase(pool.promise());
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     logger.info('SYSTEM', `Server is running on port ${PORT}`);
+    
+    // Initialize scheduled reports
+    scheduler.initializeScheduler().catch(err => {
+        logger.error('Failed to initialize report scheduler:', err);
+    });
 });
