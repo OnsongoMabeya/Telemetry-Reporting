@@ -79,218 +79,169 @@ function getLogoAttachment() {
 
 /**
  * Generate professional email HTML template
+ * Uses table-based layout for Outlook compatibility
  */
 function generateEmailTemplate({ subject, greeting, message, footer, reportName, scheduleName }) {
   const logoAttachment = getLogoAttachment();
   const logoSrc = logoAttachment ? `cid:${logoAttachment.cid}` : '';
-  
+  const generatedOn = new Date().toLocaleString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
   return `<!DOCTYPE html>
-<html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
   <title>${subject}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:AllowPNG/>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: ${BSI_COLORS.gray};
-      color: ${BSI_COLORS.text};
-      line-height: 1.6;
-    }
-    
-    .email-wrapper {
-      max-width: 600px;
-      margin: 0 auto;
-      background-color: ${BSI_COLORS.white};
-    }
-    
-    .header {
-      padding: 30px 40px;
-      text-align: center;
-      background-color: #f8f9fa;
-    }
-
-    .header img {
-      max-width: 240px;
-      height: auto;
-      display: block;
-      margin: 0 auto 15px;
-    }
-    
-    .header-title {
-      color: ${BSI_COLORS.dark};
-      font-size: 24px;
-      font-weight: 600;
-      margin: 0;
-      letter-spacing: 0.5px;
-    }
-    
-    .header-subtitle {
-      color: ${BSI_COLORS.gray};
-      font-size: 14px;
-      margin-top: 8px;
-      font-weight: 400;
-    }
-    
-    .content {
-      padding: 40px;
-    }
-    
-    .greeting {
-      font-size: 18px;
-      font-weight: 600;
-      color: ${BSI_COLORS.dark};
-      margin-bottom: 20px;
-    }
-    
-    .message-box {
-      background-color: ${BSI_COLORS.light};
-      border-left: 4px solid ${BSI_COLORS.primary};
-      padding: 20px;
-      margin: 25px 0;
-      border-radius: 0 8px 8px 0;
-    }
-    
-    .message-box p {
-      margin: 0;
-      color: ${BSI_COLORS.dark};
-      font-size: 15px;
-    }
-    
-    .report-info {
-      background-color: ${BSI_COLORS.gray};
-      border-radius: 8px;
-      padding: 20px;
-      margin: 25px 0;
-    }
-    
-    .report-info h3 {
-      margin: 0 0 15px 0;
-      color: ${BSI_COLORS.dark};
-      font-size: 16px;
-      font-weight: 600;
-    }
-    
-    .report-info-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid #e0e0e0;
-    }
-    
-    .report-info-item:last-child {
-      border-bottom: none;
-    }
-    
-    .report-info-label {
-      color: #666;
-      font-size: 14px;
-    }
-    
-    .report-info-value {
-      color: ${BSI_COLORS.dark};
-      font-weight: 500;
-      font-size: 14px;
-    }
-    
-    .attachment-note {
-      background-color: ${BSI_COLORS.primary};
-      color: ${BSI_COLORS.white};
-      padding: 15px 20px;
-      border-radius: 8px;
-      margin: 25px 0;
-      text-align: center;
-    }
-    
-    .attachment-note p {
-      margin: 0;
-      font-weight: 500;
-    }
-    
-    .footer {
-      background-color: ${BSI_COLORS.dark};
-      color: ${BSI_COLORS.white};
-      padding: 30px 40px;
-      text-align: center;
-    }
-    
-    .footer p {
-      margin: 0;
-      font-size: 13px;
-      color: ${BSI_COLORS.light};
-    }
-    
-    .footer-company {
-      font-weight: 600;
-      font-size: 14px;
-      margin-bottom: 8px;
-      color: ${BSI_COLORS.white};
-    }
-    
-    @media (max-width: 600px) {
-      .content, .header, .footer {
-        padding: 20px;
-      }
-      
-      .header-title {
-        font-size: 20px;
-      }
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+    body { margin: 0 !important; padding: 0 !important; background-color: #e8edf2 !important; }
+    a[x-apple-data-detectors] { color: inherit !important; text-decoration: none !important; }
+    @media only screen and (max-width: 600px) {
+      .wrapper { width: 100% !important; }
+      .content-pad { padding: 24px 20px !important; }
     }
   </style>
 </head>
-<body>
-  <div class="email-wrapper">
-    <div class="header">
-      ${logoSrc ? `<img src="${logoSrc}" alt="BSI Logo">` : ''}
-      <h1 class="header-title">BSI Telemetry</h1>
-      <p class="header-subtitle">Equipment Monitoring & Reporting System</p>
-    </div>
-    
-    <div class="content">
-      <div class="greeting">${greeting}</div>
-      
-      <div class="message-box">
-        <p>${message}</p>
-      </div>
-      
-      <div class="report-info">
-        <h3>Report Details</h3>
-        <div class="report-info-item">
-          <span class="report-info-label">Report Name</span>
-          <span class="report-info-value">${reportName || 'N/A'}</span>
-        </div>
-        <div class="report-info-item">
-          <span class="report-info-label">Schedule</span>
-          <span class="report-info-value">${scheduleName || 'N/A'}</span>
-        </div>
-        <div class="report-info-item">
-          <span class="report-info-label">Generated On</span>
-          <span class="report-info-value">${new Date().toLocaleString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}</span>
-        </div>
-      </div>
-      
-      <div class="attachment-note">
-        <p>📎 Please find the detailed PDF report attached to this email.</p>
-      </div>
-    </div>
-    
-    <div class="footer">
-      <p class="footer-company">Broadcasting Services International (BSI)</p>
-      <p>${footer}</p>
-      <p style="margin-top: 15px; font-size: 12px;">This is an automated message from BSI Telemetry System.<br>Please do not reply to this email.</p>
-    </div>
-  </div>
+<body style="margin:0;padding:0;background-color:#e8edf2;">
+
+<!-- Outer wrapper -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#e8edf2;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+
+      <!-- Email card -->
+      <table role="presentation" class="wrapper" width="600" cellpadding="0" cellspacing="0" border="0"
+             style="width:600px;max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.12);">
+
+        <!-- ===== HEADER ===== -->
+        <tr>
+          <td align="center" style="background-color:#ddeeff;padding:32px 40px;">
+            ${logoSrc ? `<img src="${logoSrc}" alt="BSI" width="200" style="display:block;margin:0 auto 16px;max-width:200px;height:auto;">` : ''}
+            <h1 style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:700;color:#003d7a;letter-spacing:0.5px;">BSI Telemetry</h1>
+            <p style="margin:6px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#336699;letter-spacing:0.5px;text-transform:uppercase;">Equipment Monitoring &amp; Reporting System</p>
+          </td>
+        </tr>
+
+        <!-- ===== BLUE ACCENT BAR ===== -->
+        <tr>
+          <td height="4" style="background-color:#0099ff;font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
+
+        <!-- ===== CONTENT ===== -->
+        <tr>
+          <td class="content-pad" style="padding:36px 40px;background-color:#ffffff;">
+
+            <!-- Greeting -->
+            <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;color:#003d7a;">${greeting}</p>
+
+            <!-- Message box -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+              <tr>
+                <td width="4" style="background-color:#0099ff;border-radius:4px 0 0 4px;">&nbsp;</td>
+                <td style="background-color:#e8f4ff;padding:18px 20px;border-radius:0 4px 4px 0;border:1px solid #c0dff5;border-left:none;">
+                  <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#003d7a;line-height:1.6;">${message}</p>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Report Details card -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="margin-bottom:28px;border:1px solid #dde3ea;border-radius:6px;overflow:hidden;">
+              <!-- Card header -->
+              <tr>
+                <td style="background-color:#003d7a;padding:12px 20px;">
+                  <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#ffffff;text-transform:uppercase;letter-spacing:0.8px;">Report Details</p>
+                </td>
+              </tr>
+              <!-- Row: Report Name -->
+              <tr>
+                <td style="padding:0;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                      <td width="40%" style="padding:12px 20px;background-color:#f5f8fb;border-bottom:1px solid #e4e9ef;">
+                        <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7a8d;font-weight:600;">Report Name</p>
+                      </td>
+                      <td width="60%" style="padding:12px 20px;background-color:#ffffff;border-bottom:1px solid #e4e9ef;">
+                        <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a2b3c;font-weight:500;">${reportName || 'N/A'}</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td width="40%" style="padding:12px 20px;background-color:#f5f8fb;border-bottom:1px solid #e4e9ef;">
+                        <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7a8d;font-weight:600;">Schedule</p>
+                      </td>
+                      <td width="60%" style="padding:12px 20px;background-color:#ffffff;border-bottom:1px solid #e4e9ef;">
+                        <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a2b3c;font-weight:500;">${scheduleName || 'N/A'}</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td width="40%" style="padding:12px 20px;background-color:#f5f8fb;">
+                        <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7a8d;font-weight:600;">Generated On</p>
+                      </td>
+                      <td width="60%" style="padding:12px 20px;background-color:#ffffff;">
+                        <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a2b3c;font-weight:500;">${generatedOn}</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+
+            <!-- Attachment note -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                   style="background-color:#0099ff;border-radius:6px;">
+              <tr>
+                <td style="padding:14px 20px;text-align:center;">
+                  <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:600;color:#ffffff;">&#128206; Please find the detailed PDF report attached to this email.</p>
+                </td>
+              </tr>
+            </table>
+
+          </td>
+        </tr>
+
+        <!-- ===== FOOTER ===== -->
+        <tr>
+          <td style="background-color:#001f42;padding:28px 40px;text-align:center;">
+            <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;">Broadcasting Services International (BSI)</p>
+            <p style="margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#7aa3c8;">${footer}</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="border-top:1px solid #0d3560;padding-top:14px;">
+                  <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#4d7aa0;line-height:1.6;">This is an automated message from BSI Telemetry System. Please do not reply to this email.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+      </table>
+      <!-- /Email card -->
+
+    </td>
+  </tr>
+</table>
+
 </body>
 </html>`;
 }
