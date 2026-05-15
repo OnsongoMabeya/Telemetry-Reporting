@@ -46,6 +46,7 @@ import {
 } from '@mui/icons-material';
 import axios from '../services/axiosInterceptor';
 import { useAuth } from '../context/AuthContext';
+import { useThemeMode } from '../context/ThemeContext';
 
 // BSI Brand Colors - Executive Palette
 const BSI_COLORS = {
@@ -64,6 +65,8 @@ const BSI_COLORS = {
 const Alerts = () => {
   // eslint-disable-next-line no-unused-vars
   const { user } = useAuth();
+  const { mode } = useThemeMode();
+  const isDark = mode === 'dark';
   const [activeTab, setActiveTab] = useState(0);
   const [schedules, setSchedules] = useState([]);
   const [services, setServices] = useState([]);
@@ -310,7 +313,7 @@ const Alerts = () => {
               <TableContainer>
                 <Table>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: BSI_COLORS.light }}>
+                    <TableRow sx={{ backgroundColor: isDark ? 'rgba(0,153,255,0.15)' : BSI_COLORS.light }}>
                       <TableCell><strong>Name</strong></TableCell>
                       <TableCell><strong>Type</strong></TableCell>
                       <TableCell><strong>Target</strong></TableCell>
@@ -459,12 +462,12 @@ const Alerts = () => {
           {editingSchedule ? 'Edit Report Schedule' : 'Create New Report Schedule'}
         </DialogTitle>
         <DialogContent sx={{ p: 0 }}>
-          <Box sx={{ p: 3, backgroundColor: BSI_COLORS.executiveBg }}>
+          <Box sx={{ p: 3, backgroundColor: isDark ? 'background.paper' : BSI_COLORS.executiveBg }}>
             {/* Section: Schedule Identity */}
             <Box sx={{ mb: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                 <AssessmentIcon sx={{ color: BSI_COLORS.primary, fontSize: 22 }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: BSI_COLORS.navy }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: isDark ? BSI_COLORS.primary : BSI_COLORS.navy }}>
                   Schedule Identity
                 </Typography>
               </Box>
@@ -479,7 +482,7 @@ const Alerts = () => {
                     variant="outlined"
                     sx={{
                       '& .MuiOutlinedInput-root': {
-                        backgroundColor: 'white',
+                        backgroundColor: isDark ? 'transparent' : 'white',
                         '&:hover fieldset': { borderColor: BSI_COLORS.primary },
                         '&.Mui-focused fieldset': { borderColor: BSI_COLORS.primary }
                       }
@@ -493,13 +496,13 @@ const Alerts = () => {
             <Box sx={{ mb: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                 <BusinessIcon sx={{ color: BSI_COLORS.primary, fontSize: 22 }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: BSI_COLORS.navy }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: isDark ? BSI_COLORS.primary : BSI_COLORS.navy }}>
                   Report Configuration
                 </Typography>
               </Box>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <FormControl fullWidth variant="outlined" sx={{ backgroundColor: 'white' }}>
+                  <FormControl fullWidth variant="outlined" sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}>
                     <InputLabel>Report Type</InputLabel>
                     <Select
                       value={formData.report_type}
@@ -523,7 +526,7 @@ const Alerts = () => {
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <FormControl fullWidth variant="outlined" sx={{ backgroundColor: 'white' }}>
+                  <FormControl fullWidth variant="outlined" sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}>
                     <InputLabel>
                       {formData.report_type === 'service' ? 'Select Service' : 'Select Client'}
                     </InputLabel>
@@ -542,7 +545,7 @@ const Alerts = () => {
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <FormControl fullWidth variant="outlined" sx={{ backgroundColor: 'white' }}>
+                  <FormControl fullWidth variant="outlined" sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}>
                     <InputLabel>Time Range</InputLabel>
                     <Select
                       value={formData.time_range}
@@ -562,13 +565,13 @@ const Alerts = () => {
             <Box sx={{ mb: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                 <AccessTimeIcon sx={{ color: BSI_COLORS.primary, fontSize: 22 }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: BSI_COLORS.navy }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: isDark ? BSI_COLORS.primary : BSI_COLORS.navy }}>
                   Schedule Timing
                 </Typography>
               </Box>
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 6 }}>
-                  <FormControl fullWidth variant="outlined" sx={{ backgroundColor: 'white' }}>
+                  <FormControl fullWidth variant="outlined" sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}>
                     <InputLabel>Frequency</InputLabel>
                     <Select
                       value={formData.frequency}
@@ -593,7 +596,7 @@ const Alerts = () => {
                       onChange={(e) => setFormData({ ...formData, interval_hours: parseInt(e.target.value) })}
                       inputProps={{ min: 1, max: 24 }}
                       variant="outlined"
-                      sx={{ backgroundColor: 'white' }}
+                      sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}
                     />
                   </Grid>
                 )}
@@ -607,7 +610,7 @@ const Alerts = () => {
                       value={formData.daily_time}
                       onChange={(e) => setFormData({ ...formData, daily_time: e.target.value })}
                       variant="outlined"
-                      sx={{ backgroundColor: 'white' }}
+                      sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}
                     />
                   </Grid>
                 )}
@@ -615,7 +618,7 @@ const Alerts = () => {
                 {formData.frequency === 'weekly' && (
                   <>
                     <Grid size={{ xs: 12, sm: 6 }}>
-                      <FormControl fullWidth variant="outlined" sx={{ backgroundColor: 'white' }}>
+                      <FormControl fullWidth variant="outlined" sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}>
                         <InputLabel>Day of Week</InputLabel>
                         <Select
                           value={formData.weekly_day}
@@ -640,7 +643,7 @@ const Alerts = () => {
                         value={formData.weekly_time}
                         onChange={(e) => setFormData({ ...formData, weekly_time: e.target.value })}
                         variant="outlined"
-                        sx={{ backgroundColor: 'white' }}
+                        sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}
                       />
                     </Grid>
                   </>
@@ -657,7 +660,7 @@ const Alerts = () => {
                         onChange={(e) => setFormData({ ...formData, monthly_day: parseInt(e.target.value) })}
                         inputProps={{ min: 1, max: 31 }}
                         variant="outlined"
-                        sx={{ backgroundColor: 'white' }}
+                        sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}
                       />
                     </Grid>
                     <Grid size={{ xs: 12, sm: 6 }}>
@@ -668,7 +671,7 @@ const Alerts = () => {
                         value={formData.monthly_time}
                         onChange={(e) => setFormData({ ...formData, monthly_time: e.target.value })}
                         variant="outlined"
-                        sx={{ backgroundColor: 'white' }}
+                        sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}
                       />
                     </Grid>
                   </>
@@ -684,7 +687,7 @@ const Alerts = () => {
                     InputLabelProps={{ shrink: true }}
                     required
                     variant="outlined"
-                    sx={{ backgroundColor: 'white' }}
+                    sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}
                   />
                 </Grid>
 
@@ -697,7 +700,7 @@ const Alerts = () => {
                     onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                     InputLabelProps={{ shrink: true }}
                     variant="outlined"
-                    sx={{ backgroundColor: 'white' }}
+                    sx={{ backgroundColor: isDark ? 'transparent' : 'white' }}
                   />
                 </Grid>
               </Grid>
@@ -707,7 +710,7 @@ const Alerts = () => {
             <Box sx={{ mb: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                 <PeopleIcon sx={{ color: BSI_COLORS.primary, fontSize: 22 }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: BSI_COLORS.navy }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: isDark ? BSI_COLORS.primary : BSI_COLORS.navy }}>
                   Recipients
                 </Typography>
               </Box>
@@ -761,7 +764,7 @@ const Alerts = () => {
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
                 <ScheduleIcon sx={{ color: BSI_COLORS.primary, fontSize: 22 }} />
-                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: BSI_COLORS.navy }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 600, color: isDark ? BSI_COLORS.primary : BSI_COLORS.navy }}>
                   Status
                 </Typography>
               </Box>
@@ -777,14 +780,14 @@ const Alerts = () => {
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, py: 2, backgroundColor: '#f8f9fa' }}>
+        <DialogActions sx={{ px: 3, py: 2, backgroundColor: isDark ? 'background.paper' : '#f8f9fa' }}>
           <Button 
             onClick={handleCloseDialog}
             variant="outlined"
             sx={{ 
               borderColor: BSI_COLORS.gray,
-              color: BSI_COLORS.dark,
-              '&:hover': { borderColor: BSI_COLORS.dark }
+              color: isDark ? 'text.primary' : BSI_COLORS.dark,
+              '&:hover': { borderColor: isDark ? 'text.primary' : BSI_COLORS.dark }
             }}
           >
             Cancel
