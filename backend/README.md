@@ -132,12 +132,16 @@ JWT_SECRET=your_jwt_secret
 JWT_EXPIRES_IN=24h
 
 # Email Configuration
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-email@example.com
-SMTP_PASS=your-email-password
-EMAIL_FROM="BSI Telemetry <noreply@bsitelemetry.com>"
+SMTP_HOST=mail.bsint.net
+SMTP_PORT=465
+SMTP_SECURE=true           # true for port 465 (SSL), false for 587 (TLS)
+SMTP_USER=your-smtp-username
+SMTP_PASS=your-smtp-password
+SMTP_FROM=your-smtp-username
+SMTP_FROM_NAME=BSI Telemetry
+
+# Logging
+LOG_TO_CONSOLE=true        # Enable console output for all log levels (default: errors only)
 
 # CORS Configuration
 ALLOWED_ORIGINS=http://localhost:3010,http://localhost:3000
@@ -610,7 +614,57 @@ The script will:
 
 This ensures consistent metric configurations across all environments without manual reconfiguration.
 
-## 📝 Logging System
+## � Report Schedules
+
+Admins can create recurring scheduled reports delivered via email.
+
+### API Endpoints
+
+- `GET /api/report-schedules` — List all schedules
+- `GET /api/report-schedules/:id` — Get a single schedule by ID
+- `POST /api/report-schedules` — Create a new schedule
+- `PUT /api/report-schedules/:id` — Update an existing schedule
+- `DELETE /api/report-schedules/:id` — Delete a schedule
+- `POST /api/report-schedules/test-email` — Send a test email to verify SMTP configuration
+
+### Test Email
+
+Send a test email to confirm SMTP is working:
+
+```http
+POST /api/report-schedules/test-email
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
+{
+  "email": "recipient@example.com"
+}
+```
+
+**Response (success):**
+
+```json
+{ "success": true, "message": "Test email sent successfully", "messageId": "<...>" }
+```
+
+**Response (SMTP not configured):**
+
+```json
+{ "error": "SMTP not configured", "details": "SMTP_HOST or SMTP_USER missing" }
+```
+
+### Email Template
+
+Emails use a professional HTML template with:
+
+- BSI logo (embedded inline)
+- Light header with dark text
+- Branded body with message box and report details
+- PDF attachment (for scheduled reports)
+
+---
+
+## �� Logging System
 
 The backend includes a comprehensive structured logging system for audit trails, debugging, and monitoring.
 
@@ -622,6 +676,7 @@ The backend includes a comprehensive structured logging system for audit trails,
 - **Log Levels** — DEBUG, INFO, WARN, ERROR
 - **Categories** — AUTH, API, SLIDESHOW, CRUD, SYSTEM
 - **Non-Blocking** — Async DB inserts never slow down the application
+- **Error Serialization** — Error objects are automatically converted to strings (no empty `{}` in logs)
 
 ### Log Location
 

@@ -152,6 +152,14 @@ The system features a completely redesigned user interface with a professional S
     - Dynamic service list refresh during slideshow
     - ESC key exits slideshow and fullscreen
 - **Comprehensive Reporting**: Generate and export reports in multiple formats
+- **Alerts & Report Schedules**: Schedule automated email reports on a recurring basis
+  - Create schedules targeting a service or client
+  - Configurable frequency (daily, weekly, monthly)
+  - Custom time range per schedule
+  - Multiple recipients (users + ad-hoc email addresses)
+  - Immediate test-email dispatch to verify SMTP
+  - Professional HTML email template with BSI branding and embedded logo
+  - Admin-only access
 - **Responsive Design**: Mobile-first design with comprehensive breakpoint support (see [Responsive Design](#-responsive-design) section)
 - **Dark/Light Mode**: Optimized viewing in any lighting condition
 
@@ -379,8 +387,8 @@ The `global.css` file includes utility classes for responsive development:
   - Caching: node-cache 5.1.2 with TTL-based invalidation
   - Rate Limiting: express-rate-limit 7.5.0 with Redis support (optional)
   - CORS: cors 2.8.5 with dynamic origin configuration
-  - Email: Nodemailer 7.0.9 with SMTP support
-  - Logging: Winston with file and console transports
+  - **Email**: Nodemailer 7.0.9 with SMTP/SSL support and professional HTML templates
+  - Logging: Custom structured JSON logger (file + DB, weekly rotation)
   - Security: Helmet middleware, request validation, and input sanitization
 
 - **Development Tools**:
@@ -641,12 +649,14 @@ DB_PASSWORD=your_db_password
 DB_NAME=horiserverlive
 
 # Email Configuration (for report delivery)
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_SECURE=false  # true for 465, false for other ports
-SMTP_USER=your-email@example.com
-SMTP_PASS=your-email-password
-EMAIL_FROM="BSI Telemetry <noreply@bsitelemetry.com>"
+SMTP_HOST=mail.bsint.net
+SMTP_PORT=465
+SMTP_SECURE=true           # true for port 465 (SSL), false for 587 (TLS)
+SMTP_USER=your-smtp-username
+SMTP_PASS=your-smtp-password
+SMTP_FROM=your-smtp-username
+SMTP_FROM_NAME=BSI Telemetry
+LOG_TO_CONSOLE=true        # Show all log levels in console (default: errors only)
 
 # CORS Configuration
 ALLOWED_ORIGINS=http://localhost:3010,http://localhost:3000
@@ -936,6 +946,15 @@ The system supports multiple users with role-based access control (RBAC).
 - `DELETE /api/node-assignments/:id` - Remove node assignment (admin)
 - `PUT /api/node-assignments/user/:userId/access-all` - Toggle access to all nodes (admin)
 
+**Report Schedules (Admin only):**
+
+- `GET /api/report-schedules` - List all schedules
+- `GET /api/report-schedules/:id` - Get schedule by ID
+- `POST /api/report-schedules` - Create new schedule
+- `PUT /api/report-schedules/:id` - Update schedule
+- `DELETE /api/report-schedules/:id` - Delete schedule
+- `POST /api/report-schedules/test-email` - Send test email (verifies SMTP)
+
 **Metric Mappings (NEW):**
 
 - `GET /api/metric-mappings/columns` - Get all 48 available database columns
@@ -1146,7 +1165,12 @@ BSI-telemetry-reporting/
 │   ├── routes/           # API routes
 │   │   ├── metricMappings.js      # Metric mapping CRUD API
 │   │   ├── telemetryMappings.js   # Telemetry display API
+│   │   ├── reportSchedules.js     # Report schedule CRUD + test-email
 │   │   └── ...           # Other routes
+│   ├── services/         # Business logic services
+│   │   ├── emailService.js        # Nodemailer SMTP email + HTML templates
+│   │   ├── scheduler.js           # Cron-based scheduled report runner
+│   │   └── pdfService.js          # PDF report generation
 │   ├── middleware/       # Express middleware
 │   │   └── auth.js       # Authentication middleware
 │   ├── verify-nodes.js   # Mapping verification script

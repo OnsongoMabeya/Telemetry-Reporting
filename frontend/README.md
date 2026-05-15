@@ -118,6 +118,7 @@ Beautiful modal overlay (`/src/components/LoginModal.js`) that:
 
 Automatic JWT token management (`/src/services/axiosInterceptor.js`):
 
+- Sets `baseURL` to `http://localhost:5000` so all relative API paths resolve correctly
 - Adds `Authorization: Bearer <token>` header to all API requests
 - Handles 401 responses by automatically logging out user
 - Removes expired/invalid tokens from localStorage
@@ -227,7 +228,12 @@ The application uses React Router for client-side navigation:
   - Real-time node monitoring
   - Base station status
   - Telemetry data visualization
-  
+
+- **Alerts**: `/alerts` - Report schedule management (admin only)
+  - Create, edit, delete report schedules
+  - Configure recipients, frequency, and time range
+  - Send test emails to verify SMTP connectivity
+
 - **User Management**: `/users` - User administration (admin/manager only)
   - Create, edit, delete users
   - View user activity logs
@@ -429,12 +435,15 @@ The frontend is designed for flexible deployment with automatic hostname detecti
   - Custom tooltips and legends
   - Animated transitions
 
-### 🔔 Alerts & Notifications
+### 🔔 Alerts & Report Schedules
 
-- **Real-time Alerts**: Visual and audio notifications
-- **Alert Rules**: Customizable thresholds and conditions
-- **Notification Center**: Centralized view of all alerts
-- **Email Notifications**: Optional email alerts
+- **Report Schedules**: Create and manage automated email report schedules (admin only)
+  - Executive-styled dialog form with organized sections
+  - Target a specific service or client
+  - Configurable frequency (daily, weekly, monthly) and time range
+  - Add multiple recipients (registered users and custom email addresses)
+  - Test email button to verify SMTP before saving
+- **Email Notifications**: Automated email delivery via backend SMTP service
 
 ### 📑 Reporting
 
@@ -477,11 +486,12 @@ The frontend is designed for flexible deployment with automatic hostname detecti
 
 ### 🔧 Technical Features
 
-- Built with React 18 and Material-UI v5
+- Built with React 19.1.0 and Material-UI v7 (MUI Grid v2 syntax)
 - State management with React Context API
 - Responsive design for all screen sizes
 - Optimized performance with memoization
 - Comprehensive error handling
+- All API calls use `axiosInterceptor` with `baseURL=http://localhost:5000`
 
 ## 🖨️ PDF Report Features
 
