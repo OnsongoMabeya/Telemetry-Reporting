@@ -20,6 +20,7 @@ import {
   Canvas
 } from '@react-pdf/renderer';
 import { pdf } from '@react-pdf/renderer';
+import { groupMetricsByView } from '../../utils/metricGrouping';
 
 // PDF Styles
 const styles = StyleSheet.create({
@@ -124,6 +125,17 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     padding: 12,
     marginBottom: 10
+  },
+  mergedMetricCard: {
+    width: '100%',
+    border: '1 solid #e0e0e0',
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 15,
+    backgroundColor: '#fafafa'
+  },
+  mergedBadge: {
+    backgroundColor: '#9c27b0'
   },
   metricHeader: {
     flexDirection: 'row',
@@ -489,6 +501,228 @@ const SimpleGauge = ({ value, min, max, color = '#30a1e4', unit = '' }) => {
 };
 
 /**
+ * Multi-line chart for merged metrics
+ * Draws multiple colored lines with area fills
+ * @param {Array} metrics - Array of {data, dataKey, color, unit} objects
+ * @param {string} groupName - Name of the merged group
+ */
+const SimpleMultiLineChart = ({ metrics, groupName }) => {
+  if (!metrics || metrics.length === 0) {
+    return (
+      <View style={[styles.chartContainer, { height: 180 }]}>
+        <Text style={{ textAlign: 'center', marginTop: 80, color: '#999', fontSize: 9 }}>
+          No data for merged metrics
+        </Text>
+      </View>
+    );
+  }
+
+  // Merge data from all metrics by timestamp
+  const mergedData = [];
+  const timestampMap = new Map();
+
+  metrics.forEach((metric, idx) => {
+    if (!metric.data || metric.data.length === 0) return;
+    metric.data.forEach(point => {
+      const ts = new Date(point.sample_time).getTime();
+      if (!timestampMap.has(ts)) {
+        timestampMap.set(ts, { timestamp: ts, sample_time: point.sample_time });
+      }
+      const entry = timestampMap.get(ts);
+      entry[`metric_${idx}`] = parseFloat(point.value);
+    });
+  });
+
+  const sortedData = Array.from(timestampMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+
+  if (sortedData.length < 2) {
+    return (
+      <View style={[styles.chartContainer, { height: 180 }]}>
+        <Text style={{ textAlign: 'center', marginTop: 80, color: '#999', fontSize: 9 }}>
+          Insufficient data for chart
+        </Text>
+      </View>
+    );
+  }
+
+  // Get all values for Y-axis scaling
+  let allValues = [];
+  metrics.forEach((_, idx) => {
+    sortedData.forEach(d => {
+      const val = d[`metric_${idx}`];
+      if (val !== undefined && !isNaN(val)) allValues.push(val);
+    });
+  });
+
+  if (allValues.length === 0) {
+    return (
+      <View style={[styles.chartContainer, { height: 180 }]}>
+        <Text style={{ textAlign: 'center', marginTop: 80, color: '#999', fontSize: 9 }}>
+          No valid data points
+        </Text>
+      </View>
+    );
+  }
+
+  const minVal = 0;
+  const maxVal = Math.max(...allValues);
+  const range = maxVal > minVal ? maxVal - minVal : 1;
+
+  // Sort metrics by max value (largest first) for proper layering
+  const sortedMetrics = [...metrics].map((m, idx) => {
+    const vals = m.data?.map(d => parseFloat(d.value)).filter(v => !isNaN(v)) || [];
+    const max = vals.length > 0 ? Math.max(...vals) : 0;
+    return { ...m, idx, maxValue: max };
+  }).sort((a, b) => b.maxValue - a.maxValue);
+
+  const firstTime = new Date(sortedData[0].sample_time);
+  const lastTime = new Date(sortedData[sortedData.length - 1].sample_time);
+
+  return (
+    <View style={[styles.chartContainer, { height: 180 }]}>
+      <Canvas
+        paint={(pdfDoc, width, height) => {
+          const padding = { top: 25, right: 20, bottom: 35, left: 50 };
+          const chartWidth = width - padding.left - padding.right;
+          const chartHeight = height - padding.top - padding.bottom;
+
+          const getX = (index) => padding.left + (chartWidth * index / (sortedData.length - 1));
+          const getY = (value) => padding.top + chartHeight - ((value - minVal) / (maxVal - minVal) * chartHeight);
+
+          // Draw Y-axis grid lines
+          pdfDoc.strokeColor('#e0e0e0').lineWidth(0.5);
+          pdfDoc.fontSize(7).fillColor('#666');
+
+          for (let i = 0; i <= 4; i++) {
+            const value = minVal + (range * i / 4);
+            const y = getY(value);
+            pdfDoc.moveTo(padding.left, y);
+            pdfDoc.lineTo(width - padding.right, y);
+            pdfDoc.stroke();
+            pdfDoc.text(value.toFixed(value < 10 ? 2 : 0), padding.left - 45, y - 3, { width: 40, align: 'right' });
+          }
+
+          // X-axis line
+          pdfDoc.strokeColor('#cccccc').lineWidth(1);
+          pdfDoc.moveTo(padding.left, padding.top + chartHeight);
+          pdfDoc.lineTo(width - padding.right, padding.top + chartHeight);
+          pdfDoc.stroke();
+
+          // X-axis labels
+          pdfDoc.fontSize(6).fillColor('#666');
+          const formatLabel = (date) => {
+            return date.toLocaleString('en-GB', {
+              day: '2-digit', month: 'short',
+              hour: '2-digit', minute: '2-digit'
+            });
+          };
+          pdfDoc.text(formatLabel(firstTime), padding.left, padding.top + chartHeight + 8);
+          pdfDoc.text(formatLabel(lastTime), width - padding.right - 30, padding.top + chartHeight + 8);
+          if (sortedData.length > 10) {
+            const midIdx = Math.floor(sortedData.length / 2);
+            pdfDoc.text(formatLabel(new Date(sortedData[midIdx].sample_time)), padding.left + chartWidth / 2 - 10, padding.top + chartHeight + 8);
+          }
+
+          // Draw area fills and lines for each metric (largest first)
+          sortedMetrics.forEach(metric => {
+            const color = metric.color || '#30a1e4';
+            const metricIdx = metric.idx;
+            const values = sortedData.map((d, i) => ({ x: i, y: d[`metric_${metricIdx}`] })).filter(p => p.y !== undefined && !isNaN(p.y));
+
+            if (values.length < 2) return;
+
+            // Area fill (semi-transparent)
+            pdfDoc.fillColor(color).fillOpacity(0.15);
+            pdfDoc.moveTo(getX(values[0].x), padding.top + chartHeight);
+            values.forEach(p => pdfDoc.lineTo(getX(p.x), getY(p.y)));
+            pdfDoc.lineTo(getX(values[values.length - 1].x), padding.top + chartHeight);
+            pdfDoc.fill();
+
+            // Line (thicker)
+            pdfDoc.fillOpacity(1);
+            pdfDoc.strokeColor(color).lineWidth(3);
+            pdfDoc.moveTo(getX(values[0].x), getY(values[0].y));
+            for (let i = 1; i < values.length; i++) {
+              pdfDoc.lineTo(getX(values[i].x), getY(values[i].y));
+            }
+            pdfDoc.stroke();
+          });
+
+          // Legend at bottom
+          let legendX = padding.left;
+          const legendY = padding.top - 15;
+          sortedMetrics.forEach((metric, idx) => {
+            const color = metric.color || '#30a1e4';
+            pdfDoc.fillColor(color);
+            pdfDoc.rect(legendX, legendY, 8, 8).fill();
+            pdfDoc.fontSize(7).fillColor('#333');
+            const label = metric.display_name || metric.metric_name || `Metric ${idx + 1}`;
+            pdfDoc.text(label, legendX + 12, legendY);
+            legendX += label.length * 4 + 35;
+          });
+        }}
+        style={{ width: '100%', height: '100%' }}
+      />
+    </View>
+  );
+};
+
+/**
+ * Merged Metric Card Component - spans full width
+ */
+const MergedMetricCard = ({ group }) => {
+  const { groupName, metrics } = group;
+
+  // Prepare metrics data for the chart
+  const chartMetrics = metrics.map(m => ({
+    data: m.data,
+    dataKey: m.metric_name,
+    color: m.color,
+    unit: m.unit,
+    display_name: m.display_name,
+    metric_name: m.metric_name
+  }));
+
+  // Calculate combined stats
+  const allValues = metrics.flatMap(m => 
+    m.data?.map(d => parseFloat(d.value)).filter(v => !isNaN(v)) || []
+  );
+  const latestValues = metrics.map(m => ({
+    name: m.display_name || m.metric_name,
+    value: m.stats?.latest,
+    unit: m.unit,
+    color: m.color
+  }));
+
+  return (
+    <View style={styles.mergedMetricCard}>
+      <View style={styles.metricHeader}>
+        <Text style={styles.metricName}>{groupName}</Text>
+        <Text style={[styles.viewTypeBadge, styles.mergedBadge]}>MERGED</Text>
+      </View>
+
+      <Text style={{ fontSize: 8, color: '#666', marginBottom: 6 }}>
+        {metrics.length} metrics combined
+      </Text>
+
+      <SimpleMultiLineChart metrics={chartMetrics} groupName={groupName} />
+
+      {/* Latest values row */}
+      <View style={[styles.statsRow, { flexWrap: 'wrap', gap: 10 }]}>
+        {latestValues.map((item, idx) => (
+          <View key={idx} style={styles.statItem}>
+            <Text style={[styles.statLabel, { fontSize: 6 }]}>{item.name}</Text>
+            <Text style={[styles.statValue, { color: item.color || '#30a1e4', fontSize: 9 }]}>
+              {item.value !== null && item.value !== undefined ? item.value.toFixed(2) : 'N/A'} {item.unit}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+/**
  * Summary Table Component
  */
 const SummaryTable = ({ summaryTable }) => (
@@ -588,6 +822,39 @@ const MetricCard = ({ metric }) => {
     </View>
   </View>
 );
+};
+
+/**
+ * Metrics Grid Component with Merge Group Support
+ * Renders merged groups first (full width), then individual metrics (2-column)
+ */
+const MetricsGridWithMerges = ({ metrics }) => {
+  // Build viewSettings from metrics data
+  const viewSettings = {};
+  metrics.forEach(m => {
+    viewSettings[m.metric_mapping_id] = {
+      view_type: m.merge_group_id ? 'merged' : m.view_type,
+      merge_group_id: m.merge_group_id,
+      merge_group_name: m.merge_group_name
+    };
+  });
+
+  // Group metrics
+  const { groups, individual } = groupMetricsByView(metrics, viewSettings);
+
+  return (
+    <View style={styles.metricsGrid}>
+      {/* Render Merged Groups First (full width) */}
+      {Object.values(groups).map((group, idx) => (
+        <MergedMetricCard key={`merged-${idx}`} group={group} />
+      ))}
+
+      {/* Render Individual Metrics (2-column grid) */}
+      {individual.map((metric, idx) => (
+        <MetricCard key={`individual-${idx}`} metric={metric} />
+      ))}
+    </View>
+  );
 };
 
 /**
@@ -754,12 +1021,8 @@ const ServiceReportDocument = ({ reportData }) => {
                   <Text style={styles.nodeInfo}>Node: {baseStation.node_name}</Text>
                 </View>
                 
-                {/* 2-Column Grid of Metrics */}
-                <View style={styles.metricsGrid}>
-                  {baseStation.metrics.map((metric, mIndex) => (
-                    <MetricCard key={mIndex} metric={metric} />
-                  ))}
-                </View>
+                {/* Metrics Grid with Merge Support */}
+                <MetricsGridWithMerges metrics={baseStation.metrics} />
                 
                 {/* Per-base-station Narrative */}
                 <View style={styles.narrativeSection}>
@@ -783,12 +1046,8 @@ const ServiceReportDocument = ({ reportData }) => {
               <Text style={styles.nodeInfo}>Node: {baseStation.node_name}</Text>
             </View>
             
-            {/* 2-Column Grid of Metrics */}
-            <View style={styles.metricsGrid}>
-              {baseStation.metrics.map((metric, mIndex) => (
-                <MetricCard key={mIndex} metric={metric} />
-              ))}
-            </View>
+            {/* Metrics Grid with Merge Support */}
+            <MetricsGridWithMerges metrics={baseStation.metrics} />
             
             {/* Per-base-station Narrative */}
             {baseStation.narrative && (

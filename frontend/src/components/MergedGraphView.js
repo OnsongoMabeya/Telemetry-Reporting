@@ -203,21 +203,6 @@ const MergedGraphView = ({
     );
   }
 
-  // DEBUG: Log data flow to trace empty graph issue - using JSON to force full expansion
-  // eslint-disable-next-line no-console
-  console.log('MergedGraphView DEBUG:', JSON.stringify({
-    groupName,
-    sortedMetricsCount: sortedMetrics.length,
-    metrics: sortedMetrics.map(m => ({
-      dataKey: m.dataKey,
-      dataLength: m.data?.length,
-      firstDataKeys: m.data?.[0] ? Object.keys(m.data[0]) : null,
-      valueField: m.data?.[0]?.[m.dataKey],  // Does the value exist under dataKey?
-    })),
-    mergedDataLength: mergedData.length,
-    mergedDataFirstPoint: mergedData[0] ? { ...mergedData[0], timestamp: mergedData[0].timestamp.toString() } : null,
-  }, null, 2));
-
   return (
     <Box sx={{
       width: '100%',
