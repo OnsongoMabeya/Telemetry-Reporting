@@ -255,7 +255,14 @@ const ServiceReportModal = ({
         baseStations: clientReportData.services?.flatMap(service => 
           service.baseStations?.map(bs => ({
             ...bs,
-            service_name: service.service_name
+            service_name: service.service_name,
+            metrics: bs.metrics?.map(m => ({
+              ...m,
+              metric_mapping_id: m.metric_mapping_id,
+              merge_group_id: m.merge_group_id,
+              merge_group_name: m.merge_group_name,
+              view_type: m.view_type
+            })) || []
           })) || []
         ) || []
       };

@@ -694,7 +694,9 @@ router.post('/reports/client/:clientId/generate', authenticateToken, async (req,
             mm.min_value,
             mm.max_value,
             mm.color,
-            COALESCE(mvs.view_type, 'graph') as view_type
+            COALESCE(mvs.view_type, 'graph') as view_type,
+            mvs.merge_group_id,
+            mvs.merge_group_name
            FROM service_metric_assignments sma
            INNER JOIN metric_mappings mm ON sma.metric_mapping_id = mm.id
            LEFT JOIN metric_view_settings mvs ON mm.id = mvs.metric_mapping_id
@@ -713,6 +715,7 @@ router.post('/reports/client/:clientId/generate', authenticateToken, async (req,
               assignment_id: metric.assignment_id,
               display_name: metric.display_name,
               display_order: metric.display_order,
+              metric_mapping_id: metric.metric_mapping_id,
               metric_name: metric.metric_name,
               node_name: metric.node_name,
               base_station_name: metric.base_station_name,
@@ -722,6 +725,8 @@ router.post('/reports/client/:clientId/generate', authenticateToken, async (req,
               max_value: metric.max_value ?? 100,
               color: metric.color,
               view_type: metric.view_type,
+              merge_group_id: metric.merge_group_id,
+              merge_group_name: metric.merge_group_name,
               data: data,
               sparkline: data.slice(-20),
               stats: stats
