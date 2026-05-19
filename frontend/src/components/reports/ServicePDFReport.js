@@ -17,10 +17,12 @@ import {
   Text,
   View,
   StyleSheet,
-  Canvas
+  Canvas,
+  Image
 } from '@react-pdf/renderer';
 import { pdf } from '@react-pdf/renderer';
 import { groupMetricsByView } from '../../utils/metricGrouping';
+import BSILogo from '../../assets/images/bsilogo512.png';
 
 // PDF Styles
 const styles = StyleSheet.create({
@@ -30,27 +32,45 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#333'
   },
-  // Header
+  // Header with Logo - Dark Blue Background
   header: {
     marginBottom: 20,
-    borderBottom: '2 solid #30a1e4',
-    paddingBottom: 10
+    backgroundColor: '#0a1628',
+    padding: 15,
+    borderRadius: 4
+  },
+  headerWithLogo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8
+  },
+  logo: {
+    height: 60,
+    marginRight: 12
+  },
+  titleSection: {
+    flex: 1
   },
   title: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#163d90',
-    marginBottom: 5
+    color: '#ffffff',
+    marginBottom: 3
   },
   subtitle: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 3
+    fontSize: 11,
+    color: '#a0c4e8',
+    marginBottom: 2
+  },
+  preparedBy: {
+    fontSize: 9,
+    color: '#64b5f6',
+    marginTop: 4
   },
   metaInfo: {
     fontSize: 9,
-    color: '#999',
-    marginTop: 8
+    color: '#8aa3c7',
+    marginTop: 6
   },
   
   // Summary Table
@@ -638,13 +658,37 @@ const SimpleMultiLineChart = ({ metrics, groupName }) => {
             pdfDoc.lineTo(getX(values[values.length - 1].x), padding.top + chartHeight);
             pdfDoc.fill();
 
-            // Line (thicker)
+            // Smooth line using bezier curves (monotone-like smoothing)
             pdfDoc.fillOpacity(1);
             pdfDoc.strokeColor(color).lineWidth(3);
-            pdfDoc.moveTo(getX(values[0].x), getY(values[0].y));
-            for (let i = 1; i < values.length; i++) {
-              pdfDoc.lineTo(getX(values[i].x), getY(values[i].y));
-            }
+
+            const smoothLine = (points) => {
+              if (points.length < 2) return;
+
+              pdfDoc.moveTo(getX(points[0].x), getY(points[0].y));
+
+              for (let i = 0; i < points.length - 1; i++) {
+                const p0 = points[i > 0 ? i - 1 : i];
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+
+                const x1 = getX(p1.x);
+                const y1 = getY(p1.y);
+                const x2 = getX(p2.x);
+                const y2 = getY(p2.y);
+
+                // Control points for smooth bezier
+                const cp1x = x1 + (x2 - getX(p0.x)) / 6;
+                const cp1y = y1 + (y2 - getY(p0.y)) / 6;
+                const cp2x = x2 - (getX(p3.x) - x1) / 6;
+                const cp2y = y2 - (getY(p3.y) - y1) / 6;
+
+                pdfDoc.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x2, y2);
+              }
+            };
+
+            smoothLine(values);
             pdfDoc.stroke();
           });
 
@@ -937,17 +981,23 @@ const ServiceReportDocument = ({ reportData }) => {
       {/* Page 1: Header + Summary Table */}
       <Page key="page1" size="A4" orientation="portrait" style={styles.page}>
         <View style={styles.header}>
-          {isClientReport ? (
-            <>
-              <Text style={styles.title}>{reportInfo.clientName} Report</Text>
-              <Text style={styles.subtitle}>Client Telemetry Report — All Services</Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.title}>{reportInfo.clientName} — {reportInfo.serviceName} Report</Text>
-              <Text style={styles.subtitle}>Service Telemetry Report</Text>
-            </>
-          )}
+          <View style={styles.headerWithLogo}>
+            <Image src={BSILogo} style={styles.logo} />
+            <View style={styles.titleSection}>
+              {isClientReport ? (
+                <>
+                  <Text style={styles.title}>{reportInfo.clientName} Report</Text>
+                  <Text style={styles.subtitle}>Client Telemetry Report — All Services</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.title}>{reportInfo.clientName} — {reportInfo.serviceName} Report</Text>
+                  <Text style={styles.subtitle}>Service Telemetry Report</Text>
+                </>
+              )}
+              <Text style={styles.preparedBy}>Prepared by Broadcast Solutions International (BSI)</Text>
+            </View>
+          </View>
           <Text style={styles.metaInfo}>
             Generated: {generatedDate} | Time Range: {reportInfo.timeRange.label} ({new Date(reportInfo.timeRange.start).toLocaleDateString()} — {new Date(reportInfo.timeRange.end).toLocaleDateString()})
           </Text>
