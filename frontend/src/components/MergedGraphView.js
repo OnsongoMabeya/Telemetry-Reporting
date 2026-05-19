@@ -203,6 +203,21 @@ const MergedGraphView = ({
     );
   }
 
+  // DEBUG: Log data flow to trace empty graph issue - using JSON to force full expansion
+  // eslint-disable-next-line no-console
+  console.log('MergedGraphView DEBUG:', JSON.stringify({
+    groupName,
+    sortedMetricsCount: sortedMetrics.length,
+    metrics: sortedMetrics.map(m => ({
+      dataKey: m.dataKey,
+      dataLength: m.data?.length,
+      firstDataKeys: m.data?.[0] ? Object.keys(m.data[0]) : null,
+      valueField: m.data?.[0]?.[m.dataKey],  // Does the value exist under dataKey?
+    })),
+    mergedDataLength: mergedData.length,
+    mergedDataFirstPoint: mergedData[0] ? { ...mergedData[0], timestamp: mergedData[0].timestamp.toString() } : null,
+  }, null, 2));
+
   return (
     <Box sx={{
       width: '100%',
@@ -272,39 +287,43 @@ const MergedGraphView = ({
               }}
             />
 
-            {/* Render areas and lines for each metric - sorted so largest renders first (at back) */}
+            {/* Render areas first (at back), then lines on top */}
+            {/* Areas - largest values first so smaller values render on top */}
             {sortedMetrics.map((metric) => {
               const actualColor = getActualColor(metric);
-
               return (
-                <React.Fragment key={metric.dataKey}>
-                  {/* Area fill beneath the line */}
-                  <Area
-                    type="monotone"
-                    dataKey={metric.dataKey}
-                    fill={actualColor}
-                    fillOpacity={0.3}
-                    stroke="none"
-                    animationDuration={1500}
-                    animationEasing="ease-in-out"
-                  />
-                  {/* Line on top */}
-                  <Line
-                    type="monotone"
-                    dataKey={metric.dataKey}
-                    stroke={actualColor}
-                    strokeWidth={theme.palette.mode === 'dark' ? 3 : 2}
-                    dot={false}
-                    activeDot={{
-                      r: 6,
-                      fill: actualColor,
-                      stroke: theme.palette.mode === 'dark' ? '#1e293b' : '#fff',
-                      strokeWidth: 2
-                    }}
-                    animationDuration={1500}
-                    animationEasing="ease-in-out"
-                  />
-                </React.Fragment>
+                <Area
+                  key={`area-${metric.dataKey}`}
+                  type="monotone"
+                  dataKey={metric.dataKey}
+                  fill={actualColor}
+                  fillOpacity={0.3}
+                  stroke="none"
+                  isAnimationActive={false}
+                />
+              );
+            })}
+            {/* Lines on top of areas */}
+            {sortedMetrics.map((metric) => {
+              const actualColor = getActualColor(metric);
+              return (
+                <Line
+                  key={`line-${metric.dataKey}`}
+                  type="monotone"
+                  dataKey={metric.dataKey}
+                  name={metric.dataKey}
+                  stroke={actualColor}
+                  strokeWidth={theme.palette.mode === 'dark' ? 4 : 3}
+                  dot={false}
+                  activeDot={{
+                    r: 6,
+                    fill: actualColor,
+                    stroke: theme.palette.mode === 'dark' ? '#1e293b' : '#fff',
+                    strokeWidth: 2
+                  }}
+                  animationDuration={1500}
+                  animationEasing="ease-in-out"
+                />
               );
             })}
           </ComposedChart>
