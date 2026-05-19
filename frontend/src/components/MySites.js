@@ -1073,7 +1073,7 @@ const MySites = () => {
                           key={group.groupId}
                           elevation={3}
                           sx={{
-                            gridColumn: 'span 1',
+                            gridColumn: { xs: 'span 1', sm: 'span 2' },
                             gridRow: 'span 1',
                             p: isFullscreen ? 1.5 : 2,
                             backgroundColor: 'background.paper',

@@ -3,17 +3,18 @@ import { Box, Typography, useTheme } from '@mui/material';
 import {
   ComposedChart,
   Line,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-  Legend
+  ResponsiveContainer
 } from 'recharts';
 
 /**
  * MergedGraphView - Displays multiple metrics on a single shared graph
- * Each metric shown as a different colored line
+ * Each metric shown as a different colored line with area fill beneath
+ * Styled to match TelemetryGraph component
  */
 const MergedGraphView = ({
   metrics, // Array of { data, title, dataKey, color, unit }
@@ -23,14 +24,32 @@ const MergedGraphView = ({
 }) => {
   const theme = useTheme();
 
+  // Sort metrics by their max value so largest values render first (at back)
+  const sortedMetrics = useMemo(() => {
+    if (!metrics || metrics.length === 0) return [];
+    return [...metrics].map(metric => {
+      const values = (metric.data || []).map(item => Number(item[metric.dataKey])).filter(v => !isNaN(v));
+      const maxValue = values.length > 0 ? Math.max(...values) : 0;
+      return { ...metric, maxValue };
+    }).sort((a, b) => b.maxValue - a.maxValue); // Largest first
+  }, [metrics]);
+
+  // Determine actual color to use (matching TelemetryGraph logic)
+  const getActualColor = useCallback((metric) => {
+    const hasCustomColor = !!metric.color;
+    return hasCustomColor
+      ? metric.color
+      : (theme.palette.mode === 'dark' ? '#60a5fa' : '#30a1e4');
+  }, [theme.palette.mode]);
+
   // Transform and merge data from all metrics
   const mergedData = useMemo(() => {
-    if (!metrics || metrics.length === 0) return [];
+    if (!sortedMetrics || sortedMetrics.length === 0) return [];
 
     // Collect all timestamps from all metrics
     const timestampMap = new Map();
 
-    metrics.forEach((metric, metricIndex) => {
+    sortedMetrics.forEach((metric, metricIndex) => {
       if (!metric.data || metric.data.length === 0) return;
 
       metric.data.forEach(item => {
@@ -50,9 +69,9 @@ const MergedGraphView = ({
     // Convert to array and sort by timestamp
     return Array.from(timestampMap.values())
       .sort((a, b) => a.timestamp - b.timestamp);
-  }, [metrics]);
+  }, [sortedMetrics]);
 
-  // Smart X-axis formatter with Nairobi timezone
+  // Smart X-axis formatter with Nairobi timezone (matching TelemetryGraph)
   const formatXAxis = useCallback((tickItem) => {
     if (!tickItem) return '';
     try {
@@ -61,10 +80,7 @@ const MergedGraphView = ({
 
       if (!mergedData || mergedData.length < 2) {
         return new Intl.DateTimeFormat('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'Africa/Nairobi',
-          hour12: false
+          hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Nairobi', hour12: false
         }).format(date);
       }
 
@@ -73,24 +89,15 @@ const MergedGraphView = ({
 
       if (hours <= 24) {
         return new Intl.DateTimeFormat('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'Africa/Nairobi',
-          hour12: false
+          hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Nairobi', hour12: false
         }).format(date);
       } else if (hours <= 168) {
         return new Intl.DateTimeFormat('en-US', {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          timeZone: 'Africa/Nairobi',
-          hour12: false
+          month: 'short', day: 'numeric', hour: '2-digit', timeZone: 'Africa/Nairobi', hour12: false
         }).format(date);
       } else {
         return new Intl.DateTimeFormat('en-US', {
-          month: 'short',
-          day: 'numeric',
-          timeZone: 'Africa/Nairobi'
+          month: 'short', day: 'numeric', timeZone: 'Africa/Nairobi'
         }).format(date);
       }
     } catch (error) {
@@ -99,13 +106,13 @@ const MergedGraphView = ({
   }, [mergedData]);
 
   // Calculate Y-axis scale based on all data
-  const getYAxisScale = useMemo(() => {
+  const getYAxisScale = useCallback(() => {
     if (!mergedData || mergedData.length === 0) {
       return { domain: [0, 100], ticks: [0, 25, 50, 75, 100] };
     }
 
     let allValues = [];
-    metrics.forEach(metric => {
+    sortedMetrics.forEach(metric => {
       mergedData.forEach(point => {
         const value = point[metric.dataKey];
         if (value !== null && !isNaN(value)) {
@@ -135,19 +142,34 @@ const MergedGraphView = ({
     ];
 
     return { domain: [domainMin, domainMax], ticks };
-  }, [mergedData, metrics]);
+  }, [mergedData, sortedMetrics]);
 
-  // Y-axis formatter
+  // Y-axis tick formatter (matching TelemetryGraph)
   const formatYAxis = useCallback((value) => {
     if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
     return value.toFixed(value < 10 ? 2 : value < 100 ? 1 : 0);
   }, []);
 
-  // Custom legend formatter
-  const formatLegend = useCallback((value) => {
-    const metric = metrics.find(m => m.dataKey === value);
-    return metric ? metric.title : value;
-  }, [metrics]);
+  // Latest values display for all metrics (compact horizontal row)
+  const latestValuesDisplay = useMemo(() => {
+    return sortedMetrics.map(metric => {
+      const metricData = metric.data || [];
+      const latestItem = metricData.length > 0 ? metricData[metricData.length - 1] : null;
+      const rawValue = latestItem?.[metric.dataKey];
+      const value = rawValue != null && !isNaN(Number(rawValue))
+        ? `${formatYAxis(Number(rawValue))}${metric.unit ? ` ${metric.unit}` : ''}`
+        : '--';
+      const color = getActualColor(metric);
+      return { title: metric.title, value, color };
+    });
+  }, [sortedMetrics, formatYAxis, getActualColor]);
+
+  // Get time domain for X-axis
+  const getTimeDomain = useCallback(() => {
+    if (!mergedData || mergedData.length === 0) return ['auto', 'auto'];
+    const timestamps = mergedData.map(d => d.timestamp);
+    return [Math.min(...timestamps), Math.max(...timestamps)];
+  }, [mergedData]);
 
   if (isLoading) {
     return (
@@ -165,7 +187,7 @@ const MergedGraphView = ({
     );
   }
 
-  if (!metrics || metrics.length === 0) {
+  if (!sortedMetrics || sortedMetrics.length === 0) {
     return (
       <Box sx={{
         display: 'flex',
@@ -188,25 +210,19 @@ const MergedGraphView = ({
       display: 'flex',
       flexDirection: 'column'
     }}>
-      {/* Group Title */}
+      {/* Graph Title & Unit */}
       <Box sx={{ mb: 1 }}>
-        <Typography
-          variant="subtitle2"
-          sx={{
-            fontWeight: 600,
-            color: 'text.primary'
-          }}
-        >
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.primary' }}>
           {groupName}
         </Typography>
       </Box>
 
-      {/* Multi-line Graph */}
+      {/* Multi-line Graph with Area Fills */}
       <Box sx={{ flex: 1, minHeight: 120 }}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={mergedData}
-            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+            margin={{ top: 5, right: 10, left: 20, bottom: 5 }}
           >
             <CartesianGrid
               strokeDasharray="3 3"
@@ -217,22 +233,16 @@ const MergedGraphView = ({
               dataKey="timestamp"
               tickFormatter={formatXAxis}
               stroke={theme.palette.mode === 'dark' ? '#94a3b8' : theme.palette.text.secondary}
-              tick={{
-                fontSize: 10,
-                fill: theme.palette.mode === 'dark' ? '#cbd5e1' : theme.palette.text.secondary
-              }}
+              tick={{ fontSize: 11, fill: theme.palette.mode === 'dark' ? '#cbd5e1' : theme.palette.text.secondary }}
+              domain={getTimeDomain()}
               type="number"
               scale="time"
-              domain={['dataMin', 'dataMax']}
             />
             <YAxis
               stroke={theme.palette.mode === 'dark' ? '#94a3b8' : theme.palette.text.secondary}
-              tick={{
-                fontSize: 10,
-                fill: theme.palette.mode === 'dark' ? '#cbd5e1' : theme.palette.text.secondary
-              }}
-              domain={getYAxisScale.domain}
-              ticks={getYAxisScale.ticks}
+              tick={{ fontSize: 11, fill: theme.palette.mode === 'dark' ? '#cbd5e1' : theme.palette.text.secondary }}
+              domain={getYAxisScale().domain}
+              ticks={getYAxisScale().ticks}
               tickFormatter={formatYAxis}
             />
             <RechartsTooltip
@@ -247,90 +257,71 @@ const MergedGraphView = ({
               labelFormatter={(value) => {
                 try {
                   return new Date(value).toLocaleString('en-US', {
-                    timeZone: 'Africa/Nairobi',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit',
+                    timeZone: 'Africa/Nairobi'
                   });
                 } catch {
-                  return value;
+                  return '';
                 }
               }}
               formatter={(value, name) => {
-                const metric = metrics.find(m => m.dataKey === name);
+                const metric = sortedMetrics.find(m => m.dataKey === name);
                 const unit = metric?.unit || '';
                 return [`${formatYAxis(value)} ${unit}`, metric?.title || name];
               }}
             />
-            <Legend
-              wrapperStyle={{
-                fontSize: '0.7rem',
-                paddingTop: '10px'
-              }}
-              formatter={formatLegend}
-            />
 
-            {/* Render a line for each metric */}
-            {metrics.map((metric, index) => (
-              <Line
-                key={metric.dataKey}
-                type="monotone"
-                dataKey={metric.dataKey}
-                name={metric.dataKey}
-                stroke={metric.color || theme.palette.primary.main}
-                strokeWidth={2}
-                dot={false}
-                connectNulls={false}
-                isAnimationActive={true}
-                animationDuration={1000}
-              />
-            ))}
+            {/* Render areas and lines for each metric - sorted so largest renders first (at back) */}
+            {sortedMetrics.map((metric) => {
+              const actualColor = getActualColor(metric);
+
+              return (
+                <React.Fragment key={metric.dataKey}>
+                  {/* Area fill beneath the line */}
+                  <Area
+                    type="monotone"
+                    dataKey={metric.dataKey}
+                    fill={actualColor}
+                    fillOpacity={0.3}
+                    stroke="none"
+                    animationDuration={1500}
+                    animationEasing="ease-in-out"
+                  />
+                  {/* Line on top */}
+                  <Line
+                    type="monotone"
+                    dataKey={metric.dataKey}
+                    stroke={actualColor}
+                    strokeWidth={theme.palette.mode === 'dark' ? 3 : 2}
+                    dot={false}
+                    activeDot={{
+                      r: 6,
+                      fill: actualColor,
+                      stroke: theme.palette.mode === 'dark' ? '#1e293b' : '#fff',
+                      strokeWidth: 2
+                    }}
+                    animationDuration={1500}
+                    animationEasing="ease-in-out"
+                  />
+                </React.Fragment>
+              );
+            })}
           </ComposedChart>
         </ResponsiveContainer>
       </Box>
 
-      {/* Metric summary row */}
-      <Box sx={{
-        display: 'flex',
-        gap: 2,
-        mt: 1,
-        flexWrap: 'wrap'
-      }}>
-        {metrics.map((metric, index) => {
-          // Get latest value
-          const latestData = metric.data && metric.data.length > 0
-            ? metric.data[metric.data.length - 1]
-            : null;
-          const latestValue = latestData
-            ? Number(latestData[metric.dataKey])
-            : null;
-
-          return (
-            <Box
-              key={metric.dataKey}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5
-              }}
-            >
-              <Box
-                sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  backgroundColor: metric.color || theme.palette.primary.main
-                }}
-              />
-              <Typography variant="caption" color="text.secondary">
-                {metric.title}: {latestValue !== null && !isNaN(latestValue)
-                  ? `${formatYAxis(latestValue)} ${metric.unit || ''}`
-                  : '--'}
-              </Typography>
-            </Box>
-          );
-        })}
+      {/* Latest Values Row - compact horizontal display like single metric cards */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 0.5, gap: 2, flexWrap: 'wrap' }}>
+        {latestValuesDisplay.map((item, index) => (
+          <Typography
+            key={index}
+            variant="caption"
+            sx={{ fontWeight: 600, color: item.color }}
+          >
+            {item.value}
+          </Typography>
+        ))}
       </Box>
     </Box>
   );
