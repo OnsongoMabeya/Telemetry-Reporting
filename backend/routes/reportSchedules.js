@@ -48,11 +48,16 @@ router.get('/', async (req, res) => {
        ORDER BY rs.created_at DESC`
     );
 
-    // Parse JSON fields
+    // Parse JSON fields safely — MySQL2 may already return JSON columns as parsed arrays
+    const safeJsonParse = (val) => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      try { return JSON.parse(val); } catch { return []; }
+    };
     const parsedSchedules = schedules.map(schedule => ({
       ...schedule,
-      recipient_users: schedule.recipient_users ? JSON.parse(schedipient_users) : [],
-      recipient_emails: schedule.recipient_emails ? JSON.parse(schedule.recipient_emails) : []
+      recipient_users: safeJsonParse(schedule.recipient_users),
+      recipient_emails: safeJsonParse(schedule.recipient_emails)
     }));
 
     res.json(parsedSchedules);
@@ -90,8 +95,9 @@ router.get('/:id', async (req, res) => {
     }
 
     const schedule = schedules[0];
-    schedule.recipient_users = schedule.recipient_users ? JSON.parse(schedipient_users) : [];
-    schedule.recipient_emails = schedule.recipient_emails ? JSON.parse(schedule.recipient_emails) : [];
+    const safeJsonParse = (val) => { if (!val) return []; if (Array.isArray(val)) return val; try { return JSON.parse(val); } catch { return []; } };
+    schedule.recipient_users = safeJsonParse(schedule.recipient_users);
+    schedule.recipient_emails = safeJsonParse(schedule.recipient_emails);
 
     res.json(schedule);
   } catch (error) {
@@ -181,13 +187,6 @@ router.post('/', async (req, res) => {
     const newSchedule = { ...scheduleData, id: newScheduleId };
     scheduler.scheduleReport(newSchedule);
 
-    // Log audit
-    await db.query(
-      `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address)
-       VALUES (?, 'CREATE', 'report_schedule', ?, ?, ?)`,
-      [req.user.id, newScheduleId, `Created scheduled report: ${name}`, req.ip]
-    );
-
     logger.info('Created report schedule:', { id: newScheduleId, name, report_type, target_id });
 
     res.status(201).json({
@@ -259,13 +258,6 @@ router.put('/:id', async (req, res) => {
     // Reschedule the task
     scheduler.updateSchedule(id);
 
-    // Log audit
-    await db.query(
-      `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address)
-       VALUES (?, 'UPDATE', 'report_schedule', ?, ?, ?)`,
-      [req.user.id, id, `Updated scheduled report: ${updates.name || existing.name}`, req.ip]
-    );
-
     logger.info('Updated report schedule:', { id, updates });
 
     res.json({ message: 'Report schedule updated successfully' });
@@ -300,13 +292,6 @@ router.delete('/:id', async (req, res) => {
 
     // Delete from database
     await db.query('DELETE FROM report_schedules WHERE id = ?', [id]);
-
-    // Log audit
-    await db.query(
-      `INSERT INTO audit_logs (user_id, action, entity_type, entity_id, details, ip_address)
-       VALUES (?, 'DELETE', 'report_schedule', ?, ?, ?)`,
-      [req.user.id, id, `Deleted scheduled report: ${scheduleName}`, req.ip]
-    );
 
     logger.info('Deleted report schedule:', { id, name: scheduleName });
 

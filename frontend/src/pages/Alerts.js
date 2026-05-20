@@ -75,6 +75,7 @@ const Alerts = () => {
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
+  const [emailInputValue, setEmailInputValue] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
   // Form state
@@ -121,7 +122,8 @@ const Alerts = () => {
   const fetchServices = async () => {
     try {
       const response = await axios.get('/api/services');
-      setServices(Array.isArray(response.data) ? response.data : []);
+      const data = response.data?.data || response.data;
+      setServices(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch services:', error);
       setServices([]);
@@ -131,7 +133,8 @@ const Alerts = () => {
   const fetchClients = async () => {
     try {
       const response = await axios.get('/api/clients');
-      setClients(Array.isArray(response.data) ? response.data : []);
+      const data = response.data?.data || response.data;
+      setClients(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch clients:', error);
       setClients([]);
@@ -141,8 +144,9 @@ const Alerts = () => {
   const fetchUsers = async () => {
     try {
       const response = await axios.get('/api/users');
-      const usersData = Array.isArray(response.data) ? response.data : [];
-      setUsers(usersData.filter(u => u.is_active));
+      const usersData = response.data?.users || response.data?.data || response.data;
+      const list = Array.isArray(usersData) ? usersData : [];
+      setUsers(list.filter(u => u.is_active || u.isActive));
     } catch (error) {
       console.error('Failed to fetch users:', error);
       setUsers([]);
@@ -186,15 +190,21 @@ const Alerts = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setEditingSchedule(null);
+    setEmailInputValue('');
   };
 
   const handleSaveSchedule = async () => {
     try {
+      // Flush any unconfirmed typed email into the list before saving
+      const finalEmails = emailInputValue.trim()
+        ? [...formData.recipient_emails, emailInputValue.trim()]
+        : formData.recipient_emails;
+      const dataToSave = { ...formData, recipient_emails: finalEmails };
       if (editingSchedule) {
-        await axios.put(`/api/report-schedules/${editingSchedule.id}`, formData);
+        await axios.put(`/api/report-schedules/${editingSchedule.id}`, dataToSave);
         showSnackbar('Schedule updated successfully', 'success');
       } else {
-        await axios.post('/api/report-schedules', formData);
+        await axios.post('/api/report-schedules', dataToSave);
         showSnackbar('Schedule created successfully', 'success');
       }
       handleCloseDialog();
@@ -739,8 +749,11 @@ const Alerts = () => {
                     freeSolo
                     options={[]}
                     value={formData.recipient_emails}
+                    inputValue={emailInputValue}
+                    onInputChange={(e, val) => setEmailInputValue(val)}
                     onChange={(e, newValue) => {
                       setFormData({ ...formData, recipient_emails: newValue });
+                      setEmailInputValue('');
                     }}
                     renderTags={(value, getTagProps) =>
                       value.map((option, index) => (
@@ -753,7 +766,7 @@ const Alerts = () => {
                       ))
                     }
                     renderInput={(params) => (
-                      <TextField {...params} label="External Emails" placeholder="Type email and press Enter..." />
+                      <TextField {...params} label="External Emails" placeholder="Type email and press Enter..." helperText="Press Enter to add, or just click Save" />
                     )}
                   />
                 </Grid>

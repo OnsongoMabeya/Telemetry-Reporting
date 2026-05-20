@@ -5,6 +5,7 @@
 const cron = require('node-cron');
 const logger = require('../utils/logger');
 const emailService = require('./emailService');
+const reportDataService = require('./reportDataService');
 
 // Store active tasks and db reference
 const activeTasks = new Map();
@@ -124,7 +125,7 @@ async function generateReport(schedule) {
 
     if (schedule.report_type === 'service') {
       // Generate service report
-      reportData = await serviceReports.generateServiceReportData(
+      reportData = await reportDataService.generateServiceReportData(
         schedule.target_id,
         schedule.time_range
       );
@@ -133,19 +134,20 @@ async function generateReport(schedule) {
         throw new Error('Failed to generate service report data');
       }
       
-      reportName = `${reportData.serviceName || 'Service'} Report`;
+      reportName = `${reportData.reportInfo?.serviceName || 'Service'} Report`;
       
     } else if (schedule.report_type === 'client') {
-      // Generate client report
-      reportData = await serviceReports.generateClientReportData(
+      // Generate client report and transform to PDF-ready shape (mirrors frontend handleGenerateClientReport)
+      const rawClientData = await reportDataService.generateClientReportData(
         schedule.target_id,
         schedule.time_range
       );
       
-      if (!reportData) {
+      if (!rawClientData) {
         throw new Error('Failed to generate client report data');
       }
       
+      reportData = reportDataService.transformClientReportForPDF(rawClientData);
       reportName = `${reportData.reportInfo?.clientName || 'Client'} Report`;
     }
 
@@ -356,15 +358,13 @@ async function initializeScheduler() {
 
     logger.info(`Found ${schedules.length} active scheduled reports`);
 
+    const safeJsonParse = (val) => { if (!val) return []; if (Array.isArray(val)) return val; try { return JSON.parse(val); } catch { return []; } };
+
     // Schedule each report
     for (const schedule of schedules) {
       // Parse JSON fields
-      schedule.recipient_users = schedule.recipient_users 
-        ? JSON.parse(schedipient_users) 
-        : [];
-      schedule.recipient_emails = schedule.recipient_emails 
-        ? JSON.parse(schedule.recipient_emails) 
-        : [];
+      schedule.recipient_users = safeJsonParse(schedule.recipient_users);
+      schedule.recipient_emails = safeJsonParse(schedule.recipient_emails);
       
       scheduleReport(schedule);
     }
@@ -393,12 +393,9 @@ async function updateSchedule(scheduleId) {
     const schedule = schedules[0];
     
     // Parse JSON fields
-    schedule.recipient_users = schedule.recipient_users 
-      ? JSON.parse(schedule.recipient_users) 
-      : [];
-    schedule.recipient_emails = schedule.recipient_emails 
-      ? JSON.parse(schedule.recipient_emails) 
-      : [];
+    const safeJsonParse = (val) => { if (!val) return []; if (Array.isArray(val)) return val; try { return JSON.parse(val); } catch { return []; } };
+    schedule.recipient_users = safeJsonParse(schedule.recipient_users);
+    schedule.recipient_emails = safeJsonParse(schedule.recipient_emails);
 
     // Reschedule
     scheduleReport(schedule);
@@ -446,13 +443,14 @@ async function runScheduleNow(scheduleId) {
 
     const schedule = schedules[0];
     
-    // Parse JSON fields
-    schedule.recipient_users = schedule.recipient_users 
-      ? JSON.parse(schedule.recipient_users) 
-      : [];
-    schedule.recipient_emails = schedule.recipient_emails 
-      ? JSON.parse(schedule.recipient_emails) 
-      : [];
+    // Parse JSON fields — MySQL2 may already return JSON columns as parsed arrays
+    const safeJsonParse = (val) => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      try { return JSON.parse(val); } catch { return []; }
+    };
+    schedule.recipient_users = safeJsonParse(schedule.recipient_users);
+    schedule.recipient_emails = safeJsonParse(schedule.recipient_emails);
 
     return await executeSchedule(schedule);
   } catch (error) {
