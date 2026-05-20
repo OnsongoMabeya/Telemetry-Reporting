@@ -126,20 +126,13 @@ const MergedGraphView = ({
     }
 
     const max = Math.max(...allValues);
-    const min = Math.min(...allValues);
-    const padding = (max - min) * 0.1 || max * 0.1;
+    const padding = max * 0.1 || 10;
 
-    const domainMin = Math.max(0, min - padding);
+    const domainMin = 0;
     const domainMax = max + padding;
 
-    const step = (domainMax - domainMin) / 4;
-    const ticks = [
-      domainMin,
-      domainMin + step,
-      domainMin + step * 2,
-      domainMin + step * 3,
-      domainMax
-    ];
+    const step = domainMax / 4;
+    const ticks = [0, step, step * 2, step * 3, domainMax];
 
     return { domain: [domainMin, domainMax], ticks };
   }, [mergedData, sortedMetrics]);
