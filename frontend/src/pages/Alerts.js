@@ -230,7 +230,7 @@ const Alerts = () => {
     try {
       setLoading(true);
       const response = await axios.post(`/api/report-schedules/${id}/test`);
-      showSnackbar(`Test email sent to ${response.data.recipients} recipients`, 'success');
+      showSnackbar(response.data.message || 'Test report queued — check your email shortly.', 'success');
     } catch (error) {
       showSnackbar(error.response?.data?.error || 'Test failed', 'error');
     } finally {

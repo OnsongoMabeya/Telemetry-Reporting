@@ -310,24 +310,25 @@ router.post('/:id/test', async (req, res) => {
     const { id } = req.params;
 
     logger.info(`Running test for schedule ${id}`);
-    
-    const result = await scheduler.runScheduleNow(id);
 
-    if (result.success) {
-      res.json({ 
-        message: 'Test run completed successfully',
-        recipients: result.recipients,
-        executionTime: result.executionTime
+    // Respond immediately so nginx doesn't time out on slow PDF generation
+    res.json({ message: 'Test report queued — check your email shortly.' });
+
+    // Run in background after response is sent
+    scheduler.runScheduleNow(id)
+      .then(result => {
+        if (result.success) {
+          logger.info(`Test schedule ${id} completed`, { recipients: result.recipients, executionTime: result.executionTime });
+        } else {
+          logger.error(`Test schedule ${id} failed`, { error: result.error });
+        }
+      })
+      .catch(err => {
+        logger.error(`Test schedule ${id} threw:`, err);
       });
-    } else {
-      res.status(500).json({ 
-        error: 'Test run failed',
-        details: result.error 
-      });
-    }
   } catch (error) {
-    logger.error('Error running test schedule:', error);
-    res.status(500).json({ error: 'Failed to run test', details: error.message });
+    logger.error('Error queuing test schedule:', error);
+    res.status(500).json({ error: 'Failed to queue test', details: error.message });
   }
 });
 
