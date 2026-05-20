@@ -209,21 +209,14 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    // Don't allow updating certain fields
-    delete updates.id;
-    delete updates.created_by;
-    delete updates.created_at;
-    delete updates.run_count;
-    delete updates.last_run;
-    delete updates.last_run_status;
+    // Strip fields that are not real DB columns (computed aliases, auto fields)
+    const readOnlyFields = ['id', 'created_by', 'created_at', 'run_count', 'last_run',
+      'last_run_status', 'last_run_message', 'created_by_email', 'target_name'];
+    readOnlyFields.forEach(f => delete updates[f]);
 
-    // Parse JSON fields
-    if (updates.recipient_users) {
-      updates.recipient_users = JSON.stringify(updates.recipient_users);
-    }
-    if (updates.recipient_emails) {
-      updates.recipient_emails = JSON.stringify(updates.recipient_emails);
-    }
+    // Always serialize JSON fields (including empty arrays)
+    updates.recipient_users = JSON.stringify(Array.isArray(updates.recipient_users) ? updates.recipient_users : []);
+    updates.recipient_emails = JSON.stringify(Array.isArray(updates.recipient_emails) ? updates.recipient_emails : []);
 
     // Recalculate next_run if frequency or timing changed
     const [existingSchedules] = await db.query(
@@ -250,6 +243,12 @@ router.put('/:id', async (req, res) => {
         interval_hours: updates.interval_hours || existing.interval_hours
       });
     }
+
+    // Convert empty-string date/datetime fields to null so MySQL doesn't reject them
+    const dateFields = ['start_date', 'end_date', 'next_run', 'last_run'];
+    dateFields.forEach(f => {
+      if (updates[f] === '' || updates[f] === undefined) updates[f] = null;
+    });
 
     updates.updated_at = new Date();
 

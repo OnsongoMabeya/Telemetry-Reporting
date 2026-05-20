@@ -756,14 +756,18 @@ const Alerts = () => {
                       setEmailInputValue('');
                     }}
                     renderTags={(value, getTagProps) =>
-                      value.map((option, index) => (
-                        <Chip
-                          variant="outlined"
-                          label={option}
-                          size="small"
-                          {...getTagProps({ index })}
-                        />
-                      ))
+                      value.map((option, index) => {
+                        const { key, ...tagProps } = getTagProps({ index });
+                        return (
+                          <Chip
+                            key={key}
+                            variant="outlined"
+                            label={option}
+                            size="small"
+                            {...tagProps}
+                          />
+                        );
+                      })
                     }
                     renderInput={(params) => (
                       <TextField {...params} label="External Emails" placeholder="Type email and press Enter..." helperText="Press Enter to add, or just click Save" />
