@@ -42,7 +42,9 @@ import {
   Business as BusinessIcon,
   AccessTime as AccessTimeIcon,
   Assessment as AssessmentIcon,
-  People as PeopleIcon
+  People as PeopleIcon,
+  NotificationsActive as NotificationsActiveIcon,
+  WifiOff as WifiOffIcon
 } from '@mui/icons-material';
 import axios from '../services/axiosInterceptor';
 import { useAuth } from '../context/AuthContext';
@@ -78,6 +80,20 @@ const Alerts = () => {
   const [emailInputValue, setEmailInputValue] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'info' });
 
+  // Offline alert state
+  const [alertConfigs, setAlertConfigs] = useState([]);
+  const [baseStations, setBaseStations] = useState([]);
+  const [openAlertDialog, setOpenAlertDialog] = useState(false);
+  const [editingAlertConfig, setEditingAlertConfig] = useState(null);
+  const [alertEmailInputValue, setAlertEmailInputValue] = useState('');
+  const [alertFormData, setAlertFormData] = useState({
+    base_station_name: '',
+    repeat_interval_hours: 4,
+    recipient_users: [],
+    recipient_emails: [],
+    is_active: true
+  });
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -103,6 +119,8 @@ const Alerts = () => {
     fetchServices();
     fetchClients();
     fetchUsers();
+    fetchAlertConfigs();
+    fetchBaseStations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -150,6 +168,92 @@ const Alerts = () => {
     } catch (error) {
       console.error('Failed to fetch users:', error);
       setUsers([]);
+    }
+  };
+
+  const fetchAlertConfigs = async () => {
+    try {
+      const response = await axios.get('/api/site-alerts');
+      setAlertConfigs(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Failed to fetch alert configs:', error);
+      setAlertConfigs([]);
+    }
+  };
+
+  const fetchBaseStations = async () => {
+    try {
+      const response = await axios.get('/api/site-alerts/base-stations');
+      setBaseStations(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Failed to fetch base stations:', error);
+      setBaseStations([]);
+    }
+  };
+
+  const handleOpenAlertDialog = (config = null) => {
+    if (config) {
+      setEditingAlertConfig(config);
+      setAlertFormData({
+        base_station_name: config.base_station_name || '',
+        repeat_interval_hours: config.repeat_interval_hours || 4,
+        recipient_users: config.recipient_users || [],
+        recipient_emails: config.recipient_emails || [],
+        is_active: config.is_active !== false
+      });
+    } else {
+      setEditingAlertConfig(null);
+      setAlertFormData({
+        base_station_name: '',
+        repeat_interval_hours: 4,
+        recipient_users: [],
+        recipient_emails: [],
+        is_active: true
+      });
+    }
+    setAlertEmailInputValue('');
+    setOpenAlertDialog(true);
+  };
+
+  const handleCloseAlertDialog = () => {
+    setOpenAlertDialog(false);
+    setEditingAlertConfig(null);
+    setAlertEmailInputValue('');
+  };
+
+  const handleSaveAlertConfig = async () => {
+    if (!alertFormData.base_station_name) {
+      showSnackbar('Please select a base station', 'warning');
+      return;
+    }
+    // Flush any typed but unconfirmed email
+    const finalEmails = alertEmailInputValue.trim()
+      ? [...alertFormData.recipient_emails, alertEmailInputValue.trim()]
+      : alertFormData.recipient_emails;
+    const payload = { ...alertFormData, recipient_emails: finalEmails };
+    try {
+      if (editingAlertConfig) {
+        await axios.put(`/api/site-alerts/${editingAlertConfig.id}`, payload);
+        showSnackbar('Alert config updated successfully', 'success');
+      } else {
+        await axios.post('/api/site-alerts', payload);
+        showSnackbar('Alert config created successfully', 'success');
+      }
+      handleCloseAlertDialog();
+      fetchAlertConfigs();
+    } catch (error) {
+      showSnackbar(error.response?.data?.error || 'Failed to save alert config', 'error');
+    }
+  };
+
+  const handleDeleteAlertConfig = async (id) => {
+    if (!window.confirm('Delete this offline alert configuration?')) return;
+    try {
+      await axios.delete(`/api/site-alerts/${id}`);
+      showSnackbar('Alert config deleted', 'success');
+      fetchAlertConfigs();
+    } catch (error) {
+      showSnackbar('Failed to delete alert config', 'error');
     }
   };
 
@@ -298,6 +402,7 @@ const Alerts = () => {
           }}
         >
           <Tab icon={<ScheduleIcon />} iconPosition="start" label="Scheduled Reports" />
+          <Tab icon={<WifiOffIcon />} iconPosition="start" label="Offline Alerts" />
           <Tab icon={<EmailIcon />} iconPosition="start" label="Email Test" />
         </Tabs>
 
@@ -426,6 +531,89 @@ const Alerts = () => {
           )}
 
           {activeTab === 1 && (
+            <>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                    Offline Site Alerts ({alertConfigs.length})
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                    Configure email notifications when a base station goes offline (no data for 3+ hours).
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleOpenAlertDialog()}
+                  sx={{ background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.primaryDark} 100%)` }}
+                >
+                  Add Alert Config
+                </Button>
+              </Box>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: isDark ? 'rgba(0,153,255,0.15)' : BSI_COLORS.light }}>
+                      <TableCell><strong>Base Station</strong></TableCell>
+                      <TableCell><strong>Repeat Every</strong></TableCell>
+                      <TableCell><strong>Recipients</strong></TableCell>
+                      <TableCell><strong>Status</strong></TableCell>
+                      <TableCell align="center"><strong>Actions</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {alertConfigs.map((config) => (
+                      <TableRow key={config.id} hover>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <WifiOffIcon sx={{ fontSize: 16, color: BSI_COLORS.gray }} />
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>{config.base_station_name}</Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Chip size="small" label={`Every ${config.repeat_interval_hours}h`} variant="outlined" />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="caption" color="text.secondary">
+                            {(config.recipient_users?.length || 0)} user(s), {(config.recipient_emails?.length || 0)} email(s)
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            size="small"
+                            label={config.is_active ? 'Active' : 'Inactive'}
+                            color={config.is_active ? 'success' : 'default'}
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Tooltip title="Edit">
+                            <IconButton size="small" onClick={() => handleOpenAlertDialog(config)}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton size="small" color="error" onClick={() => handleDeleteAlertConfig(config.id)}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              {alertConfigs.length === 0 && (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <NotificationsActiveIcon sx={{ fontSize: 48, color: BSI_COLORS.gray, mb: 1 }} />
+                  <Typography color="text.secondary">
+                    No offline alert configurations yet. Click "Add Alert Config" to create one.
+                  </Typography>
+                </Box>
+              )}
+            </>
+          )}
+
+          {activeTab === 2 && (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <EmailIcon sx={{ fontSize: 64, color: BSI_COLORS.primary, mb: 2 }} />
               <Typography variant="h6" gutterBottom>
@@ -825,6 +1013,102 @@ const Alerts = () => {
             }}
           >
             {editingSchedule ? 'Update Schedule' : 'Create Schedule'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Offline Alert Config Dialog */}
+      <Dialog open={openAlertDialog} onClose={handleCloseAlertDialog} maxWidth="sm" fullWidth>
+        <DialogTitle
+          sx={{
+            background: `linear-gradient(135deg, ${BSI_COLORS.navy} 0%, ${BSI_COLORS.dark} 100%)`,
+            color: 'white', fontSize: '1.2rem', fontWeight: 600, py: 2, px: 3,
+            display: 'flex', alignItems: 'center', gap: 2
+          }}
+        >
+          <WifiOffIcon sx={{ fontSize: 24, color: BSI_COLORS.primary }} />
+          {editingAlertConfig ? 'Edit Offline Alert Config' : 'New Offline Alert Config'}
+        </DialogTitle>
+        <DialogContent sx={{ p: 3, mt: 1 }}>
+          <Grid container spacing={2}>
+            <Grid size={12}>
+              <Autocomplete
+                options={baseStations}
+                value={alertFormData.base_station_name || null}
+                onChange={(e, val) => setAlertFormData({ ...alertFormData, base_station_name: val || '' })}
+                renderInput={(params) => <TextField {...params} label="Base Station" required />}
+                disabled={!!editingAlertConfig}
+              />
+            </Grid>
+            <Grid size={12}>
+              <FormControl fullWidth>
+                <InputLabel>Repeat Notification Interval</InputLabel>
+                <Select
+                  value={alertFormData.repeat_interval_hours}
+                  label="Repeat Notification Interval"
+                  onChange={(e) => setAlertFormData({ ...alertFormData, repeat_interval_hours: e.target.value })}
+                >
+                  {[1, 2, 4, 6, 12, 24].map(h => (
+                    <MenuItem key={h} value={h}>Every {h} hour{h > 1 ? 's' : ''}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={12}>
+              <Autocomplete
+                multiple
+                options={users || []}
+                getOptionLabel={(option) => `${option.email} (${option.role})`}
+                value={(users || []).filter(u => alertFormData.recipient_users.includes(u.id))}
+                onChange={(e, newValue) => setAlertFormData({ ...alertFormData, recipient_users: newValue.map(u => u.id) })}
+                renderInput={(params) => <TextField {...params} label="System Users" placeholder="Select users..." />}
+              />
+            </Grid>
+            <Grid size={12}>
+              <Autocomplete
+                multiple
+                freeSolo
+                options={[]}
+                value={alertFormData.recipient_emails}
+                inputValue={alertEmailInputValue}
+                onInputChange={(e, val) => setAlertEmailInputValue(val)}
+                onChange={(e, newValue) => {
+                  setAlertFormData({ ...alertFormData, recipient_emails: newValue });
+                  setAlertEmailInputValue('');
+                }}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => {
+                    const { key, ...tagProps } = getTagProps({ index });
+                    return <Chip key={key} variant="outlined" label={option} size="small" {...tagProps} />;
+                  })
+                }
+                renderInput={(params) => (
+                  <TextField {...params} label="External Emails" placeholder="Type email and press Enter..." helperText="Press Enter to add" />
+                )}
+              />
+            </Grid>
+            <Grid size={12}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={alertFormData.is_active}
+                    onChange={(e) => setAlertFormData({ ...alertFormData, is_active: e.target.checked })}
+                    color="primary"
+                  />
+                }
+                label="Active"
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button onClick={handleCloseAlertDialog} variant="outlined">Cancel</Button>
+          <Button
+            onClick={handleSaveAlertConfig}
+            variant="contained"
+            sx={{ background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.primaryDark} 100%)`, fontWeight: 600 }}
+          >
+            {editingAlertConfig ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>

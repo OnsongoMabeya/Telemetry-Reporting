@@ -20,6 +20,7 @@ const userClientAssignmentsRoutes = require('./routes/userClientAssignments');
 const mySitesRoutes = require('./routes/mySites');
 const serviceReportsRoutes = require('./routes/serviceReports');
 const reportSchedulesRoutes = require('./routes/reportSchedules');
+const { router: siteAlertsRouter, setDatabase: setSiteAlertsDb } = require('./routes/siteAlerts');
 const { authenticateToken } = require('./middleware/auth');
 const logger = require('./utils/logger');
 
@@ -209,6 +210,7 @@ app.use('/api/user-client-assignments', authenticateToken, userClientAssignments
 app.use('/api/my-sites', authenticateToken, mySitesRoutes);
 app.use('/api', authenticateToken, serviceReportsRoutes);
 app.use('/api/report-schedules', authenticateToken, reportSchedulesRoutes);
+app.use('/api/site-alerts', authenticateToken, siteAlertsRouter);
 
 // Keep-alive endpoint for slideshow session management (with token refresh)
 // Accepts expired tokens within a grace period so the session can be renewed
@@ -884,6 +886,7 @@ const scheduler = require('./services/scheduler');
 const reportDataService = require('./services/reportDataService');
 scheduler.setDatabase(pool.promise());
 reportDataService.setDatabase(pool.promise());
+setSiteAlertsDb(pool.promise());
 
 // Start the server
 const PORT = process.env.PORT || 5000;

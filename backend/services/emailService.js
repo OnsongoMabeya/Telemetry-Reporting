@@ -319,6 +319,120 @@ async function sendScheduledReport({
 }
 
 /**
+ * Send offline site alert email
+ * @param {Object} opts
+ * @param {string[]} opts.to - recipient addresses
+ * @param {string} opts.baseStationName
+ * @param {string[]} opts.affectedServices - service names impacted
+ * @param {Date} opts.offlineSince - when the site first went offline
+ */
+async function sendOfflineAlert({ to, baseStationName, affectedServices = [], offlineSince }) {
+  const sinceStr = offlineSince
+    ? new Date(offlineSince).toLocaleString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long',
+        day: 'numeric', hour: '2-digit', minute: '2-digit'
+      })
+    : 'Unknown';
+
+  const serviceListHtml = affectedServices.length > 0
+    ? `<ul style="margin:12px 0 0;padding-left:20px;">
+        ${affectedServices.map(s =>
+          `<li style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1a2b3c;padding:3px 0;">${s}</li>`
+        ).join('')}
+       </ul>`
+    : '<p style="margin:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#888;">No services registered for this station.</p>';
+
+  const subject = `[BSI Telemetry] Site Offline — ${baseStationName}`;
+  const greeting = 'Connectivity Alert';
+  const message = `
+    <strong style="color:#c0392b;">&#9888; ${baseStationName}</strong> has gone offline and is no longer transmitting telemetry data.
+    <br><br>
+    <strong>Offline since:</strong> ${sinceStr}
+    <br><br>
+    <strong>Affected Services at this station:</strong>
+    ${serviceListHtml}
+    <br>
+    Our team has been notified. Please monitor the situation and ensure the site equipment is inspected.
+  `;
+  const footer = 'This alert was triggered automatically by BSI Telemetry\'s offline detection system.';
+
+  const htmlContent = generateEmailTemplate({ subject, greeting, message, footer, reportName: null, scheduleName: null });
+  const logoAttachment = getLogoAttachment();
+  const attachments = logoAttachment ? [logoAttachment] : [];
+
+  try {
+    const transporter = getTransporter();
+    const result = await transporter.sendMail({
+      from: { name: SMTP_FROM_NAME, address: SMTP_FROM },
+      to: Array.isArray(to) ? to.join(', ') : to,
+      subject,
+      html: htmlContent,
+      attachments
+    });
+    logger.info('Offline alert email sent:', { messageId: result.messageId, baseStationName, to });
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    logger.error('Failed to send offline alert email:', error.message || error);
+    return { success: false, error: error.message || 'Unknown error' };
+  }
+}
+
+/**
+ * Send site recovery email
+ * @param {Object} opts
+ * @param {string[]} opts.to - recipient addresses
+ * @param {string} opts.baseStationName
+ * @param {Date} opts.offlineSince - when the site first went offline
+ */
+async function sendRecoveryAlert({ to, baseStationName, offlineSince }) {
+  const sinceStr = offlineSince
+    ? new Date(offlineSince).toLocaleString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long',
+        day: 'numeric', hour: '2-digit', minute: '2-digit'
+      })
+    : 'Unknown';
+
+  const downtimeMs = offlineSince ? Date.now() - new Date(offlineSince).getTime() : 0;
+  const downtimeHours = Math.floor(downtimeMs / (1000 * 60 * 60));
+  const downtimeMinutes = Math.floor((downtimeMs % (1000 * 60 * 60)) / (1000 * 60));
+  const downtimeStr = downtimeHours > 0
+    ? `${downtimeHours}h ${downtimeMinutes}m`
+    : `${downtimeMinutes} minutes`;
+
+  const subject = `[BSI Telemetry] Site Recovered — ${baseStationName}`;
+  const greeting = 'Site Recovery Notification';
+  const message = `
+    <strong style="color:#27ae60;">&#10003; ${baseStationName}</strong> has resumed normal operations and is transmitting telemetry data.
+    <br><br>
+    <strong>Was offline since:</strong> ${sinceStr}<br>
+    <strong>Total downtime:</strong> ${downtimeStr}
+    <br><br>
+    No further action is required at this time.
+  `;
+  const footer = 'This notification was triggered automatically by BSI Telemetry\'s recovery detection system.';
+
+  const htmlContent = generateEmailTemplate({ subject, greeting, message, footer, reportName: null, scheduleName: null });
+  const logoAttachment = getLogoAttachment();
+  const attachments = logoAttachment ? [logoAttachment] : [];
+
+  try {
+    const transporter = getTransporter();
+    const result = await transporter.sendMail({
+      from: { name: SMTP_FROM_NAME, address: SMTP_FROM },
+      to: Array.isArray(to) ? to.join(', ') : to,
+      subject,
+      html: htmlContent,
+      attachments
+    });
+    logger.info('Recovery alert email sent:', { messageId: result.messageId, baseStationName, to });
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    logger.error('Failed to send recovery alert email:', error.message || error);
+    return { success: false, error: error.message || 'Unknown error' };
+  }
+}
+
+/**
  * Send test email to verify SMTP configuration
  */
 async function sendTestEmail(to) {
@@ -336,6 +450,8 @@ async function sendTestEmail(to) {
 module.exports = {
   sendScheduledReport,
   sendTestEmail,
+  sendOfflineAlert,
+  sendRecoveryAlert,
   getTransporter,
   BSI_COLORS
 };

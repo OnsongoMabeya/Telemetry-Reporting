@@ -370,6 +370,13 @@ async function initializeScheduler() {
     }
 
     logger.info('Report scheduler initialized successfully');
+
+    // Start offline site checker — every 15 minutes
+    cron.schedule('*/15 * * * *', () => {
+      checkOfflineSites().catch(err => logger.error('Offline site check failed:', err));
+    }, { scheduled: true, timezone: 'Africa/Nairobi' });
+
+    logger.info('Offline site checker started (every 15 minutes)');
   } catch (error) {
     logger.error('Failed to initialize scheduler:', error);
   }
@@ -459,6 +466,129 @@ async function runScheduleNow(scheduleId) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Offline Site Alert Checker
+// Runs every 15 minutes. Sends alerts when base stations stop sending data
+// for more than 3 hours. Respects per-config repeat_interval_hours.
+// ---------------------------------------------------------------------------
+const safeJsonParseArr = (val) => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  try { return JSON.parse(val); } catch { return []; }
+};
+
+async function checkOfflineSites() {
+  try {
+    // Load all active alert configs
+    const [configs] = await db.query(
+      'SELECT * FROM site_alert_configs WHERE is_active = TRUE'
+    );
+    if (configs.length === 0) return;
+
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
+    const stationNames = configs.map(c => c.base_station_name);
+    const placeholders = stationNames.map(() => '?').join(',');
+
+    // Get latest telemetry timestamp for each monitored station
+    const [latestRows] = await db.query(
+      `SELECT NodeBaseStationName, MAX(time) as last_seen
+       FROM node_status_table
+       WHERE NodeBaseStationName IN (${placeholders})
+       GROUP BY NodeBaseStationName`,
+      stationNames
+    );
+    const lastSeenMap = new Map(latestRows.map(r => [r.NodeBaseStationName, new Date(r.last_seen)]));
+
+    for (const config of configs) {
+      const station = config.base_station_name;
+      const lastSeen = lastSeenMap.get(station) || null;
+      const isOffline = !lastSeen || lastSeen < threeHoursAgo;
+
+      // Load or create state row
+      const [stateRows] = await db.query(
+        'SELECT * FROM site_alert_state WHERE base_station_name = ?', [station]
+      );
+      const state = stateRows[0] || null;
+      const prevStatus = state ? state.alert_status : 'online';
+
+      // Resolve recipient list
+      const userIds = safeJsonParseArr(config.recipient_users);
+      const externalEmails = safeJsonParseArr(config.recipient_emails);
+      const recipients = [...externalEmails];
+      if (userIds.length > 0) {
+        const [userRows] = await db.query(
+          'SELECT email FROM users WHERE id IN (?) AND is_active = TRUE', [userIds]
+        );
+        recipients.push(...userRows.map(u => u.email));
+      }
+      if (recipients.length === 0) continue;
+
+      if (isOffline) {
+        const firstOfflineAt = (state && state.alert_status === 'offline' && state.first_offline_at)
+          ? state.first_offline_at
+          : new Date();
+
+        // Determine if we should send: first time or repeat interval elapsed
+        const repeatMs = (config.repeat_interval_hours || 4) * 60 * 60 * 1000;
+        const lastAlertAt = state && state.last_alert_sent_at ? new Date(state.last_alert_sent_at) : null;
+        const shouldSend = !lastAlertAt || (Date.now() - lastAlertAt.getTime() >= repeatMs);
+
+        if (shouldSend) {
+          // Find services affected by this station
+          const [serviceRows] = await db.query(
+            `SELECT DISTINCT s.name
+             FROM services s
+             INNER JOIN service_metric_assignments sma ON s.id = sma.service_id
+             INNER JOIN metric_mappings mm ON sma.metric_mapping_id = mm.id
+             WHERE mm.base_station_name = ? AND sma.is_active = TRUE AND s.is_active = TRUE`,
+            [station]
+          );
+          const affectedServices = serviceRows.map(r => r.name);
+
+          const { sendOfflineAlert } = require('./emailService');
+          await sendOfflineAlert({ to: recipients, baseStationName: station, affectedServices, offlineSince: firstOfflineAt });
+          logger.info(`Offline alert sent for ${station}`, { recipients: recipients.length });
+        }
+
+        // Upsert state
+        await db.query(
+          `INSERT INTO site_alert_state (base_station_name, alert_status, first_offline_at, last_alert_sent_at, last_checked_at)
+           VALUES (?, 'offline', ?, ?, NOW())
+           ON DUPLICATE KEY UPDATE
+             alert_status = 'offline',
+             first_offline_at = IF(alert_status = 'offline', first_offline_at, VALUES(first_offline_at)),
+             last_alert_sent_at = IF(${shouldSend ? 'TRUE' : 'FALSE'}, VALUES(last_alert_sent_at), last_alert_sent_at),
+             last_checked_at = NOW()`,
+          [station, firstOfflineAt, shouldSend ? new Date() : (lastAlertAt || new Date())]
+        );
+
+      } else {
+        // Station is online
+        if (prevStatus === 'offline') {
+          // Send recovery email
+          const offlineSince = state && state.first_offline_at ? new Date(state.first_offline_at) : null;
+          const { sendRecoveryAlert } = require('./emailService');
+          await sendRecoveryAlert({ to: recipients, baseStationName: station, offlineSince });
+          logger.info(`Recovery alert sent for ${station}`, { recipients: recipients.length });
+        }
+
+        await db.query(
+          `INSERT INTO site_alert_state (base_station_name, alert_status, first_offline_at, last_alert_sent_at, last_checked_at)
+           VALUES (?, 'online', NULL, NULL, NOW())
+           ON DUPLICATE KEY UPDATE
+             alert_status = 'online',
+             first_offline_at = NULL,
+             last_alert_sent_at = NULL,
+             last_checked_at = NOW()`,
+          [station]
+        );
+      }
+    }
+  } catch (error) {
+    logger.error('Error in checkOfflineSites:', error);
+  }
+}
+
 module.exports = {
   initializeScheduler,
   scheduleReport,
@@ -468,5 +598,6 @@ module.exports = {
   runScheduleNow,
   executeSchedule,
   calculateNextRun,
-  setDatabase
+  setDatabase,
+  checkOfflineSites
 };

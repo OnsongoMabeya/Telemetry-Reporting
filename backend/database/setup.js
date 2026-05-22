@@ -217,6 +217,21 @@ async function setupDatabase() {
       migrationsToRun.add('012_create_report_schedules.sql');
     }
 
+    // Check for site_alert_configs and site_alert_state tables (migration 013)
+    if (await checkTableExists(connection, 'site_alert_configs')) {
+      console.log('✅ Table: site_alert_configs');
+    } else {
+      console.log('❌ Table: site_alert_configs (missing - needs migration 013)');
+      migrationsToRun.add('013_create_site_alert_tables.sql');
+    }
+
+    if (await checkTableExists(connection, 'site_alert_state')) {
+      console.log('✅ Table: site_alert_state');
+    } else {
+      console.log('❌ Table: site_alert_state (missing - needs migration 013)');
+      migrationsToRun.add('013_create_site_alert_tables.sql');
+    }
+
     console.log('\n================================\n');
     
     if (migrationsToRun.size === 0) {
