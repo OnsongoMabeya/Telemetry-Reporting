@@ -319,12 +319,85 @@ async function sendScheduledReport({
 }
 
 /**
+ * Dedicated HTML template for site alert emails (offline / recovery).
+ * Does NOT include report details card or PDF attachment note.
+ */
+function generateAlertEmailTemplate({ subject, heading, accentColor, bodyHtml }) {
+  const logoAttachment = getLogoAttachment();
+  const logoSrc = logoAttachment ? `cid:${logoAttachment.cid}` : '';
+
+  return `<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>${subject}</title>
+  <style>
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; outline: none; text-decoration: none; }
+    body { margin: 0 !important; padding: 0 !important; background-color: #e8edf2 !important; }
+    @media only screen and (max-width: 600px) {
+      .wrapper { width: 100% !important; }
+      .content-pad { padding: 24px 20px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0;padding:0;background-color:#e8edf2;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#e8edf2;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" class="wrapper" width="600" cellpadding="0" cellspacing="0" border="0"
+             style="width:600px;max-width:600px;background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.12);">
+
+        <!-- HEADER -->
+        <tr>
+          <td align="center" style="background-color:#ddeeff;padding:32px 40px;">
+            ${logoSrc ? `<img src="${logoSrc}" alt="BSI" width="200" style="display:block;margin:0 auto 16px;max-width:200px;height:auto;">` : ''}
+            <h1 style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:26px;font-weight:700;color:#003d7a;letter-spacing:0.5px;">BSI Telemetry</h1>
+            <p style="margin:6px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#336699;letter-spacing:0.5px;text-transform:uppercase;">Equipment Monitoring &amp; Reporting System</p>
+          </td>
+        </tr>
+
+        <!-- ACCENT BAR -->
+        <tr>
+          <td height="4" style="background-color:${accentColor};font-size:0;line-height:0;">&nbsp;</td>
+        </tr>
+
+        <!-- CONTENT -->
+        <tr>
+          <td class="content-pad" style="padding:36px 40px;background-color:#ffffff;">
+            <p style="margin:0 0 20px;font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:700;color:#003d7a;">${heading}</p>
+            ${bodyHtml}
+          </td>
+        </tr>
+
+        <!-- FOOTER -->
+        <tr>
+          <td style="background-color:#001f42;padding:28px 40px;text-align:center;">
+            <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;">Broadcasting Services International (BSI)</p>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="border-top:1px solid #0d3560;padding-top:14px;">
+                  <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#4d7aa0;line-height:1.6;">This is an automated message from BSI Telemetry System. Please do not reply to this email.</p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>`;
+}
+
+/**
  * Send offline site alert email
- * @param {Object} opts
- * @param {string[]} opts.to - recipient addresses
- * @param {string} opts.baseStationName
- * @param {string[]} opts.affectedServices - service names impacted
- * @param {Date} opts.offlineSince - when the site first went offline
  */
 async function sendOfflineAlert({ to, baseStationName, affectedServices = [], offlineSince }) {
   const sinceStr = offlineSince
@@ -335,28 +408,67 @@ async function sendOfflineAlert({ to, baseStationName, affectedServices = [], of
     : 'Unknown';
 
   const serviceListHtml = affectedServices.length > 0
-    ? `<ul style="margin:12px 0 0;padding-left:20px;">
+    ? `<ul style="margin:10px 0 0;padding-left:20px;">
         ${affectedServices.map(s =>
           `<li style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1a2b3c;padding:3px 0;">${s}</li>`
         ).join('')}
        </ul>`
     : '<p style="margin:8px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#888;">No services registered for this station.</p>';
 
-  const subject = `[BSI Telemetry] Site Offline — ${baseStationName}`;
-  const greeting = 'Connectivity Alert';
-  const message = `
-    <strong style="color:#c0392b;">&#9888; ${baseStationName}</strong> has gone offline and is no longer transmitting telemetry data.
-    <br><br>
-    <strong>Offline since:</strong> ${sinceStr}
-    <br><br>
-    <strong>Affected Services at this station:</strong>
-    ${serviceListHtml}
-    <br>
-    Our team has been notified. Please monitor the situation and ensure the site equipment is inspected.
-  `;
-  const footer = 'This alert was triggered automatically by BSI Telemetry\'s offline detection system.';
+  const bodyHtml = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+      <tr>
+        <td width="4" style="background-color:#c0392b;border-radius:4px 0 0 4px;">&nbsp;</td>
+        <td style="background-color:#fdf3f2;padding:18px 20px;border-radius:0 4px 4px 0;border:1px solid #f5c6c0;border-left:none;">
+          <p style="margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#7b1a14;font-weight:700;">
+            &#9888;&nbsp; ${baseStationName} is offline
+          </p>
+          <p style="margin:0 0 6px;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1a2b3c;line-height:1.6;">
+            This station has stopped transmitting telemetry data. Immediate attention is required.
+          </p>
+          <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1a2b3c;">
+            <strong>Offline since:</strong> ${sinceStr}
+          </p>
+        </td>
+      </tr>
+    </table>
 
-  const htmlContent = generateEmailTemplate({ subject, greeting, message, footer, reportName: null, scheduleName: null });
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+           style="margin-bottom:24px;border:1px solid #dde3ea;border-radius:6px;overflow:hidden;">
+      <tr>
+        <td style="background-color:#003d7a;padding:10px 20px;">
+          <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#ffffff;text-transform:uppercase;letter-spacing:0.8px;">
+            Affected Services at This Station
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:14px 20px;background-color:#f5f8fb;">
+          ${serviceListHtml}
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+           style="background-color:#fff8e1;border:1px solid #ffe082;border-radius:6px;">
+      <tr>
+        <td style="padding:14px 20px;">
+          <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#5d4037;line-height:1.6;">
+            <strong>Action Required:</strong> Please dispatch a technician to inspect the site equipment and restore connectivity. Update the fault log upon resolution.
+          </p>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const subject = `[BSI Telemetry] Site Offline — ${baseStationName}`;
+  const htmlContent = generateAlertEmailTemplate({
+    subject,
+    heading: 'Site Connectivity Alert',
+    accentColor: '#c0392b',
+    bodyHtml
+  });
+
   const logoAttachment = getLogoAttachment();
   const attachments = logoAttachment ? [logoAttachment] : [];
 
@@ -379,10 +491,6 @@ async function sendOfflineAlert({ to, baseStationName, affectedServices = [], of
 
 /**
  * Send site recovery email
- * @param {Object} opts
- * @param {string[]} opts.to - recipient addresses
- * @param {string} opts.baseStationName
- * @param {Date} opts.offlineSince - when the site first went offline
  */
 async function sendRecoveryAlert({ to, baseStationName, offlineSince }) {
   const sinceStr = offlineSince
@@ -399,19 +507,63 @@ async function sendRecoveryAlert({ to, baseStationName, offlineSince }) {
     ? `${downtimeHours}h ${downtimeMinutes}m`
     : `${downtimeMinutes} minutes`;
 
-  const subject = `[BSI Telemetry] Site Recovered — ${baseStationName}`;
-  const greeting = 'Site Recovery Notification';
-  const message = `
-    <strong style="color:#27ae60;">&#10003; ${baseStationName}</strong> has resumed normal operations and is transmitting telemetry data.
-    <br><br>
-    <strong>Was offline since:</strong> ${sinceStr}<br>
-    <strong>Total downtime:</strong> ${downtimeStr}
-    <br><br>
-    No further action is required at this time.
-  `;
-  const footer = 'This notification was triggered automatically by BSI Telemetry\'s recovery detection system.';
+  const bodyHtml = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;">
+      <tr>
+        <td width="4" style="background-color:#27ae60;border-radius:4px 0 0 4px;">&nbsp;</td>
+        <td style="background-color:#f2faf5;padding:18px 20px;border-radius:0 4px 4px 0;border:1px solid #b2dfcc;border-left:none;">
+          <p style="margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#1a5c34;font-weight:700;">
+            &#10003;&nbsp; ${baseStationName} is back online
+          </p>
+          <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1a2b3c;line-height:1.6;">
+            This station has resumed normal operations and is transmitting telemetry data. No further action is required.
+          </p>
+        </td>
+      </tr>
+    </table>
 
-  const htmlContent = generateEmailTemplate({ subject, greeting, message, footer, reportName: null, scheduleName: null });
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+           style="border:1px solid #dde3ea;border-radius:6px;overflow:hidden;">
+      <tr>
+        <td style="background-color:#003d7a;padding:10px 20px;">
+          <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;color:#ffffff;text-transform:uppercase;letter-spacing:0.8px;">
+            Incident Summary
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td width="40%" style="padding:12px 20px;background-color:#f5f8fb;border-bottom:1px solid #e4e9ef;">
+                <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7a8d;font-weight:600;">Offline Since</p>
+              </td>
+              <td width="60%" style="padding:12px 20px;background-color:#ffffff;border-bottom:1px solid #e4e9ef;">
+                <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a2b3c;">${sinceStr}</p>
+              </td>
+            </tr>
+            <tr>
+              <td width="40%" style="padding:12px 20px;background-color:#f5f8fb;">
+                <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7a8d;font-weight:600;">Total Downtime</p>
+              </td>
+              <td width="60%" style="padding:12px 20px;background-color:#ffffff;">
+                <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a2b3c;font-weight:600;">${downtimeStr}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const subject = `[BSI Telemetry] Site Recovered — ${baseStationName}`;
+  const htmlContent = generateAlertEmailTemplate({
+    subject,
+    heading: 'Site Recovery Notification',
+    accentColor: '#27ae60',
+    bodyHtml
+  });
+
   const logoAttachment = getLogoAttachment();
   const attachments = logoAttachment ? [logoAttachment] : [];
 
