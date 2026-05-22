@@ -526,7 +526,7 @@ async function checkOfflineSites() {
       if (isOffline) {
         const firstOfflineAt = (state && state.alert_status === 'offline' && state.first_offline_at)
           ? state.first_offline_at
-          : new Date();
+          : (lastSeen || new Date());
 
         // Determine if we should send: first time or repeat interval elapsed
         const repeatMs = (config.repeat_interval_hours || 4) * 60 * 60 * 1000;

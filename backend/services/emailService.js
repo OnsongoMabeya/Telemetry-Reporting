@@ -427,7 +427,7 @@ async function sendOfflineAlert({ to, baseStationName, affectedServices = [], of
             This station has stopped transmitting telemetry data. Immediate attention is required.
           </p>
           <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#1a2b3c;">
-            <strong>Offline since:</strong> ${sinceStr}
+            <strong>Last data received:</strong> ${sinceStr}
           </p>
         </td>
       </tr>
@@ -536,7 +536,7 @@ async function sendRecoveryAlert({ to, baseStationName, offlineSince }) {
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
             <tr>
               <td width="40%" style="padding:12px 20px;background-color:#f5f8fb;border-bottom:1px solid #e4e9ef;">
-                <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7a8d;font-weight:600;">Offline Since</p>
+                <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#6b7a8d;font-weight:600;">Last Data Received</p>
               </td>
               <td width="60%" style="padding:12px 20px;background-color:#ffffff;border-bottom:1px solid #e4e9ef;">
                 <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#1a2b3c;">${sinceStr}</p>
