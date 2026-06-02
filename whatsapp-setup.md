@@ -312,9 +312,9 @@ WHATSAPP_WABA_ID=your_waba_id_here
 
 ## Checklist
 
-- [ ] Step 1.1 — Number `+254 700 111 222` (use your number) added and verified in Meta Developer console
-- [ ] Step 1.2 — WABA ID copied and saved
-- [ ] Step 1.3 — System User created, permanent token generated and saved to `.env`
-- [ ] Step 1.4 — Test recipients numbers registered and verified
-- [ ] Step 1.5 — Templates `bsi_site_offline_alert` and `bsi_site_recovery_alert` submitted and approved
+- [✅] Step 1.1 — Number `+254 700 111 222` (use your number) added and verified in Meta Developer console
+- [✅] Step 1.2 — WABA ID copied and saved
+- [✅] Step 1.3 — System User created, permanent token generated and saved to `.env`
+- [✅] Step 1.4 — Test recipients numbers registered and verified
+- [✅] Step 1.5 — Templates `bsi_site_offline_alert` and `bsi_site_recovery_alert` submitted and approved
 - [ ] Phase 2 — Code implementation (starts after all above are checked off)

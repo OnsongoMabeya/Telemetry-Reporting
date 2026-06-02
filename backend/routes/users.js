@@ -182,6 +182,173 @@ router.get('/', requireAdminOrManager, async (req, res) => {
   }
 });
 
+// @route   GET /api/users/profile
+// @desc    Get current user's profile
+// @access  Private
+router.get('/profile', async (req, res) => {
+  try {
+    const [users] = await db.query(
+      `SELECT id, username, email, phone_number, role, first_name, last_name, is_active,
+              created_at, updated_at, last_login
+       FROM users
+       WHERE id = ?`,
+      [req.user.id]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const user = users[0];
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        phoneNumber: user.phone_number,
+        role: user.role,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        isActive: user.is_active,
+        createdAt: user.created_at,
+        updatedAt: user.updated_at,
+        lastLogin: user.last_login
+      }
+    });
+  } catch (error) {
+    logger.error('CRUD', 'Error fetching user profile', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch user profile',
+      error: error.message
+    });
+  }
+});
+
+// @route   PUT /api/users/profile
+// @desc    Update current user's profile (name, email, phone)
+// @access  Private
+router.put('/profile', async (req, res) => {
+  try {
+    const { email, firstName, lastName, phoneNumber } = req.body;
+    const userId = req.user.id;
+
+    // Build update query
+    const updates = [];
+    const values = [];
+
+    if (email) {
+      // Validate email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid email format'
+        });
+      }
+      updates.push('email = ?');
+      values.push(email);
+    }
+
+    if (firstName !== undefined) {
+      updates.push('first_name = ?');
+      values.push(firstName);
+    }
+
+    if (lastName !== undefined) {
+      updates.push('last_name = ?');
+      values.push(lastName);
+    }
+
+    if (phoneNumber !== undefined) {
+      // Validate phone number format (international)
+      if (phoneNumber) {
+        const phoneRegex = /^\+[\d\s]+$/;
+        if (!phoneRegex.test(phoneNumber)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid phone number format. Use international format like +254712345678'
+          });
+        }
+        // Normalize: remove spaces
+        const normalizedPhone = phoneNumber.replace(/\s/g, '');
+        updates.push('phone_number = ?');
+        values.push(normalizedPhone);
+      } else {
+        updates.push('phone_number = NULL');
+      }
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No fields to update'
+      });
+    }
+
+    values.push(userId);
+
+    await db.query(
+      `UPDATE users SET ${updates.join(', ')} WHERE id = ?`,
+      values
+    );
+
+    // Log activity
+    await db.query(
+      `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.user.id,
+        'INFO',
+        'users',
+        'UPDATE_PROFILE',
+        'users',
+        JSON.stringify({ updates: Object.keys(req.body) }),
+        null,
+        req.ip
+      ]
+    );
+
+    // Fetch updated user
+    const [users] = await db.query(
+      `SELECT id, username, email, phone_number, role, first_name, last_name, is_active,
+              created_at, updated_at, last_login
+       FROM users
+       WHERE id = ?`,
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: users[0].id,
+        username: users[0].username,
+        email: users[0].email,
+        phoneNumber: users[0].phone_number,
+        role: users[0].role,
+        firstName: users[0].first_name,
+        lastName: users[0].last_name,
+        isActive: users[0].is_active,
+        createdAt: users[0].created_at,
+        updatedAt: users[0].updated_at,
+        lastLogin: users[0].last_login
+      }
+    });
+  } catch (error) {
+    logger.error('CRUD', 'Error updating user profile', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile',
+      error: error.message
+    });
+  }
+});
+
 // @route   GET /api/users/:id
 // @desc    Get user by ID
 // @access  Private (Admin/Manager or own profile)
@@ -198,7 +365,7 @@ router.get('/:id', async (req, res) => {
     }
 
     const [users] = await db.query(
-      `SELECT id, username, email, role, first_name, last_name, is_active, 
+      `SELECT id, username, email, phone_number, role, first_name, last_name, is_active,
               created_at, updated_at, last_login
        FROM users
        WHERE id = ?`,
@@ -219,6 +386,7 @@ router.get('/:id', async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
+        phoneNumber: user.phone_number,
         role: user.role,
         firstName: user.first_name,
         lastName: user.last_name,
@@ -239,12 +407,12 @@ router.get('/:id', async (req, res) => {
 });
 
 // @route   PUT /api/users/:id
-// @desc    Update user
-// @access  Private (Admin or own profile)
+// @desc    Update user (Admin only - for managing other users)
+// @access  Private (Admin only)
 router.put('/:id', async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
-    const { email, firstName, lastName, role, isActive, password } = req.body;
+    const { email, phoneNumber, firstName, lastName, role, isActive, password } = req.body;
 
     // Check permissions
     const isOwnProfile = req.user.id === userId;
@@ -280,6 +448,25 @@ router.put('/:id', async (req, res) => {
       }
       updates.push('email = ?');
       values.push(email);
+    }
+
+    if (phoneNumber !== undefined && isAdmin) {
+      // Validate phone number format (international)
+      if (phoneNumber) {
+        const phoneRegex = /^\+[\d\s]+$/;
+        if (!phoneRegex.test(phoneNumber)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid phone number format. Use international format like +254712345678'
+          });
+        }
+        // Normalize: remove spaces
+        const normalizedPhone = phoneNumber.replace(/\s/g, '');
+        updates.push('phone_number = ?');
+        values.push(normalizedPhone);
+      } else {
+        updates.push('phone_number = NULL');
+      }
     }
 
     if (firstName !== undefined) {
@@ -353,7 +540,7 @@ router.put('/:id', async (req, res) => {
 
     // Fetch updated user
     const [users] = await db.query(
-      `SELECT id, username, email, role, first_name, last_name, is_active, 
+      `SELECT id, username, email, phone_number, role, first_name, last_name, is_active,
               created_at, updated_at, last_login
        FROM users
        WHERE id = ?`,
@@ -367,6 +554,7 @@ router.put('/:id', async (req, res) => {
         id: users[0].id,
         username: users[0].username,
         email: users[0].email,
+        phoneNumber: users[0].phone_number,
         role: users[0].role,
         firstName: users[0].first_name,
         lastName: users[0].last_name,
