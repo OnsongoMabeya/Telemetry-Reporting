@@ -317,4 +317,143 @@ WHATSAPP_WABA_ID=your_waba_id_here
 - [✅] Step 1.3 — System User created, permanent token generated and saved to `.env`
 - [✅] Step 1.4 — Test recipients numbers registered and verified
 - [✅] Step 1.5 — Templates `bsi_site_offline_alert` and `bsi_site_recovery_alert` submitted and approved
-- [ ] Phase 2 — Code implementation (starts after all above are checked off)
+- [✅] Phase 2 — Code implementation complete
+
+---
+
+## Phase 2.7: Testing Guide
+
+### Testing Without Meta Billing (Pre-Production)
+
+All functionality can be tested without WhatsApp billing setup. The system gracefully degrades to email-only alerts when WhatsApp is not configured.
+
+#### 1. Database Schema Test
+
+```bash
+# Verify columns exist
+mysql -u root -p -e "USE bsi_telemetry; SHOW COLUMNS FROM users LIKE 'phone_number';"
+mysql -u root -p -e "USE bsi_telemetry; SHOW COLUMNS FROM site_alert_configs LIKE 'recipient_phones';"
+```
+
+**Expected:** Both queries return column definitions.
+
+#### 2. Profile API Test
+
+```bash
+# Get profile (requires JWT token)
+curl http://localhost:5000/api/users/profile \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Update phone number
+curl -X PUT http://localhost:5000/api/users/profile \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumber": "+254712345678", "email": "test@example.com"}'
+```
+
+**Expected:** `success: true`, phone number normalized (spaces removed).
+
+#### 3. Alert Config Phone Input Test
+
+```bash
+# Create alert config with phone numbers
+curl -X POST http://localhost:5000/api/site-alerts \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "baseStationName": "TestStation",
+    "recipientUsers": [1],
+    "recipientEmails": ["admin@example.com"],
+    "recipientPhones": ["+254712345678", "+254798765432"]
+  }'
+```
+
+**Expected:** Config created with phones stored as JSON array.
+
+#### 4. WhatsApp Service Configuration Test
+
+Without env vars set:
+
+```bash
+# Test endpoint returns 503 when not configured
+curl -X POST http://localhost:5000/api/site-alerts/test-whatsapp \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "+254712345678"}'
+```
+
+**Expected:** `{"success": false, "configured": false, ...}`
+
+With env vars set:
+
+```bash
+# Verify startup log shows "WhatsApp service is configured and ready"
+npm run start-backend 2>&1 | grep -i whatsapp
+```
+
+#### 5. Scheduler Alert Test (Without WhatsApp)
+
+```bash
+# Trigger offline check manually
+curl -X POST http://localhost:5000/api/site-alerts/run-check \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Expected in logs:**
+
+- Email alerts sent as normal
+- `WhatsApp offline alert skipped - not configured` (debug level)
+- Scheduler continues without errors
+
+#### 6. UI Tests
+
+| Test             | Steps                             | Expected                            |
+|------------------|-----------------------------------|-------------------------------------|
+| Profile Drawer   | Click user icon → My Profile      | Drawer opens with phone input       |
+| Save Profile     | Edit phone → Save                 | Success message, persists on reload |
+| Alert Dialog     | Alerts → Add Config → Phone field | Autocomplete phone input visible    |
+| Phone Validation | Enter invalid phone               | Error message on save               |
+
+---
+
+### Testing With Meta Billing (Production)
+
+After completing Meta billing setup:
+
+#### 1. Configure Environment
+
+```dotenv
+WHATSAPP_ACCESS_TOKEN=your_actual_token
+WHATSAPP_PHONE_NUMBER_ID=your_phone_number_id
+```
+
+#### 2. Test WhatsApp Send
+
+```bash
+curl -X POST http://localhost:5000/api/site-alerts/test-whatsapp \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "+254712345678"}'
+```
+
+**Expected:** `{"success": true, "messageId": "wamid.XXX..."}`
+
+#### 3. End-to-End Offline Alert
+
+1. Configure alert for a test station with your phone number
+2. Stop telemetry data from that station (or temporarily modify threshold)
+3. Wait for scheduler to detect offline (3 hours by default)
+4. **Receive WhatsApp message** using `bsi_site_offline_alert` template
+5. Restore telemetry
+6. **Receive recovery message** using `bsi_site_recovery_alert` template
+
+---
+
+## Troubleshooting
+
+| Issue                                  | Cause              | Solution                                                      |
+|----------------------------------------|--------------------|---------------------------------------------------------------|
+| "WhatsApp not configured"              | Missing env vars   | Set WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN        |
+| "Data truncated for column 'category'" | Invalid ENUM value | Check activity log category is AUTH/API/SLIDESHOW/CRUD/SYSTEM |
+| "Invalid phone format"                 | Missing + prefix   | Use international format: +254712345678                       |
+| "Failed to send WhatsApp message"      | Meta API error     | Check token validity, phone number ID, template approval      |

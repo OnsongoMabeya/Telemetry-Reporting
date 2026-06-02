@@ -219,6 +219,16 @@ router.post('/run-check', async (req, res) => {
  */
 router.post('/test-whatsapp', async (req, res) => {
   try {
+    // Check if WhatsApp is configured
+    if (!whatsappService.isConfigured()) {
+      return res.status(503).json({
+        success: false,
+        message: 'WhatsApp not configured',
+        details: 'Set WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN in .env file to enable WhatsApp messaging',
+        configured: false
+      });
+    }
+
     const { phone } = req.body;
 
     if (!phone) {

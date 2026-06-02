@@ -12,6 +12,13 @@ const whatsappService = require('./whatsappService');
 const activeTasks = new Map();
 let db = null;
 
+// Log WhatsApp configuration status on startup
+if (whatsappService.isConfigured()) {
+  logger.info('WhatsApp service is configured and ready');
+} else {
+  logger.info('WhatsApp service not configured - alerts will be email-only. Set WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN to enable.');
+}
+
 /**
  * Set database connection
  */

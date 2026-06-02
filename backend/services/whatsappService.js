@@ -12,6 +12,14 @@ const WHATSAPP_PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
 const WHATSAPP_ACCESS_TOKEN = process.env.WHATSAPP_ACCESS_TOKEN;
 
 /**
+ * Check if WhatsApp is configured and ready to send messages
+ * @returns {boolean} - True if both PHONE_NUMBER_ID and ACCESS_TOKEN are set
+ */
+function isConfigured() {
+  return !!(WHATSAPP_PHONE_NUMBER_ID && WHATSAPP_ACCESS_TOKEN);
+}
+
+/**
  * Format phone number to WhatsApp-compliant format
  * Ensures number starts with + and has no spaces
  * @param {string} phoneNumber - Raw phone number
@@ -45,8 +53,17 @@ function formatPhoneNumber(phoneNumber) {
  */
 async function sendTemplateMessage({ to, templateName, languageCode = 'en_US', components = [] }) {
   // Validate configuration
-  if (!WHATSAPP_PHONE_NUMBER_ID || !WHATSAPP_ACCESS_TOKEN) {
-    throw new Error('WhatsApp configuration missing. Set WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN in .env');
+  if (!isConfigured()) {
+    logger.warn('WhatsApp not configured - skipping message send', {
+      to,
+      template: templateName,
+      hint: 'Set WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN in .env'
+    });
+    return {
+      success: false,
+      skipped: true,
+      reason: 'WhatsApp not configured'
+    };
   }
   
   // Format phone number
@@ -127,6 +144,12 @@ async function sendTemplateMessage({ to, templateName, languageCode = 'en_US', c
  * @returns {Promise<Object[]>} - Array of send results
  */
 async function sendWhatsAppOfflineAlert({ to, baseStationName, lastDataReceived, affectedServices = [] }) {
+  // Skip if not configured
+  if (!isConfigured()) {
+    logger.debug('WhatsApp offline alert skipped - not configured');
+    return [{ success: false, skipped: true, reason: 'WhatsApp not configured' }];
+  }
+
   // Handle single number or array
   const recipients = Array.isArray(to) ? to : [to];
   const results = [];
@@ -185,6 +208,12 @@ async function sendWhatsAppOfflineAlert({ to, baseStationName, lastDataReceived,
  * @returns {Promise<Object[]>} - Array of send results
  */
 async function sendWhatsAppRecoveryAlert({ to, baseStationName, lastDataReceived, downtime }) {
+  // Skip if not configured
+  if (!isConfigured()) {
+    logger.debug('WhatsApp recovery alert skipped - not configured');
+    return [{ success: false, skipped: true, reason: 'WhatsApp not configured' }];
+  }
+
   // Handle single number or array
   const recipients = Array.isArray(to) ? to : [to];
   const results = [];
@@ -262,5 +291,6 @@ module.exports = {
   sendWhatsAppOfflineAlert,
   sendWhatsAppRecoveryAlert,
   formatPhoneNumber,
-  testConfiguration
+  testConfiguration,
+  isConfigured
 };
