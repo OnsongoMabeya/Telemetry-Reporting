@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
+const whatsappService = require('../services/whatsappService');
 
 let db = null;
 
@@ -202,6 +203,56 @@ router.post('/run-check', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to trigger check', details: error.message });
+  }
+});
+
+/**
+ * POST /api/site-alerts/test-whatsapp
+ * Send a test WhatsApp message to verify configuration
+ * Body: { phone: "+254712345678" }
+ */
+router.post('/test-whatsapp', async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Phone number is required'
+      });
+    }
+
+    // Basic phone number validation
+    const phoneRegex = /^\+?[\d\s]+$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid phone number format. Use international format like +254712345678'
+      });
+    }
+
+    const result = await whatsappService.testConfiguration(phone.trim());
+
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'Test WhatsApp message sent successfully',
+        messageId: result.messageId
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to send test WhatsApp message',
+        details: result.error
+      });
+    }
+  } catch (error) {
+    logger.error('Error sending test WhatsApp message:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send test WhatsApp message',
+      details: error.message
+    });
   }
 });
 

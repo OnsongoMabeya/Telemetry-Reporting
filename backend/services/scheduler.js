@@ -6,6 +6,7 @@ const cron = require('node-cron');
 const logger = require('../utils/logger');
 const emailService = require('./emailService');
 const reportDataService = require('./reportDataService');
+const whatsappService = require('./whatsappService');
 
 // Store active tasks and db reference
 const activeTasks = new Map();
@@ -511,17 +512,30 @@ async function checkOfflineSites() {
       const state = stateRows[0] || null;
       const prevStatus = state ? state.alert_status : 'online';
 
-      // Resolve recipient list
+      // Resolve email recipient list
       const userIds = safeJsonParseArr(config.recipient_users);
       const externalEmails = safeJsonParseArr(config.recipient_emails);
       const recipients = [...externalEmails];
+
+      // Resolve phone number list for WhatsApp
+      const externalPhones = safeJsonParseArr(config.recipient_phones);
+      const phoneRecipients = [...externalPhones];
+
       if (userIds.length > 0) {
         const [userRows] = await db.query(
-          'SELECT email FROM users WHERE id IN (?) AND is_active = TRUE', [userIds]
+          'SELECT email, phone_number FROM users WHERE id IN (?) AND is_active = TRUE', [userIds]
         );
         recipients.push(...userRows.map(u => u.email));
+        // Add phone numbers from users who have them
+        userRows.forEach(u => {
+          if (u.phone_number) {
+            phoneRecipients.push(u.phone_number);
+          }
+        });
       }
-      if (recipients.length === 0) continue;
+
+      // Skip if no recipients at all
+      if (recipients.length === 0 && phoneRecipients.length === 0) continue;
 
       if (isOffline) {
         const firstOfflineAt = (state && state.alert_status === 'offline' && state.first_offline_at)
@@ -545,9 +559,28 @@ async function checkOfflineSites() {
           );
           const affectedServices = serviceRows.map(r => r.name);
 
-          const { sendOfflineAlert } = require('./emailService');
-          await sendOfflineAlert({ to: recipients, baseStationName: station, affectedServices, offlineSince: firstOfflineAt });
-          logger.info(`Offline alert sent for ${station}`, { recipients: recipients.length });
+          // Send email alerts
+          if (recipients.length > 0) {
+            const { sendOfflineAlert } = require('./emailService');
+            await sendOfflineAlert({ to: recipients, baseStationName: station, affectedServices, offlineSince: firstOfflineAt });
+            logger.info(`Offline email alert sent for ${station}`, { recipients: recipients.length });
+          }
+
+          // Send WhatsApp alerts
+          if (phoneRecipients.length > 0) {
+            const whatsappResults = await whatsappService.sendWhatsAppOfflineAlert({
+              to: phoneRecipients,
+              baseStationName: station,
+              lastDataReceived: firstOfflineAt,
+              affectedServices
+            });
+            const successCount = whatsappResults.filter(r => r.success).length;
+            logger.info(`Offline WhatsApp alert sent for ${station}`, {
+              phoneRecipients: phoneRecipients.length,
+              successCount,
+              failedCount: whatsappResults.length - successCount
+            });
+          }
         }
 
         // Upsert state
@@ -565,11 +598,40 @@ async function checkOfflineSites() {
       } else {
         // Station is online
         if (prevStatus === 'offline') {
-          // Send recovery email
+          // Calculate downtime for recovery message
           const offlineSince = state && state.first_offline_at ? new Date(state.first_offline_at) : null;
-          const { sendRecoveryAlert } = require('./emailService');
-          await sendRecoveryAlert({ to: recipients, baseStationName: station, offlineSince });
-          logger.info(`Recovery alert sent for ${station}`, { recipients: recipients.length });
+          let downtimeStr = 'Unknown';
+          if (offlineSince) {
+            const downtimeMs = Date.now() - offlineSince.getTime();
+            const downtimeHours = Math.floor(downtimeMs / (1000 * 60 * 60));
+            const downtimeMinutes = Math.floor((downtimeMs % (1000 * 60 * 60)) / (1000 * 60));
+            downtimeStr = downtimeHours > 0
+              ? `${downtimeHours}h ${downtimeMinutes}m`
+              : `${downtimeMinutes} minutes`;
+          }
+
+          // Send recovery email
+          if (recipients.length > 0) {
+            const { sendRecoveryAlert } = require('./emailService');
+            await sendRecoveryAlert({ to: recipients, baseStationName: station, offlineSince });
+            logger.info(`Recovery email alert sent for ${station}`, { recipients: recipients.length });
+          }
+
+          // Send recovery WhatsApp alerts
+          if (phoneRecipients.length > 0) {
+            const recoveryResults = await whatsappService.sendWhatsAppRecoveryAlert({
+              to: phoneRecipients,
+              baseStationName: station,
+              lastDataReceived: offlineSince || new Date(),
+              downtime: downtimeStr
+            });
+            const successCount = recoveryResults.filter(r => r.success).length;
+            logger.info(`Recovery WhatsApp alert sent for ${station}`, {
+              phoneRecipients: phoneRecipients.length,
+              successCount,
+              failedCount: recoveryResults.length - successCount
+            });
+          }
         }
 
         await db.query(
