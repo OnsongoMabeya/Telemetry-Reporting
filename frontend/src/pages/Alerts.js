@@ -86,11 +86,13 @@ const Alerts = () => {
   const [openAlertDialog, setOpenAlertDialog] = useState(false);
   const [editingAlertConfig, setEditingAlertConfig] = useState(null);
   const [alertEmailInputValue, setAlertEmailInputValue] = useState('');
+  const [alertPhoneInputValue, setAlertPhoneInputValue] = useState('');
   const [alertFormData, setAlertFormData] = useState({
     base_station_name: '',
     repeat_interval_hours: 4,
     recipient_users: [],
     recipient_emails: [],
+    recipient_phones: [],
     is_active: true
   });
 
@@ -199,6 +201,7 @@ const Alerts = () => {
         repeat_interval_hours: config.repeat_interval_hours || 4,
         recipient_users: config.recipient_users || [],
         recipient_emails: config.recipient_emails || [],
+        recipient_phones: config.recipient_phones || [],
         is_active: config.is_active !== false
       });
     } else {
@@ -208,10 +211,12 @@ const Alerts = () => {
         repeat_interval_hours: 4,
         recipient_users: [],
         recipient_emails: [],
+        recipient_phones: [],
         is_active: true
       });
     }
     setAlertEmailInputValue('');
+    setAlertPhoneInputValue('');
     setOpenAlertDialog(true);
   };
 
@@ -219,6 +224,7 @@ const Alerts = () => {
     setOpenAlertDialog(false);
     setEditingAlertConfig(null);
     setAlertEmailInputValue('');
+    setAlertPhoneInputValue('');
   };
 
   const handleSaveAlertConfig = async () => {
@@ -230,7 +236,11 @@ const Alerts = () => {
     const finalEmails = alertEmailInputValue.trim()
       ? [...alertFormData.recipient_emails, alertEmailInputValue.trim()]
       : alertFormData.recipient_emails;
-    const payload = { ...alertFormData, recipient_emails: finalEmails };
+    // Flush any typed but unconfirmed phone
+    const finalPhones = alertPhoneInputValue.trim()
+      ? [...alertFormData.recipient_phones, alertPhoneInputValue.trim()]
+      : alertFormData.recipient_phones;
+    const payload = { ...alertFormData, recipient_emails: finalEmails, recipient_phones: finalPhones };
     try {
       if (editingAlertConfig) {
         await axios.put(`/api/site-alerts/${editingAlertConfig.id}`, payload);
@@ -575,7 +585,7 @@ const Alerts = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="caption" color="text.secondary">
-                            {(config.recipient_users?.length || 0)} user(s), {(config.recipient_emails?.length || 0)} email(s)
+                            {(config.recipient_users?.length || 0)} user(s), {(config.recipient_emails?.length || 0)} email(s), {(config.recipient_phones?.length || 0)} phone(s)
                           </Typography>
                         </TableCell>
                         <TableCell>
@@ -1084,6 +1094,29 @@ const Alerts = () => {
                 }
                 renderInput={(params) => (
                   <TextField {...params} label="External Emails" placeholder="Type email and press Enter..." helperText="Press Enter to add" />
+                )}
+              />
+            </Grid>
+            <Grid size={12}>
+              <Autocomplete
+                multiple
+                freeSolo
+                options={[]}
+                value={alertFormData.recipient_phones}
+                inputValue={alertPhoneInputValue}
+                onInputChange={(e, val) => setAlertPhoneInputValue(val)}
+                onChange={(e, newValue) => {
+                  setAlertFormData({ ...alertFormData, recipient_phones: newValue });
+                  setAlertPhoneInputValue('');
+                }}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => {
+                    const { key, ...tagProps } = getTagProps({ index });
+                    return <Chip key={key} variant="outlined" label={option} size="small" color="success" {...tagProps} />;
+                  })
+                }
+                renderInput={(params) => (
+                  <TextField {...params} label="WhatsApp Phone Numbers" placeholder="Type +254... and press Enter..." helperText="International format: +254712345678. Press Enter to add." />
                 )}
               />
             </Grid>

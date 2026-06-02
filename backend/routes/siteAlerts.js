@@ -37,7 +37,8 @@ router.get('/', async (req, res) => {
     const parsed = configs.map(c => ({
       ...c,
       recipient_users: safeJsonArray(c.recipient_users),
-      recipient_emails: safeJsonArray(c.recipient_emails)
+      recipient_emails: safeJsonArray(c.recipient_emails),
+      recipient_phones: safeJsonArray(c.recipient_phones)
     }));
 
     res.json(parsed);
@@ -77,7 +78,8 @@ router.post('/', async (req, res) => {
       is_active = true,
       repeat_interval_hours = 4,
       recipient_users = [],
-      recipient_emails = []
+      recipient_emails = [],
+      recipient_phones = []
     } = req.body;
 
     if (!base_station_name) {
@@ -90,14 +92,15 @@ router.post('/', async (req, res) => {
 
     const [result] = await db.query(
       `INSERT INTO site_alert_configs
-         (base_station_name, is_active, repeat_interval_hours, recipient_users, recipient_emails, created_by)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+         (base_station_name, is_active, repeat_interval_hours, recipient_users, recipient_emails, recipient_phones, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         base_station_name,
         is_active,
         repeat_interval_hours,
         JSON.stringify(Array.isArray(recipient_users) ? recipient_users : []),
         JSON.stringify(Array.isArray(recipient_emails) ? recipient_emails : []),
+        JSON.stringify(Array.isArray(recipient_phones) ? recipient_phones : []),
         req.user.id
       ]
     );
@@ -125,7 +128,8 @@ router.put('/:id', async (req, res) => {
       is_active,
       repeat_interval_hours,
       recipient_users,
-      recipient_emails
+      recipient_emails,
+      recipient_phones
     } = req.body;
 
     const [existing] = await db.query('SELECT id FROM site_alert_configs WHERE id = ?', [id]);
@@ -140,6 +144,7 @@ router.put('/:id', async (req, res) => {
            repeat_interval_hours = COALESCE(?, repeat_interval_hours),
            recipient_users      = ?,
            recipient_emails     = ?,
+           recipient_phones     = ?,
            updated_at           = NOW()
        WHERE id = ?`,
       [
@@ -148,6 +153,7 @@ router.put('/:id', async (req, res) => {
         repeat_interval_hours || null,
         JSON.stringify(Array.isArray(recipient_users) ? recipient_users : []),
         JSON.stringify(Array.isArray(recipient_emails) ? recipient_emails : []),
+        JSON.stringify(Array.isArray(recipient_phones) ? recipient_phones : []),
         id
       ]
     );
