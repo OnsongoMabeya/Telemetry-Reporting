@@ -13,9 +13,18 @@ const dbConfig = {
 
 async function checkTableExists(connection, tableName) {
   const [rows] = await connection.query(
-    `SELECT COUNT(*) as count FROM information_schema.tables 
+    `SELECT COUNT(*) as count FROM information_schema.tables
      WHERE table_schema = ? AND table_name = ?`,
     [dbConfig.database, tableName]
+  );
+  return rows[0].count > 0;
+}
+
+async function checkColumnExists(connection, tableName, columnName) {
+  const [rows] = await connection.query(
+    `SELECT COUNT(*) as count FROM information_schema.columns
+     WHERE table_schema = ? AND table_name = ? AND column_name = ?`,
+    [dbConfig.database, tableName, columnName]
   );
   return rows[0].count > 0;
 }
@@ -230,6 +239,22 @@ async function setupDatabase() {
     } else {
       console.log('❌ Table: site_alert_state (missing - needs migration 013)');
       migrationsToRun.add('013_create_site_alert_tables.sql');
+    }
+
+    // Check for WhatsApp support columns (migration 014)
+    const hasPhoneColumn = await checkColumnExists(connection, 'users', 'phone_number');
+    const hasRecipientPhonesColumn = await checkColumnExists(connection, 'site_alert_configs', 'recipient_phones');
+    
+    if (hasPhoneColumn && hasRecipientPhonesColumn) {
+      console.log('✅ Columns: phone_number (users), recipient_phones (site_alert_configs)');
+    } else {
+      if (!hasPhoneColumn) {
+        console.log('❌ Column: phone_number (missing - needs migration 014)');
+      }
+      if (!hasRecipientPhonesColumn) {
+        console.log('❌ Column: recipient_phones (missing - needs migration 014)');
+      }
+      migrationsToRun.add('014_add_whatsapp_support.sql');
     }
 
     console.log('\n================================\n');
