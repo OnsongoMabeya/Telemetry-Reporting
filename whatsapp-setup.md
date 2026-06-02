@@ -4,14 +4,14 @@
 
 ### Step 1.1 — Add the number to WhatsApp Business Platform
 
-The number `+254 737 309 079` is not yet on WhatsApp, which is ideal — no migration needed.
+The number `+254 700 111 222` (use the correct number) is not yet on WhatsApp, which is ideal — no migration needed.
 
 1. Go to [developers.facebook.com](https://developers.facebook.com)
 2. Click **My Apps** → select your existing BSI app (or create a new one — type: **Business**)
 3. In the app dashboard, click **Add Product** → find **WhatsApp** → click **Set Up**
 4. You'll be prompted to connect a **WhatsApp Business Account (WABA)** — connect it to your Facebook Business account
 5. Under **WhatsApp → Getting Started**, click **Add phone number**
-6. Enter `+254 737 309 079`, select **Kenya**, choose **SMS** or **Voice call** for verification
+6. Enter `+254 700 111 222`, select **Kenya**, choose **SMS** or **Voice call** for verification
 7. Enter the verification code received
 8. Once verified, you'll see a **Phone Number ID** — copy and save it
 
@@ -53,8 +53,8 @@ After Step 1.1:
 1. In Meta Developer console → **WhatsApp → API Setup**
 2. Under **To**, click **Manage phone number list**
 3. Add both test numbers:
-   - `+254725108178`
-   - `+254719604019`
+   - `+254712323445`
+   - `+254723434556`
 4. Each number will receive a WhatsApp OTP to confirm
 
 > ✅ Confirm when both numbers are verified.
@@ -67,11 +67,11 @@ Go to **WhatsApp → Message Templates** → **Create Template**
 
 #### Template 1 — Offline Alert
 
-| Field | Value |
-| --- | --- |
-| Name | `bsi_site_offline_alert` |
-| Category | `UTILITY` |
-| Language | `English (en)` |
+| Field    | Value                    |
+|----------|--------------------------|
+| Name     | `bsi_site_offline_alert` |
+| Category | `UTILITY`                |
+| Language | `English (en)`           |
 
 **Body:**
 
@@ -127,42 +127,176 @@ No further action is required.
 
 ---
 
-## Phase 2 — Code Implementation (after Phase 1 is complete)
+## Phase 2 — Code Implementation (Detailed Phased Plan)
 
-### 2.1 — Database (Migration 014)
+### Pricing Note
 
-- Add `phone_number` column (nullable) to `users` table
-- Add `recipient_phones` JSON column to `site_alert_configs` table
+Meta offers **1,000 free conversations per month per category** (Utility, Marketing, Authentication, Service) per WABA. Your alerts are **Utility** messages, so you get 1,000 free utility conversations monthly. After that, Kenya pricing is approximately **$0.003–$0.005 per message**. A "conversation" lasts 24 hours from the first message.
 
-### 2.2 — WhatsApp Service
+---
 
-- New file: `backend/services/whatsappService.js`
-- Functions:
-  - `sendWhatsAppOfflineAlert({ to, baseStationName, lastDataReceived, affectedServices })`
-  - `sendWhatsAppRecoveryAlert({ to, baseStationName, lastDataReceived, downtime })`
-- API endpoint: `POST https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages`
-- Reads credentials from `.env`
+### Phase 2.1 — Foundation (Database & Environment)
 
-### 2.3 — Scheduler Update
+***Estimated: 30 mins***
 
-- In `checkOfflineSites()`, after sending email alerts, collect phone numbers from:
-  - `recipient_phones` on the alert config (manually added)
-  - `phone_number` on matched `recipient_users`
-- Call WhatsApp alert functions alongside existing email sends
+1. **Database Migration `014`**
+   - Add `phone_number VARCHAR(20) NULL` to `users` table
+   - Add `recipient_phones JSON NULL` to `site_alert_configs` table
+   - Update migration runner (`setup.js`) to include migration 014
 
-### 2.4 — Frontend: Alert Config Dialog
+2. **Environment Configuration**
 
-- Add phone number input (freeSolo Autocomplete, same pattern as external emails) to the Offline Alerts dialog
+   - Confirm `.env` has:
 
-### 2.5 — Frontend: User Profile Panel
+     ```env
+     WHATSAPP_ACCESS_TOKEN=your_token_here
+     WHATSAPP_PHONE_NUMBER_ID=1132558289948106
+     WHATSAPP_WABA_ID=2211600009616360
+     ```
 
-- New slide-out drawer triggered by clicking the user icon (top right)
-- Editable fields: **Name**, **Email**, **Phone Number**
-- Saves via `PUT /api/users/profile`
+**Deliverable:** Database schema updated, migration runs automatically on next deploy
 
-### 2.6 — Backend: Profile Route
+---
 
-- `PUT /api/users/profile` — updates `name`, `email`, `phone_number` for the authenticated user
+### Phase 2.2 — WhatsApp Service Module
+
+***Estimated: 45 mins***
+
+1. **Create `backend/services/whatsappService.js`**
+   - `sendTemplateMessage({ to, templateName, languageCode, components })` — generic Meta API caller
+   - `sendWhatsAppOfflineAlert({ to, baseStationName, lastDataReceived, affectedServices })` — uses `bsi_site_offline_alert` template
+   - `sendWhatsAppRecoveryAlert({ to, baseStationName, lastDataReceived, downtime })` — uses `bsi_site_recovery_alert` template
+   - Error handling and logging
+   - Phone number formatting (ensure +254... format)
+
+2. **Template mapping**
+   - Offline: `bsi_site_offline_alert` with variables `[baseStationName, lastDataReceived, affectedServicesList]`
+   - Recovery: `bsi_site_recovery_alert` with variables `[baseStationName, lastDataReceived, downtime]`
+
+**Deliverable:** Backend can send WhatsApp messages via Meta API
+
+---
+
+### Phase 2.3 — Scheduler Integration
+
+***Estimated: 30 mins***
+
+1. **Update `scheduler.js` `checkOfflineSites()`**
+   - After collecting email recipients, also collect phone numbers from:
+     - `config.recipient_phones` (manual numbers stored as JSON)
+     - `users.phone_number` for matched `recipient_users`
+   - Format numbers (remove spaces, ensure +254 prefix)
+   - Call `sendWhatsAppOfflineAlert` / `sendWhatsAppRecoveryAlert` alongside existing email sends
+   - Log WhatsApp delivery results
+
+**Deliverable:** Scheduler automatically sends WhatsApp alerts when sites go offline/recover
+
+---
+
+### Phase 2.4 — Frontend — Alert Config Dialog
+
+***Estimated: 45 mins***
+
+1. **Update Offline Alerts dialog in `Alerts.js`**
+   - Add phone number input field (Autocomplete with freeSolo, same pattern as external emails)
+   - Store as array in `recipient_phones` state
+   - Display chips for entered numbers
+   - Save/load with alert config
+
+2. **Validation**
+   - Basic phone format validation (starts with +, minimum length)
+   - Allow multiple numbers per config
+
+**Deliverable:** Users can add phone numbers to alert configs in the UI
+
+---
+
+### Phase 2.5 — Frontend — User Profile Panel
+
+***Estimated: 60 mins***
+
+1. **Create `UserProfileDrawer` component**
+   - Slide-out drawer from right side
+   - Triggered by clicking user icon (top right of app bar)
+   - Fields: Name, Email, Phone Number
+   - Save/Cancel buttons
+
+2. **Add to layout**
+   - Modify top AppBar to handle user icon click
+   - Open drawer with current user data pre-filled
+
+3. **API integration**
+   - `GET /api/users/profile` — fetch current user profile
+   - `PUT /api/users/profile` — update name, email, phone_number
+
+**Deliverable:** Users can edit their own profile including phone number
+
+---
+
+### Phase 2.6 — Backend — User Profile Routes
+
+***Estimated: 30 mins***
+
+1. **Create `backend/routes/users.js`** (or extend existing)
+   - `GET /api/users/profile` — return current authenticated user's profile (id, name, email, phone_number)
+   - `PUT /api/users/profile` — update own profile (name, email, phone_number)
+   - Validation: phone number format, email format
+
+2. **Register route** in `server.js`
+
+**Deliverable:** API endpoints for user profile management
+
+---
+
+### Phase 2.7 — Testing & Documentation
+
+***Estimated: 30 mins***
+
+1. **Test plan**
+   - Test phone number added via alert config
+   - Test phone number added via user profile
+   - Verify scheduler collects both sources
+   - Verify Meta API payload is correctly formatted
+
+2. **Update this document**
+   - Mark all checklist items complete
+   - Add testing instructions
+
+**Deliverable:** System fully tested and documented
+
+---
+
+## Phase Dependencies & Execution Order
+
+```text
+Phase 2.1 (DB) → Phase 2.2 (Service) → Phase 2.3 (Scheduler)
+     ↓              ↓                      ↓
+     └──────────────┴──────────────────────┘
+              ↓
+         Can test backend with manual API call
+              ↓
+Phase 2.4 (Alert UI) ──┐
+                       ├──→ Phase 2.7 (Testing)
+Phase 2.6 (Profile API)─┘
+                       ↓
+                Phase 2.5 (Profile UI)
+```
+
+**Backend phases (2.1-2.3, 2.6) are independent of frontend phases (2.4, 2.5) and can run in parallel.**
+
+---
+
+## Deliverables Per Phase (Testing Checklist)
+
+| Phase | Deliverable                        | How to Test                              |
+|-------|------------------------------------|------------------------------------------|
+| 2.1   | Migration file, DB columns created | Check MySQL schema                       |
+| 2.2   | `whatsappService.js`               | curl test to send message                |
+| 2.3   | Scheduler sends WhatsApp           | Trigger `/api/site-alerts/run-check`     |
+| 2.4   | Alert dialog has phone input       | UI visible in browser                    |
+| 2.6   | User can update phone via API      | curl/Postman to `PUT /api/users/profile` |
+| 2.5   | User profile drawer in UI          | Click user icon                          |
+| 2.7   | Full integration tested            | End-to-end offline alert test            |
 
 ---
 
@@ -178,9 +312,9 @@ WHATSAPP_WABA_ID=your_waba_id_here
 
 ## Checklist
 
-- [ ] Step 1.1 — Number `+254 737 309 079` added and verified in Meta Developer console
+- [ ] Step 1.1 — Number `+254 700 111 222` (use your number) added and verified in Meta Developer console
 - [ ] Step 1.2 — WABA ID copied and saved
 - [ ] Step 1.3 — System User created, permanent token generated and saved to `.env`
-- [ ] Step 1.4 — Test recipients `+254725108178` and `+254719604019` registered and verified
+- [ ] Step 1.4 — Test recipients numbers registered and verified
 - [ ] Step 1.5 — Templates `bsi_site_offline_alert` and `bsi_site_recovery_alert` submitted and approved
 - [ ] Phase 2 — Code implementation (starts after all above are checked off)
