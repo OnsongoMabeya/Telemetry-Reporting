@@ -304,7 +304,7 @@ router.put('/profile', async (req, res) => {
       [
         req.user.id,
         'INFO',
-        'users',
+        'CRUD',
         'UPDATE_PROFILE',
         'users',
         JSON.stringify({ updates: Object.keys(req.body) }),

@@ -14,7 +14,9 @@ import {
 import {
   Person,
   Logout,
+  AccountCircle,
 } from '@mui/icons-material';
+import UserProfileDrawer from '../UserProfileDrawer';
 import { useAuth } from '../../context/AuthContext';
 import { useMySites } from '../../context/MySitesContext';
 import DashboardControls from '../dashboard/DashboardControls';
@@ -26,6 +28,7 @@ const TopHeader = () => {
   const { user, logout } = useAuth();
   const mySitesContext = useMySites();
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
 
   const isDashboard = location.pathname === '/';
   const isMySites = location.pathname === '/my-sites';
@@ -41,6 +44,15 @@ const TopHeader = () => {
   const handleLogout = async () => {
     handleUserMenuClose();
     await logout();
+  };
+
+  const handleOpenProfile = () => {
+    handleUserMenuClose();
+    setProfileDrawerOpen(true);
+  };
+
+  const handleCloseProfile = () => {
+    setProfileDrawerOpen(false);
   };
 
   return (
@@ -123,6 +135,18 @@ const TopHeader = () => {
             </Box>
             <Divider />
             <MenuItem
+              onClick={handleOpenProfile}
+              sx={{
+                py: 1.5,
+                '&:hover': {
+                  backgroundColor: theme.palette.mode === 'dark' ? 'rgba(48, 161, 228, 0.15)' : 'rgba(48, 161, 228, 0.08)',
+                },
+              }}
+            >
+              <AccountCircle sx={{ mr: 1.5, fontSize: 20, color: '#30a1e4' }} />
+              My Profile
+            </MenuItem>
+            <MenuItem
               onClick={handleLogout}
               sx={{
                 py: 1.5,
@@ -138,6 +162,12 @@ const TopHeader = () => {
           </Menu>
         </Box>
       </Toolbar>
+
+      {/* User Profile Drawer */}
+      <UserProfileDrawer
+        open={profileDrawerOpen}
+        onClose={handleCloseProfile}
+      />
     </AppBar>
   );
 };
