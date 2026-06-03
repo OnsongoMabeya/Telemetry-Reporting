@@ -185,7 +185,7 @@ async function sendWhatsAppOfflineAlert({ to, baseStationName, lastDataReceived,
       const result = await sendTemplateMessage({
         to: recipient,
         templateName: 'bsi_site_offline_alert',
-        languageCode: 'en_US',
+        languageCode: 'en',
         components
       });
       results.push({ recipient, success: true, messageId: result.messageId });
@@ -244,7 +244,7 @@ async function sendWhatsAppRecoveryAlert({ to, baseStationName, lastDataReceived
       const result = await sendTemplateMessage({
         to: recipient,
         templateName: 'bsi_site_recovery_alert',
-        languageCode: 'en_US',
+        languageCode: 'en',
         components
       });
       results.push({ recipient, success: true, messageId: result.messageId });
