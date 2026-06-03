@@ -16,14 +16,19 @@ if (!fs.existsSync(LOG_DIR)) {
 
 /**
  * Get the Sunday of the current week (week starts on Sunday)
- * Returns date string like '2026-04-26'
+ * Returns date string like '2026-04-26' in local timezone
  */
 function getWeekStartDate() {
   const now = new Date();
   const day = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
   const diff = now.getDate() - day; // go back to Sunday
-  const sunday = new Date(now.setDate(diff));
-  return sunday.toISOString().split('T')[0]; // YYYY-MM-DD
+  const sunday = new Date(now);
+  sunday.setDate(diff);
+  // Format as YYYY-MM-DD in local timezone (avoid UTC conversion issues)
+  const year = sunday.getFullYear();
+  const month = String(sunday.getMonth() + 1).padStart(2, '0');
+  const date = String(sunday.getDate()).padStart(2, '0');
+  return `${year}-${month}-${date}`;
 }
 
 /**
@@ -40,8 +45,11 @@ function getLogFilePath() {
 function ensureLogFile() {
   const weekStart = getWeekStartDate();
   if (weekStart !== currentWeekStart) {
+    const oldWeek = currentWeekStart;
     currentWeekStart = weekStart;
     currentLogFile = getLogFilePath();
+    // Log rotation event to console for visibility
+    console.log(`[Logger] Rotating to new weekly log file: logs_${weekStart}.jsonl (previous: ${oldWeek || 'none'})`);
   }
   return currentLogFile;
 }
@@ -52,6 +60,9 @@ function ensureLogFile() {
  */
 function initLogger(poolRef) {
   dbPool = poolRef;
+  // Log current log file on startup
+  const currentFile = ensureLogFile();
+  console.log(`[Logger] Initialized. Writing to: ${path.basename(currentFile)}`);
 }
 
 /**
