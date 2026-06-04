@@ -1,45 +1,29 @@
-# Nginx Reverse Proxy Setup
+# Nginx Configuration
 
-This directory contains nginx configuration files for deploying BSI Telemetry with a reverse proxy.
+Nginx reverse proxy configuration for BSI Telemetry Reporting System.
 
-## Files
+## Configuration Files
 
-- **`nginx.conf`** - Production configuration for Linux/Unix servers
-- **`nginx-windows.conf`** - Production configuration for Windows servers
-- **`DEPLOYMENT_GUIDE.md`** - Complete step-by-step deployment instructions
-- **`SSL_SETUP_GUIDE.md`** - SSL/TLS certificate setup guide
+- `nginx.conf` - Linux/macOS production configuration
+- `nginx-windows.conf` - Windows production configuration
 
-## Quick Start
+## Quick Setup
 
-### For Windows Production Server
-
-1. Follow **`DEPLOYMENT_GUIDE.md`** for complete setup
-2. Use **`nginx-windows.conf`** as your nginx configuration
-3. Optionally follow **`SSL_SETUP_GUIDE.md`** to enable HTTPS
-
-### Key Features
-
-- ✅ Backend port 5000 stays on local network (not exposed externally)
-- ✅ Only port 80/443 exposed to internet
-- ✅ SSL/TLS ready configuration
-- ✅ Static file caching
-- ✅ Security headers enabled
-- ✅ Gzip compression
+See the **[Detailed Guide](../DETAILED_GUIDE.md#production-deployment)** for complete deployment instructions.
 
 ## Architecture
 
-```bash
-External Users
-    ↓
-http://197.156.145.121:3010 (nginx)
-    ↓
-Serves frontend + proxies /api requests
-    ↓
-http://192.168.1.237:5000 (backend - local network only)
+```
+External Users → nginx:3010 → Frontend (static)
+                        ↓
+                   Backend:5000 (internal network)
 ```
 
-**Note:** Port 3010 is used to allow BSI Telemetry to coexist with other applications on the server.
+## SSL Certificates
 
-## Support
+Place certificates in this directory:
+- `ssl/bsi-telemetry.crt` - Certificate
+- `ssl/bsi-telemetry.key` - Private key
 
-See the deployment guide for troubleshooting and detailed instructions.
+See the **[Detailed Guide](../DETAILED_GUIDE.md#ssltls-setup)** for SSL setup options.
+
