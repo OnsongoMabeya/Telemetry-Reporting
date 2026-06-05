@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Dashboard Access Control (June 5, 2026)
+
+- **Role-based Dashboard Restriction** — Dashboard (`/`) now requires Admin or Manager role
+  - Viewers automatically redirected to My Sites (`/my-sites`)
+  - Sidebar updated to hide Dashboard menu for Viewer users
+  - Added `ProtectedRoute` component for reusable role-based route guarding
+
 ### Added - Metric View Settings (May 7, 2026)
 
 - **Graph/Dial Toggle** — Metrics can now display as either:

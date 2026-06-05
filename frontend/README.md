@@ -224,10 +224,11 @@ The application uses React Router for client-side navigation:
 
 #### Routes
 
-- **Dashboard**: `/` - Main telemetry dashboard (all users)
+- **Dashboard**: `/` - Main telemetry dashboard (admin/manager only)
   - Real-time node monitoring
   - Base station status
   - Telemetry data visualization
+  - Protected by role-based access (redirects viewers to My Sites)
 
 - **Alerts**: `/alerts` - Report schedule management (admin only)
   - Create, edit, delete report schedules
@@ -241,9 +242,11 @@ The application uses React Router for client-side navigation:
 
 #### Navigation Access
 
-- All authenticated users can access the dashboard
+- Dashboard (`/`) restricted to **Admin** and **Manager** roles
+- Viewers are automatically redirected to **My Sites** (`/my-sites`)
+- My Sites accessible to all authenticated users
 - Only admins and managers see the "User Management" link in the navbar
-- Unauthorized route access redirects to dashboard
+- Unauthorized route access redirects to My Sites
 - Unauthenticated users see login modal
 
 ### Node Assignment Dialog

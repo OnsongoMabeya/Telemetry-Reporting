@@ -283,11 +283,13 @@ Client-specific dashboard showing only assigned services.
 
 Role-based access control with three levels:
 
-| Role        | Permissions                                         |
-|-------------|-----------------------------------------------------|
-| **Admin**   | Full access, user management, metric configuration  |
-| **Manager** | View all data, manage assignments, create reports   |
-| **Viewer**  | View assigned nodes only, generate personal reports |
+| Role        | Permissions                                                          |
+|-------------|----------------------------------------------------------------------|
+| **Admin**   | Full access, Dashboard, user management, metric configuration        |
+| **Manager** | Dashboard access, view all data, manage assignments, reports         |
+| **Viewer**  | My Sites only, view assigned nodes, generate personal reports        |
+
+**Note:** The Dashboard (`/`) is restricted to **Admin** and **Manager** roles. Viewer users are automatically redirected to My Sites (`/my-sites`).
 
 #### User Profile
 

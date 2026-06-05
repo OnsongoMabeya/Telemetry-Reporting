@@ -13,7 +13,7 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 
 - **📊 Real-time Dashboard**: Interactive Kenya map with telemetry graphs
 - **⚙️ Dynamic Metric Mapping**: Configure custom metrics without code changes
-- **👥 Multi-tenant Access**: Role-based permissions (Admin, Manager, Viewer)
+- **👥 Multi-tenant Access**: Role-based permissions (Admin, Manager, Viewer) with Dashboard restricted to Admin/Manager
 - **📄 Automated Reports**: Scheduled PDF reports with visualizations
 - **📱 WhatsApp Alerts**: Offline/recovery notifications via Meta Business API
 - **🌓 Dark Mode**: Full dark theme support
@@ -71,7 +71,17 @@ Default login: `BSI` / `Reporting2026`
 - **Industrial IoT**: Real-time sensor data visualization
 - **Multi-site Operations**: Centralized monitoring with per-site access control
 
-## 🔧 Tech Stack
+## � User Roles
+
+| Role        | Access Level                                                  |
+|-------------|---------------------------------------------------------------|
+| **Admin**   | Full system access, Dashboard, user management, configuration |
+| **Manager** | Dashboard access, view all data, create reports               |
+| **Viewer**  | My Sites only (no Dashboard access), view assigned nodes      |
+
+**Note:** Dashboard (`/`) is restricted to Admin and Manager roles. Viewers are automatically redirected to My Sites (`/my-sites`).
+
+## �� Tech Stack
 
 | Layer    | Technology                      |
 |----------|---------------------------------|
@@ -90,10 +100,6 @@ Default login: `BSI` / `Reporting2026`
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
-## 📄 License
-
-MIT License - See [LICENSE](LICENSE) file for details.
 
 ---
 
