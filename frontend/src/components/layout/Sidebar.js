@@ -55,7 +55,7 @@ const Sidebar = () => {
       title: 'Dashboard',
       icon: <DashboardIcon />,
       path: '/',
-      roles: ['admin', 'manager', 'viewer'],
+      roles: ['admin', 'manager'],
     },
     {
       title: 'My Sites',

@@ -13,6 +13,7 @@ import MySites from './components/MySites';
 import MySitesCustomization from './components/MySitesCustomization';
 import RootElement from './components/RootElement';
 import LoginModal from './components/LoginModal';
+import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeModeProvider, useThemeMode } from './context/ThemeContext';
 import { MySitesProvider } from './context/MySitesContext';
@@ -363,7 +364,14 @@ const AppContent = () => {
             <MySitesProvider>
               <DashboardLayout>
                 <Routes>
-                  <Route path="/" element={<NodeDetail />} />
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute requiredRoles={['admin', 'manager']} fallbackPath="/my-sites">
+                        <NodeDetail />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route path="/my-sites" element={<MySites />} />
                   <Route path="/my-sites-customization" element={<MySitesCustomization />} />
                   <Route path="/users" element={<UserManagement />} />
