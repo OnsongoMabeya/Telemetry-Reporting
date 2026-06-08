@@ -31,12 +31,44 @@ const requireAdminOrManager = (req, res, next) => {
   next();
 };
 
-// GET /api/metric-mappings/columns - Get available columns for mapping with data usage stats
+// GET /api/metric-mappings/columns - Get available columns for mapping
+// OPTIMIZED: Uses cache when available, falls back to simple column names
+const columnStatsService = require('../services/columnStatsService');
+
 router.get('/columns', requireAdminOrManager, async (req, res) => {
   try {
     const { nodeName, baseStation } = req.query;
 
-    // Get all columns from node_status_table
+    // If specific node/station requested, try to get from cache
+    if (nodeName && baseStation) {
+      try {
+        columnStatsService.setDatabase(db);
+        const cachedStats = await columnStatsService.getStatsForNode(nodeName, baseStation);
+        
+        // Return cached data with source indicator
+        return res.json({
+          analog: cachedStats.analog,
+          digital: cachedStats.digital,
+          output: cachedStats.output,
+          totalRows: cachedStats.totalRows,
+          summary: {
+            analogWithData: cachedStats.analog.filter(c => c.hasData).length,
+            digitalWithData: cachedStats.digital.filter(c => c.hasData).length,
+            outputWithData: cachedStats.output.filter(c => c.hasData).length
+          },
+          source: 'cache',
+          calculatedAt: cachedStats.calculatedAt
+        });
+      } catch (cacheError) {
+        // Cache miss or error - log and fall through to fallback
+        logger.debug('CRUD', 'Cache miss for columns', { nodeName, baseStation, error: cacheError.message });
+      }
+    }
+
+    // FALLBACK: Return simple column names without expensive stats
+    // This happens when:
+    // 1. No nodeName/baseStation provided
+    // 2. Cache miss for the specific node/station
     const [columns] = await db.query(
       `SELECT COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION
        FROM information_schema.COLUMNS
@@ -46,132 +78,78 @@ router.get('/columns', requireAdminOrManager, async (req, res) => {
       [process.env.DB_NAME || 'horiserverlive']
     );
 
-    // Get total row count for percentage calculation (node-specific if provided)
-    let totalQuery = 'SELECT COUNT(*) as total FROM node_status_table';
-    const totalParams = [];
-    
-    if (nodeName && baseStation) {
-      totalQuery += ' WHERE NodeName = ? AND NodeBaseStationName = ?';
-      totalParams.push(nodeName, baseStation);
-    }
-    
-    const [totalRows] = await db.query(totalQuery, totalParams);
-    const total = totalRows[0].total;
-
-    // Categorize columns
-    const analogColumns = columns.filter(c => 
+    // Simple categorization without data analysis
+    const analog = columns.filter(c => 
       c.COLUMN_NAME.match(/^Analog\d+Value$/i)
-    ).map(c => c.COLUMN_NAME);
+    ).map(c => ({ name: c.COLUMN_NAME, hasData: true }));
 
-    const digitalColumns = columns.filter(c => 
+    const digital = columns.filter(c => 
       c.COLUMN_NAME.match(/^Digital\d+Value$/i)
-    ).map(c => c.COLUMN_NAME);
+    ).map(c => ({ name: c.COLUMN_NAME, hasData: true }));
 
-    const outputColumns = columns.filter(c => 
+    const output = columns.filter(c => 
       c.COLUMN_NAME.match(/^Output\d+Value$/i)
-    ).map(c => c.COLUMN_NAME);
+    ).map(c => ({ name: c.COLUMN_NAME, hasData: true }));
 
-    // Analyze data usage for each column type (node-specific if provided)
-    const analyzeColumns = async (columnList) => {
-      const results = [];
-      
-      for (const columnName of columnList) {
-        try {
-          let query = `SELECT 
-              COUNT(*) as count,
-              MIN(??) as min_value,
-              MAX(??) as max_value,
-              AVG(??) as avg_value
-             FROM node_status_table 
-             WHERE ?? IS NOT NULL AND ?? != 0`;
-          
-          const params = [columnName, columnName, columnName, columnName, columnName];
-          
-          // Add node-specific filter if provided
-          if (nodeName && baseStation) {
-            query += ' AND NodeName = ? AND NodeBaseStationName = ?';
-            params.push(nodeName, baseStation);
-          }
-          
-          const [stats] = await db.query(query, params);
-          
-          // Debug logging (use logger.debug instead of console.log)
-          if (nodeName === 'MediaMax1' && baseStation === 'MERU' && columnName === 'Analog1Value') {
-            logger.debug('CRUD', 'Debug MediaMax1/MERU Analog1Value', { metadata: { query, params, stats: stats[0], total, columnName } });
-          }
-          
-          const hasData = stats[0].count > 0;
-          const percentage = total > 0 ? ((stats[0].count / total) * 100).toFixed(1) : 0;
-          
-          if (nodeName === 'MediaMax1' && baseStation === 'MERU' && columnName === 'Analog1Value') {
-            logger.debug('CRUD', 'hasData/percentage calculated', { metadata: { hasData, percentage } });
-          }
-          
-          const result = {
-            name: columnName,
-            hasData: hasData,
-            recordCount: stats[0].count,
-            percentage: parseFloat(percentage),
-            minValue: hasData ? parseFloat(parseFloat(stats[0].min_value).toFixed(2)) : null,
-            maxValue: hasData ? parseFloat(parseFloat(stats[0].max_value).toFixed(2)) : null,
-            avgValue: hasData ? parseFloat(parseFloat(stats[0].avg_value).toFixed(2)) : null
-          };
-          
-          // Debug logging
-          if (nodeName === 'MediaMax1' && baseStation === 'MERU' && columnName === 'Analog1Value') {
-            logger.debug('CRUD', 'Result object being pushed', { metadata: { result } });
-          }
-          
-          results.push(result);
-        } catch (err) {
-          // Column might not exist, skip it
-          logger.error('CRUD', `Error analyzing column ${columnName}`, { metadata: { error: err.message } });
-          results.push({
-            name: columnName,
-            hasData: false,
-            recordCount: 0,
-            percentage: 0,
-            minValue: null,
-            maxValue: null,
-            avgValue: null
-          });
-        }
-      }
-      
-      return results;
-    };
-
-    // Analyze all column types
-    const [analogStats, digitalStats, outputStats] = await Promise.all([
-      analyzeColumns(analogColumns),
-      analyzeColumns(digitalColumns),
-      analyzeColumns(outputColumns)
-    ]);
-
-    const response = {
-      analog: analogStats,
-      digital: digitalStats,
-      output: outputStats,
-      totalRows: total,
-      summary: {
-        analogWithData: analogStats.filter(c => c.hasData).length,
-        digitalWithData: digitalStats.filter(c => c.hasData).length,
-        outputWithData: outputStats.filter(c => c.hasData).length
-      }
-    };
-    
-    // Debug logging
-    if (nodeName === 'MediaMax1' && baseStation === 'MERU') {
-      logger.debug('CRUD', 'Final response analog[0]', { metadata: { analog0: response.analog[0], summary: response.summary } });
-    }
-    
-    res.json(response);
+    res.json({
+      analog,
+      digital,
+      output,
+      source: 'schema',
+      message: nodeName && baseStation ? 'Cache not available - showing column names only' : undefined
+    });
 
   } catch (error) {
     logger.error('CRUD', 'Error fetching columns', { metadata: { error: error.message } });
     res.status(500).json({ 
       error: 'Failed to fetch available columns',
       code: 'SERVER_ERROR'
+    });
+  }
+});
+
+// POST /api/metric-mappings/columns/refresh - Manually refresh column stats cache
+router.post('/columns/refresh', requireAdmin, async (req, res) => {
+  try {
+    columnStatsService.setDatabase(db);
+    
+    // Run refresh (this may take a while)
+    const result = await columnStatsService.refreshCache();
+    
+    res.json({
+      success: true,
+      message: `Cache refreshed successfully`,
+      details: result
+    });
+  } catch (error) {
+    logger.error('CRUD', 'Error refreshing column cache', { metadata: { error: error.message } });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to refresh column cache',
+      message: error.message
+    });
+  }
+});
+
+// GET /api/metric-mappings/columns/status - Get cache status
+router.get('/columns/status', requireAdminOrManager, async (req, res) => {
+  try {
+    columnStatsService.setDatabase(db);
+    const status = await columnStatsService.getCacheStatus();
+    const isStale = await columnStatsService.isCacheStale();
+    
+    res.json({
+      success: true,
+      ...status,
+      isStale,
+      message: isStale ? 'Cache is stale (older than 2 hours)' : 'Cache is fresh'
+    });
+  } catch (error) {
+    logger.error('CRUD', 'Error fetching cache status', { metadata: { error: error.message } });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch cache status',
+      message: error.message
     });
   }
 });

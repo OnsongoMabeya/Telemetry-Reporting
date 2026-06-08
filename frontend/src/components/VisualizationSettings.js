@@ -38,7 +38,8 @@ import {
   Warning as WarningIcon,
   Timeline as TimelineIcon,
   CheckCircle as CheckCircleIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import axios from '../services/axiosInterceptor';
 import { API_BASE_URL } from '../config/api';
@@ -77,20 +78,39 @@ const VisualizationSettings = () => {
     setLoading(true);
     setError(null);
     try {
-      const [mappingsRes, nodesRes, columnsRes, unmappedRes] = await Promise.all([
+      // OPTIMIZED: Removed columns fetch from initial load
+      // Columns are now fetched lazily when opening Add/Edit dialog
+      const [mappingsRes, nodesRes, unmappedRes] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/metric-mappings`),
         axios.get(`${API_BASE_URL}/api/metric-mappings/nodes`),
-        axios.get(`${API_BASE_URL}/api/metric-mappings/columns`),
         isAdmin ? axios.get(`${API_BASE_URL}/api/metric-mappings/unmapped`) : Promise.resolve({ data: { nodes: [] } })
       ]);
 
       setMappings(mappingsRes.data.data || mappingsRes.data || []);
       setNodes(nodesRes.data);
-      setAvailableColumns(columnsRes.data);
       setUnmappedNodes(unmappedRes.data.nodes || []);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError('Failed to load visualization settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // New function to refresh column stats cache (admin only)
+  const [successMessage, setSuccessMessage] = useState(null);
+  
+  const handleRefreshCache = async () => {
+    try {
+      setLoading(true);
+      setSuccessMessage(null);
+      const response = await axios.post(`${API_BASE_URL}/api/metric-mappings/columns/refresh`);
+      setSuccessMessage(response.data.message);
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
+    } catch (err) {
+      console.error('Error refreshing cache:', err);
+      setError('Failed to refresh column statistics cache');
     } finally {
       setLoading(false);
     }
@@ -240,14 +260,25 @@ const VisualizationSettings = () => {
             </Typography>
           </Box>
           {isAdmin && (
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => handleOpenDialog()}
-              size="large"
-            >
-              Add Metric Mapping
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={handleRefreshCache}
+                size="large"
+                title="Refresh column statistics cache"
+              >
+                Refresh Stats
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenDialog()}
+                size="large"
+              >
+                Add Metric Mapping
+              </Button>
+            </Box>
           )}
         </Box>
         <Typography variant="body1" color="text.secondary">
@@ -259,6 +290,13 @@ const VisualizationSettings = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
           {error}
+        </Alert>
+      )}
+
+      {/* Success Alert */}
+      {successMessage && (
+        <Alert severity="success" sx={{ mb: 3 }} onClose={() => setSuccessMessage(null)}>
+          {successMessage}
         </Alert>
       )}
 

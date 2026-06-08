@@ -7,6 +7,7 @@ const logger = require('../utils/logger');
 const emailService = require('./emailService');
 const reportDataService = require('./reportDataService');
 const whatsappService = require('./whatsappService');
+const columnStatsService = require('./columnStatsService');
 
 // Store active tasks and db reference
 const activeTasks = new Map();
@@ -385,6 +386,21 @@ async function initializeScheduler() {
     }, { scheduled: true, timezone: 'Africa/Nairobi' });
 
     logger.info('Offline site checker started (every 15 minutes)');
+
+    // Start column stats cache refresh — every hour at minute 15
+    cron.schedule('15 * * * *', () => {
+      columnStatsService.setDatabase(db);
+      columnStatsService.refreshCache()
+        .then(result => {
+          logger.info('Column stats cache refreshed', { 
+            nodesProcessed: result.nodesProcessed, 
+            totalStatsCached: result.totalStatsCached 
+          });
+        })
+        .catch(err => logger.error('Column stats cache refresh failed:', err));
+    }, { scheduled: true, timezone: 'Africa/Nairobi' });
+
+    logger.info('Column stats cache refresh started (every hour at :15)');
   } catch (error) {
     logger.error('Failed to initialize scheduler:', error);
   }

@@ -257,6 +257,14 @@ async function setupDatabase() {
       migrationsToRun.add('014_add_whatsapp_support.sql');
     }
 
+    // Check for column_stats_cache table (migration 015)
+    if (await checkTableExists(connection, 'column_stats_cache')) {
+      console.log('✅ Table: column_stats_cache');
+    } else {
+      console.log('❌ Table: column_stats_cache (missing - needs migration 015)');
+      migrationsToRun.add('015_create_column_stats_cache.sql');
+    }
+
     console.log('\n================================\n');
     
     if (migrationsToRun.size === 0) {
