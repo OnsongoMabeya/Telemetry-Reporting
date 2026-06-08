@@ -34,8 +34,10 @@ const requireAdminOrManager = (req, res, next) => {
 // GET /api/metric-mappings/columns - Get available columns for mapping
 // OPTIMIZED: Uses cache when available, falls back to simple column names
 const columnStatsService = require('../services/columnStatsService');
+const cacheLogger = require('../utils/cacheLogger');
 
 router.get('/columns', requireAdminOrManager, async (req, res) => {
+  const requestStartTime = Date.now();
   try {
     const { nodeName, baseStation } = req.query;
 
@@ -45,22 +47,49 @@ router.get('/columns', requireAdminOrManager, async (req, res) => {
         columnStatsService.setDatabase(db);
         const cachedStats = await columnStatsService.getStatsForNode(nodeName, baseStation);
         
-        // Return cached data with source indicator
-        return res.json({
-          analog: cachedStats.analog,
-          digital: cachedStats.digital,
-          output: cachedStats.output,
-          totalRows: cachedStats.totalRows,
-          summary: {
-            analogWithData: cachedStats.analog.filter(c => c.hasData).length,
-            digitalWithData: cachedStats.digital.filter(c => c.hasData).length,
-            outputWithData: cachedStats.output.filter(c => c.hasData).length
-          },
-          source: 'cache',
-          calculatedAt: cachedStats.calculatedAt
-        });
+        // Check if we actually got data
+        const hasCachedData = cachedStats.analog.length > 0 || 
+                              cachedStats.digital.length > 0 || 
+                              cachedStats.output.length > 0;
+        
+        if (hasCachedData) {
+          // CACHE HIT - Log it
+          const cacheAge = cachedStats.calculatedAt 
+            ? Date.now() - new Date(cachedStats.calculatedAt).getTime()
+            : 0;
+          const totalColumns = cachedStats.analog.length + cachedStats.digital.length + cachedStats.output.length;
+          
+          cacheLogger.cacheHit(nodeName, baseStation, totalColumns, cacheAge);
+          logger.info('CRUD', `Cache hit for ${nodeName}/${baseStation}`, {
+            metadata: { 
+              nodeName, 
+              baseStation, 
+              columnCount: totalColumns,
+              duration: `${Date.now() - requestStartTime}ms`
+            }
+          });
+        
+          // Return cached data with source indicator
+          return res.json({
+            analog: cachedStats.analog,
+            digital: cachedStats.digital,
+            output: cachedStats.output,
+            totalRows: cachedStats.totalRows,
+            summary: {
+              analogWithData: cachedStats.analog.filter(c => c.hasData).length,
+              digitalWithData: cachedStats.digital.filter(c => c.hasData).length,
+              outputWithData: cachedStats.output.filter(c => c.hasData).length
+            },
+            source: 'cache',
+            calculatedAt: cachedStats.calculatedAt
+          });
+        } else {
+          // Empty cache entry - treat as miss
+          cacheLogger.cacheMiss(nodeName, baseStation, 'Empty cache entry for this node/station');
+        }
       } catch (cacheError) {
         // Cache miss or error - log and fall through to fallback
+        cacheLogger.cacheMiss(nodeName, baseStation, cacheError.message);
         logger.debug('CRUD', 'Cache miss for columns', { nodeName, baseStation, error: cacheError.message });
       }
     }
@@ -69,6 +98,10 @@ router.get('/columns', requireAdminOrManager, async (req, res) => {
     // This happens when:
     // 1. No nodeName/baseStation provided
     // 2. Cache miss for the specific node/station
+    if (nodeName && baseStation) {
+      cacheLogger.fallbackSchema('Cache miss - returning schema-only column names');
+    }
+    
     const [columns] = await db.query(
       `SELECT COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION
        FROM information_schema.COLUMNS
@@ -113,6 +146,10 @@ router.post('/columns/refresh', requireAdmin, async (req, res) => {
   try {
     columnStatsService.setDatabase(db);
     
+    // Log manual refresh
+    cacheLogger.manualRefresh(req.user?.id, req.user?.username || 'unknown');
+    logger.info('CRUD', `Manual cache refresh triggered by ${req.user?.username || 'unknown'}`);
+    
     // Run refresh (this may take a while)
     const result = await columnStatsService.refreshCache();
     
@@ -122,6 +159,11 @@ router.post('/columns/refresh', requireAdmin, async (req, res) => {
       details: result
     });
   } catch (error) {
+    cacheLogger.error('Manual cache refresh failed', { 
+      error: error.message,
+      userId: req.user?.id,
+      username: req.user?.username
+    });
     logger.error('CRUD', 'Error refreshing column cache', { metadata: { error: error.message } });
     res.status(500).json({ 
       success: false,

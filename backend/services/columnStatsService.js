@@ -8,6 +8,7 @@
  */
 
 const logger = require('../utils/logger');
+const cacheLogger = require('../utils/cacheLogger');
 
 let db = null;
 
@@ -35,16 +36,20 @@ function getDb() {
 async function refreshCache() {
   const startTime = Date.now();
   logger.info('ColumnStatsCache', 'Starting cache refresh');
+  cacheLogger.refreshStart();
 
   const database = getDb();
   if (!database) {
-    throw new Error('Database not available');
+    const error = new Error('Database not available');
+    cacheLogger.refreshError(error);
+    throw error;
   }
 
   try {
     // Clear old cache data
     await database.query('TRUNCATE TABLE column_stats_cache');
     logger.debug('ColumnStatsCache', 'Cleared existing cache');
+    cacheLogger.info('Cleared existing cache data');
 
     // Get all unique node/base station combinations
     const [nodes] = await database.query(`
@@ -54,6 +59,7 @@ async function refreshCache() {
     `);
 
     logger.info('ColumnStatsCache', `Found ${nodes.length} unique node/station combinations to process`);
+    cacheLogger.info(`Found ${nodes.length} unique node/station combinations`, { totalNodes: nodes.length });
 
     // Get all columns from node_status_table
     const [columns] = await database.query(`
@@ -71,10 +77,19 @@ async function refreshCache() {
     const outputColumns = columns.filter(c => c.COLUMN_NAME.match(/^Output\d+Value$/i));
 
     logger.debug('ColumnStatsCache', `Columns: ${analogColumns.length} analog, ${digitalColumns.length} digital, ${outputColumns.length} output`);
+    cacheLogger.info('Column categories loaded', {
+      analogCount: analogColumns.length,
+      digitalCount: digitalColumns.length,
+      outputCount: outputColumns.length,
+      totalColumns: columns.length
+    });
 
-    // Process each node/station combination
+    // Process each node/station combination with progress logging
     let totalStats = 0;
-    for (const node of nodes) {
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      const nodeStartTime = Date.now();
+      
       const nodeStats = await calculateNodeStats(
         database,
         node.node_name,
@@ -83,14 +98,41 @@ async function refreshCache() {
         digitalColumns,
         outputColumns
       );
+      
+      const nodeDuration = Date.now() - nodeStartTime;
       totalStats += nodeStats;
+      
+      // Log per-node progress
+      cacheLogger.nodeProgress(
+        node.node_name,
+        node.base_station_name,
+        i + 1,
+        nodes.length,
+        nodeDuration,
+        nodeStats
+      );
+      
+      // Log every 10 nodes at INFO level, others at DEBUG
+      if ((i + 1) % 10 === 0 || i === nodes.length - 1) {
+        logger.info('ColumnStatsCache', `Progress: ${i + 1}/${nodes.length} nodes processed`);
+      }
     }
 
     const duration = Date.now() - startTime;
+    
     logger.info('ColumnStatsCache', `Cache refresh completed`, {
       duration: `${duration}ms`,
       nodesProcessed: nodes.length,
       totalStatsCached: totalStats
+    });
+    
+    cacheLogger.refreshComplete({
+      duration: `${duration}ms`,
+      nodesProcessed: nodes.length,
+      totalStatsCached: totalStats,
+      analogColumns: analogColumns.length,
+      digitalColumns: digitalColumns.length,
+      outputColumns: outputColumns.length
     });
 
     return {
@@ -102,6 +144,7 @@ async function refreshCache() {
 
   } catch (error) {
     logger.error('ColumnStatsCache', 'Cache refresh failed', { error: error.message });
+    cacheLogger.refreshError(error, { phase: 'refreshCache' });
     throw error;
   }
 }
@@ -119,7 +162,7 @@ async function calculateNodeStats(db, nodeName, baseStationName, analogCols, dig
 
   const statsToInsert = [];
 
-  // Analyze each column type
+  // Analyze each column type with detailed logging
   const analyzeColumns = async (columns, type) => {
     for (const col of columns) {
       try {
@@ -138,22 +181,44 @@ async function calculateNodeStats(db, nodeName, baseStationName, analogCols, dig
 
         const recordCount = stats[0].count;
         const percentage = total > 0 ? ((recordCount / total) * 100).toFixed(2) : 0;
+        
+        const columnStats = {
+          hasData: recordCount > 0,
+          recordCount: recordCount,
+          percentage: parseFloat(percentage),
+          minValue: stats[0].min_value,
+          maxValue: stats[0].max_value,
+          avgValue: stats[0].avg_value
+        };
+
+        // Log detailed column stats (only for columns with data to reduce noise)
+        if (recordCount > 0) {
+          cacheLogger.columnStats(nodeName, baseStationName, col.COLUMN_NAME, type, columnStats);
+        }
 
         statsToInsert.push([
           nodeName,
           baseStationName,
           col.COLUMN_NAME,
           type,
-          recordCount > 0,
-          recordCount,
-          parseFloat(percentage),
-          stats[0].min_value,
-          stats[0].max_value,
-          stats[0].avg_value,
+          columnStats.hasData,
+          columnStats.recordCount,
+          columnStats.percentage,
+          columnStats.minValue,
+          columnStats.maxValue,
+          columnStats.avgValue,
           total
         ]);
       } catch (err) {
         logger.debug('ColumnStatsCache', `Error analyzing column ${col.COLUMN_NAME}`, { error: err.message });
+        cacheLogger.error(`Error analyzing column ${col.COLUMN_NAME}`, {
+          nodeName,
+          baseStationName,
+          columnName: col.COLUMN_NAME,
+          type,
+          error: err.message
+        });
+        
         // Add entry with no data
         statsToInsert.push([
           nodeName,
@@ -202,6 +267,8 @@ async function getStatsForNode(nodeName, baseStationName) {
     throw new Error('Database not available');
   }
 
+  const startTime = Date.now();
+  
   const [stats] = await database.query(`
     SELECT 
       column_name,
@@ -218,6 +285,8 @@ async function getStatsForNode(nodeName, baseStationName) {
     WHERE node_name = ? AND base_station_name = ?
     ORDER BY column_type, column_name
   `, [nodeName, baseStationName]);
+
+  const duration = Date.now() - startTime;
 
   // Group by type
   const grouped = {
@@ -293,13 +362,21 @@ async function getCacheStatus() {
     ORDER BY node_name, base_station_name
   `);
 
-  return {
+  const status = {
     totalEntries: stats[0].total_entries,
     uniqueNodes: stats[0].unique_nodes,
     oldestCalculation: stats[0].oldest_calculation,
     latestCalculation: stats[0].latest_calculation,
     cachedNodes: nodesWithData
   };
+  
+  cacheLogger.statusCheck({
+    totalEntries: status.totalEntries,
+    uniqueNodes: status.uniqueNodes,
+    latestCalculation: status.latestCalculation
+  });
+
+  return status;
 }
 
 /**
