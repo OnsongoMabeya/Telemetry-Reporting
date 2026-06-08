@@ -606,7 +606,11 @@ async function checkOfflineSites() {
         // Station is online
         if (prevStatus === 'offline') {
           // Calculate downtime for recovery message
-          const offlineSince = state && state.first_offline_at ? new Date(state.first_offline_at) : null;
+          // Use first_offline_at from state, or fall back to lastSeen (last data received)
+          const offlineSince = (state && state.first_offline_at)
+            ? new Date(state.first_offline_at)
+            : (lastSeen ? new Date(lastSeen) : null);
+
           let downtimeStr = 'Unknown';
           if (offlineSince) {
             const downtimeMs = Date.now() - offlineSince.getTime();
@@ -614,7 +618,7 @@ async function checkOfflineSites() {
             const downtimeMinutes = Math.floor((downtimeMs % (1000 * 60 * 60)) / (1000 * 60));
             downtimeStr = downtimeHours > 0
               ? `${downtimeHours}h ${downtimeMinutes}m`
-              : `${downtimeMinutes} minutes`;
+              : `${downtimeMinutes}m`;
           }
 
           // Send recovery email
