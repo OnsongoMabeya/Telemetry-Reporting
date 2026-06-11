@@ -16,6 +16,7 @@ A comprehensive telemetry monitoring solution for tracking and analyzing node pe
 - **👥 Multi-tenant Access**: Role-based permissions (Admin, Manager, Viewer) with Dashboard restricted to Admin/Manager
 - **📄 Automated Reports**: Scheduled PDF reports with visualizations
 - **📱 WhatsApp Alerts**: Offline/recovery notifications via Meta Business API
+- **⚡ Power Drop Alerts**: Monitor sudden drops in metrics like Forward Power with instant notifications
 - **🌓 Dark Mode**: Full dark theme support
 - **📱 Responsive**: Works on desktop, tablet, and mobile
 

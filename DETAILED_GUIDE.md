@@ -16,6 +16,7 @@ Complete installation, configuration, and deployment documentation.
   - [User Management](#user-management)
   - [Reporting](#reporting)
   - [WhatsApp Alerts](#whatsapp-alerts)
+  - [Power Drop Alerts](#power-drop-alerts)
 - [API Reference](#api-reference)
 - [Production Deployment](#production-deployment)
 - [SSL/TLS Setup](#ssltls-setup)
@@ -342,6 +343,181 @@ Real-time offline/recovery notifications via WhatsApp Business API.
 3. Tracks alert state to prevent spam
 4. Sends recovery alert when site comes back online
 
+### Power Drop Alerts
+
+Monitor sudden drops in critical metrics like Forward Power with instant notifications and automatic recovery detection.
+
+#### Feature Overview
+
+Power Drop Alerts detect rapid decreases in metric values within configurable time windows, providing immediate notification when equipment performance degrades.
+
+#### Power Drop Alert Features
+
+- **Real-time Monitoring**: Polls metrics every 5 seconds for immediate detection
+- **Configurable Thresholds**: Set drop percentage (default 80%) and time windows
+- **Smart Notifications**: Email and WhatsApp alerts with detailed context
+- **Repeat Logic**: Initial alert + one repeat after 10 minutes (prevents spam)
+- **Auto-Recovery**: Automatic recovery notifications when power returns to normal
+- **Cascading Selection**: Node → Base Station → Metric dropdowns for easy configuration
+- **Role-based Access**: Admin and Manager roles only
+
+#### Alert Detection Logic
+
+1. **Detection**: System monitors selected metric every 5 seconds
+2. **Threshold Check**: Compares current value against previous reading within time window
+3. **Drop Calculation**: `(previous_value - current_value) / previous_value * 100`
+4. **Alert Trigger**: Sends notification if drop percentage exceeds threshold
+5. **Repeat Logic**: Sends one repeat alert after 10 minutes if still down
+6. **Recovery Detection**: Sends recovery alert when power returns to normal
+
+#### Alert Configuration
+
+1. Go to **Alerts** → **Power Drops** tab
+2. Click **New Power Drop Alert**
+3. Configure settings:
+   - **Alert Name**: Descriptive name for identification
+   - **Node**: Select from available nodes (cascading dropdown)
+   - **Base Station**: Auto-populated based on selected node
+   - **Metric to Monitor**: Auto-populated based on node/base station
+   - **Drop Threshold**: Percentage drop to trigger alert (1-100%)
+   - **Time Window**: Time period for comparison (1-300 seconds)
+   - **Check Interval**: How often to check (1-300 seconds)
+   - **Recipients**: Users, emails, and WhatsApp numbers
+   - **Notification Methods**: Email and/or WhatsApp
+   - **Active Status**: Enable/disable monitoring
+
+#### Recipient Management
+
+- **Users**: Select from system users (inherits their contact info)
+- **External Emails**: Add any email addresses (free-form input)
+- **WhatsApp Numbers**: Add phone numbers in international format (+254712345678)
+
+#### Notification Content
+
+**Drop Alert Email/WhatsApp:**
+
+```text
+⚠️ POWER DROP ALERT
+
+[Alert Name] has dropped by [X]% at [Node/Base Station]
+
+Previous: [Previous Value]
+Current: [Current Value]
+Time: [Timestamp]
+
+Please check transmission status.
+```
+
+**Recovery Alert Email/WhatsApp:**
+
+```text
+✅ POWER RECOVERY
+
+[Alert Name] has returned to normal at [Node/Base Station]
+
+Current Value: [Current Value]
+Downtime: [X] minutes
+Time: [Timestamp]
+
+Transmission is now stable.
+```
+
+#### Logging and Monitoring
+
+All Power Drop Alert operations are logged with detailed context:
+
+- **Alert Creation/Updates**: CRUD operations with user attribution
+- **Detection Events**: Every check with metric values and calculations
+- **Notification Attempts**: Success/failure status with error details
+- **State Changes**: Alert triggered, repeated, recovered events
+- **Performance Metrics**: Processing times and system health
+
+**Log Location**: `backend/logs/logs_YYYY-MM-DD.jsonl`
+
+**Log Categories**:
+
+- `PowerDropAlerts`: Alert-specific operations
+- `CRUD`: Configuration changes
+- `API`: HTTP request/response tracking
+
+#### WhatsApp Template Setup
+
+Required WhatsApp Business message templates:
+
+1. **bsi_power_drop_alert** (UTILITY category)
+
+   ```text
+   ⚠️ POWER DROP ALERT
+   
+   {{1}} has dropped by {{2}}% at {{3}}
+   
+   Previous: {{4}}
+   Current: {{5}}
+   Time: {{6}}
+   
+   Please check transmission status.
+   ```
+
+2. **bsi_power_recovery_alert** (UTILITY category)
+
+   ```text
+   ✅ POWER RECOVERY
+   
+   {{1}} has returned to normal at {{2}}
+   
+   Current Value: {{3}}
+   Downtime: {{4}} minutes
+   Time: {{5}}
+   
+   Transmission is now stable.
+   ```
+
+#### Database Schema
+
+- **power_drop_alert_configs**: Alert configurations and settings
+- **power_drop_alert_state**: Current status and alert counts per station
+- **power_drop_alert_history**: Complete audit log of all alert events
+
+#### Performance Considerations
+
+- **Polling Overhead**: Minimal impact with 5-second intervals
+- **Database Load**: Optimized queries with proper indexing
+- **Notification Rate**: Limited to prevent spam (max 2 alerts per incident)
+- **Memory Usage**: Efficient state management with automatic cleanup
+
+#### Power Drop Alert Troubleshooting
+
+**Common Issues:**
+
+1. **No Base Stations in Dropdown**
+   - Ensure metric mappings exist for selected node
+   - Check node has active configurations in Visualization Settings
+
+2. **No Metrics in Dropdown**
+   - Verify base station has mapped metrics
+   - Check metric mappings are active
+
+3. **Alerts Not Triggering**
+   - Confirm alert is active and enabled
+   - Check metric data is being received
+   - Verify drop threshold is appropriate
+   - Review logs for detection events
+
+4. **Notifications Not Sending**
+   - Check email/WhatsApp configuration
+   - Verify recipient contact information
+   - Review notification logs for errors
+
+**Log Analysis:**
+
+```bash
+# View recent Power Drop Alert logs
+tail -f backend/logs/logs_$(date +%Y-%m-%d).jsonl | grep PowerDropAlerts
+
+# Search for specific alert events
+grep "PowerDropAlerts" backend/logs/logs_*.jsonl | jq '.'
+```
+
 ---
 
 ## API Reference
@@ -392,6 +568,18 @@ Authorization: Bearer <jwt_token>
 | POST   | `/site-alerts/run-check`     | Trigger manual check  |
 | POST   | `/site-alerts/test-whatsapp` | Test WhatsApp message |
 
+### Power Drop Alert Endpoints
+
+| Method | Endpoint                              | Access         | Description                     |
+|--------|---------------------------------------|----------------|---------------------------------|
+| GET    | `/power-drop-alerts`                  | Admin, Manager | List all alert configurations   |
+| POST   | `/power-drop-alerts`                  | Admin, Manager | Create new alert configuration  |
+| GET    | `/power-drop-alerts/:id`              | Admin, Manager | Get specific alert configuration|
+| PUT    | `/power-drop-alerts/:id`              | Admin, Manager | Update alert configuration      |
+| DELETE | `/power-drop-alerts/:id`              | Admin, Manager | Delete alert configuration      |
+| GET    | `/power-drop-alerts/state`            | Admin, Manager | Get current alert states        |
+| GET    | `/power-drop-alerts/status`           | Admin, Manager | Get overall system status       |
+
 ### Request/Response Examples
 
 #### Login
@@ -430,6 +618,66 @@ curl -X POST http://localhost:5000/api/metric-mappings \
     "unit": "dBm",
     "display_order": 1
   }'
+```
+
+#### Create Power Drop Alert
+
+```bash
+curl -X POST http://localhost:5000/api/power-drop-alerts \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Aviation FM Forward Power Monitor",
+    "node_name": "Aviation FM",
+    "base_station_name": "ELDORET",
+    "metric_mapping_id": 178,
+    "drop_percentage": 80,
+    "time_window_seconds": 5,
+    "check_interval_seconds": 5,
+    "recipient_users": [1, 2],
+    "recipient_emails": ["admin@example.com"],
+    "recipient_phones": ["+254712345678"],
+    "notify_email": true,
+    "notify_whatsapp": true,
+    "is_active": true
+  }'
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Power drop alert configuration created successfully",
+  "id": 4
+}
+```
+
+#### Get Power Drop Alert States
+
+```bash
+curl -X GET http://localhost:5000/api/power-drop-alerts/state \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "config_id": 4,
+      "node_name": "Aviation FM",
+      "base_station_name": "ELDORET",
+      "is_power_down": false,
+      "alert_count": 0,
+      "last_triggered_at": null,
+      "recovered_at": null,
+      "last_checked_at": "2026-06-11T06:45:00.000Z"
+    }
+  ]
+}
 ```
 
 ---
