@@ -273,6 +273,14 @@ async function setupDatabase() {
       migrationsToRun.add('016_create_power_drop_alert_tables.sql');
     }
 
+    // Check for manual reports tables (migration 017)
+    if (await checkTableExists(connection, 'manual_reports')) {
+      console.log('✅ Table: manual_reports');
+    } else {
+      console.log('❌ Table: manual_reports (missing - needs migration 017)');
+      migrationsToRun.add('017_create_manual_reports_tables.sql');
+    }
+
     console.log('\n================================\n');
     
     if (migrationsToRun.size === 0) {
