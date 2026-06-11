@@ -21,6 +21,7 @@ const mySitesRoutes = require('./routes/mySites');
 const serviceReportsRoutes = require('./routes/serviceReports');
 const reportSchedulesRoutes = require('./routes/reportSchedules');
 const { router: siteAlertsRouter, setDatabase: setSiteAlertsDb } = require('./routes/siteAlerts');
+const powerDropAlertsRoutes = require('./routes/powerDropAlerts');
 const { authenticateToken } = require('./middleware/auth');
 const logger = require('./utils/logger');
 
@@ -211,6 +212,7 @@ app.use('/api/my-sites', authenticateToken, mySitesRoutes);
 app.use('/api', authenticateToken, serviceReportsRoutes);
 app.use('/api/report-schedules', authenticateToken, reportSchedulesRoutes);
 app.use('/api/site-alerts', authenticateToken, siteAlertsRouter);
+app.use('/api/power-drop-alerts', authenticateToken, powerDropAlertsRoutes);
 
 // Keep-alive endpoint for slideshow session management (with token refresh)
 // Accepts expired tokens within a grace period so the session can be renewed

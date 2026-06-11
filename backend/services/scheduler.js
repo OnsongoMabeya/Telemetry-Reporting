@@ -8,6 +8,8 @@ const emailService = require('./emailService');
 const reportDataService = require('./reportDataService');
 const whatsappService = require('./whatsappService');
 const columnStatsService = require('./columnStatsService');
+const powerDropPollingService = require('./powerDropPollingService');
+const powerDropNotificationService = require('./powerDropNotificationService');
 
 // Store active tasks and db reference
 const activeTasks = new Map();
@@ -401,6 +403,19 @@ async function initializeScheduler() {
     }, { scheduled: true, timezone: 'Africa/Nairobi' });
 
     logger.info('Column stats cache refresh started (every hour at :15)');
+
+    // Start power drop polling service (every 5 seconds)
+    powerDropPollingService.setDatabase(db);
+    powerDropNotificationService.setDatabase(db);
+    powerDropPollingService.startPolling(5);
+    logger.info('Power drop polling service started (every 5 seconds)');
+
+    // Start power drop repeat alert checker (every minute for 10-minute repeat logic)
+    cron.schedule('* * * * *', () => {
+      checkPowerDropAlerts().catch(err => logger.error('Power drop alert check failed:', err));
+    }, { scheduled: true, timezone: 'Africa/Nairobi' });
+
+    logger.info('Power drop alert checker started (every minute for repeat logic)');
   } catch (error) {
     logger.error('Failed to initialize scheduler:', error);
   }
@@ -678,6 +693,146 @@ async function checkOfflineSites() {
   }
 }
 
+/**
+ * Check power drop alerts for repeat notifications (10-minute logic)
+ * This runs every minute to check if any active alerts need repeat notifications
+ */
+async function checkPowerDropAlerts() {
+  if (!db) {
+    logger.error('PowerDropAlerts', 'Database not available');
+    return;
+  }
+
+  try {
+    // Get all active power drop alerts (is_power_down = TRUE)
+    const [activeAlerts] = await db.query(`
+      SELECT 
+        pdas.*,
+        pdac.name as config_name,
+        pdac.node_name,
+        pdac.base_station_name,
+        pdac.metric_mapping_id,
+        pdac.recipient_users,
+        pdac.recipient_emails,
+        pdac.recipient_phones,
+        pdac.notify_email,
+        pdac.notify_whatsapp,
+        mm.column_name,
+        mm.metric_name
+      FROM power_drop_alert_state pdas
+      INNER JOIN power_drop_alert_configs pdac ON pdas.config_id = pdac.id
+      INNER JOIN metric_mappings mm ON pdac.metric_mapping_id = mm.id
+      WHERE pdas.is_power_down = TRUE
+      AND pdac.is_active = TRUE
+      AND pdas.alert_count < 2
+    `);
+
+    for (const alert of activeAlerts) {
+      // Check if 10 minutes have passed since last alert
+      const now = new Date();
+      const lastAlertTime = alert.last_alert_sent_at ? new Date(alert.last_alert_sent_at) : alert.alert_triggered_at;
+      const minutesSinceLastAlert = Math.floor((now.getTime() - lastAlertTime.getTime()) / (1000 * 60));
+
+      if (minutesSinceLastAlert >= 10) {
+        // Send repeat alert
+        logger.info('PowerDropAlerts', `Sending repeat alert for ${alert.node_name}/${alert.base_station_name}`, {
+          metadata: {
+            configId: alert.config_id,
+            alertCount: alert.alert_count + 1,
+            minutesSinceLastAlert
+          }
+        });
+
+        try {
+          // Get current reading for context
+          const [currentReading] = await db.query(`
+            SELECT ?? as value, time as timestamp
+            FROM node_status_table
+            WHERE NodeName = ? AND NodeBaseStationName = ?
+            ORDER BY time DESC
+            LIMIT 1
+          `, [alert.column_name, alert.node_name, alert.base_station_name]);
+
+          if (currentReading.length > 0) {
+            // Send repeat notification
+            const notificationResult = await powerDropNotificationService.sendPowerDropAlert(
+              {
+                id: alert.config_id,
+                name: alert.config_name,
+                node_name: alert.node_name,
+                base_station_name: alert.base_station_name,
+                recipient_users: JSON.parse(alert.recipient_users || '[]'),
+                recipient_emails: JSON.parse(alert.recipient_emails || '[]'),
+                recipient_phones: JSON.parse(alert.recipient_phones || '[]'),
+                notify_email: alert.notify_email,
+                notify_whatsapp: alert.notify_whatsapp
+              },
+              {
+                previousReading: { value: alert.previous_reading_value },
+                currentReading: currentReading[0],
+                dropPercentage: alert.previous_reading_value ? 
+                  ((alert.previous_reading_value - currentReading[0].value) / alert.previous_reading_value * 100) : 0,
+                columnName: alert.column_name
+              }
+            );
+
+            // Update alert count and last sent time
+            await db.query(`
+              UPDATE power_drop_alert_state SET
+                last_alert_sent_at = NOW(),
+                alert_count = alert_count + 1
+              WHERE config_id = ?
+            `, [alert.config_id]);
+
+            // Log to history
+            await db.query(`
+              INSERT INTO power_drop_alert_history (
+                config_id, node_name, base_station_name, alert_type,
+                previous_value, current_value, drop_percentage,
+                sent_at, notification_method, status
+              ) VALUES (?, ?, ?, 'drop', ?, ?, ?, NOW(), ?, ?)
+            `, [
+              alert.config_id,
+              alert.node_name,
+              alert.base_station_name,
+              alert.previous_reading_value,
+              currentReading[0].value,
+              alert.previous_reading_value ? 
+                ((alert.previous_reading_value - currentReading[0].value) / alert.previous_reading_value * 100) : 0,
+              notificationResult.notificationMethod || 'none',
+              notificationResult.success ? 'sent' : 'failed'
+            ]);
+
+            logger.info('PowerDropAlerts', `Repeat alert sent for ${alert.node_name}/${alert.base_station_name}`, {
+              metadata: {
+                configId: alert.config_id,
+                alertCount: alert.alert_count + 1,
+                notificationMethod: notificationResult.notificationMethod
+              }
+            });
+          }
+        } catch (error) {
+          logger.error('PowerDropAlerts', 'Error sending repeat alert', {
+            metadata: {
+              configId: alert.config_id,
+              error: error.message
+            }
+          });
+        }
+      }
+    }
+
+    if (activeAlerts.length > 0) {
+      logger.debug('PowerDropAlerts', `Checked ${activeAlerts.length} active power drop alerts`);
+    }
+
+  } catch (error) {
+    logger.error('PowerDropAlerts', 'Error in checkPowerDropAlerts', {
+      metadata: { error: error.message }
+    });
+  }
+}
+
 module.exports = {
   initializeScheduler,
   scheduleReport,
@@ -688,5 +843,6 @@ module.exports = {
   executeSchedule,
   calculateNextRun,
   setDatabase,
-  checkOfflineSites
+  checkOfflineSites,
+  checkPowerDropAlerts
 };

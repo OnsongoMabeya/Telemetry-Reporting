@@ -44,7 +44,8 @@ import {
   Assessment as AssessmentIcon,
   People as PeopleIcon,
   NotificationsActive as NotificationsActiveIcon,
-  WifiOff as WifiOffIcon
+  WifiOff as WifiOffIcon,
+  Power as PowerIcon
 } from '@mui/icons-material';
 import axios from '../services/axiosInterceptor';
 import { useAuth } from '../context/AuthContext';
@@ -96,6 +97,32 @@ const Alerts = () => {
     is_active: true
   });
 
+  // Power Drop alert state
+  const [powerDropAlerts, setPowerDropAlerts] = useState([]);
+  const [metricMappings, setMetricMappings] = useState([]);
+  const [nodes, setNodes] = useState([]);
+  const [availableBaseStations, setAvailableBaseStations] = useState([]);
+  const [availableMetrics, setAvailableMetrics] = useState([]);
+  const [openPowerDropDialog, setOpenPowerDropDialog] = useState(false);
+  const [editingPowerDropAlert, setEditingPowerDropAlert] = useState(null);
+  const [powerDropEmailInputValue, setPowerDropEmailInputValue] = useState('');
+  const [powerDropPhoneInputValue, setPowerDropPhoneInputValue] = useState('');
+  const [powerDropFormData, setPowerDropFormData] = useState({
+    name: '',
+    node_name: '',
+    base_station_name: '',
+    metric_mapping_id: '',
+    drop_percentage: 80,
+    time_window_seconds: 5,
+    check_interval_seconds: 5,
+    recipient_users: [],
+    recipient_emails: [],
+    recipient_phones: [],
+    notify_email: true,
+    notify_whatsapp: true,
+    is_active: true
+  });
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -123,6 +150,9 @@ const Alerts = () => {
     fetchUsers();
     fetchAlertConfigs();
     fetchBaseStations();
+    fetchPowerDropAlerts();
+    fetchMetricMappings();
+    fetchNodes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -190,6 +220,77 @@ const Alerts = () => {
     } catch (error) {
       console.error('Failed to fetch base stations:', error);
       setBaseStations([]);
+    }
+  };
+
+  const fetchPowerDropAlerts = async () => {
+    try {
+      const response = await axios.get('/api/power-drop-alerts');
+      setPowerDropAlerts(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error) {
+      console.error('Failed to fetch power drop alerts:', error);
+      setPowerDropAlerts([]);
+    }
+  };
+
+  const fetchMetricMappings = async () => {
+    try {
+      const response = await axios.get('/api/metric-mappings');
+      setMetricMappings(Array.isArray(response.data.data) ? response.data.data : []);
+    } catch (error) {
+      console.error('Failed to fetch metric mappings:', error);
+      setMetricMappings([]);
+    }
+  };
+
+  const fetchNodes = async () => {
+    try {
+      const response = await axios.get('/api/node-assignments/available-nodes');
+      setNodes(Array.isArray(response.data.nodes) ? response.data.nodes : []);
+    } catch (error) {
+      console.error('Failed to fetch nodes:', error);
+      setNodes([]);
+    }
+  };
+
+  const fetchBaseStationsForNode = async (nodeName) => {
+    if (!nodeName) {
+      setAvailableBaseStations([]);
+      return;
+    }
+
+    try {
+      const response = await axios.get('/api/metric-mappings', { 
+        params: { node_name: nodeName } 
+      });
+      
+      // Get unique base stations for this node
+      const baseStations = [...new Set(response.data.data.map(item => item.base_station_name))];
+      setAvailableBaseStations(baseStations.sort());
+    } catch (error) {
+      console.error('Failed to fetch base stations for node:', error);
+      setAvailableBaseStations([]);
+    }
+  };
+
+  const fetchMetricsForNodeAndBaseStation = async (nodeName, baseStationName) => {
+    if (!nodeName || !baseStationName) {
+      setAvailableMetrics([]);
+      return;
+    }
+
+    try {
+      const response = await axios.get('/api/metric-mappings', { 
+        params: { 
+          node_name: nodeName,
+          base_station_name: baseStationName 
+        } 
+      });
+      
+      setAvailableMetrics(response.data.data || []);
+    } catch (error) {
+      console.error('Failed to fetch metrics for node/base station:', error);
+      setAvailableMetrics([]);
     }
   };
 
@@ -264,6 +365,146 @@ const Alerts = () => {
       fetchAlertConfigs();
     } catch (error) {
       showSnackbar('Failed to delete alert config', 'error');
+    }
+  };
+
+  const handleOpenPowerDropDialog = (alert = null) => {
+    // Reset cascading dropdowns
+    setAvailableBaseStations([]);
+    setAvailableMetrics([]);
+    
+    if (alert) {
+      setEditingPowerDropAlert(alert);
+      const formData = {
+        name: alert.name || '',
+        node_name: alert.node_name || '',
+        base_station_name: alert.base_station_name || '',
+        metric_mapping_id: alert.metric_mapping_id || '',
+        drop_percentage: alert.drop_percentage || 80,
+        time_window_seconds: alert.time_window_seconds || 5,
+        check_interval_seconds: alert.check_interval_seconds || 5,
+        recipient_users: alert.recipient_users || [],
+        recipient_emails: alert.recipient_emails || [],
+        recipient_phones: alert.recipient_phones || [],
+        notify_email: alert.notify_email !== false,
+        notify_whatsapp: alert.notify_whatsapp !== false,
+        is_active: alert.is_active !== false
+      };
+      setPowerDropFormData(formData);
+      
+      // Load cascading data for existing alert
+      if (formData.node_name) {
+        fetchBaseStationsForNode(formData.node_name);
+        if (formData.base_station_name) {
+          fetchMetricsForNodeAndBaseStation(formData.node_name, formData.base_station_name);
+        }
+      }
+    } else {
+      setEditingPowerDropAlert(null);
+      setPowerDropFormData({
+        name: '',
+        node_name: '',
+        base_station_name: '',
+        metric_mapping_id: '',
+        drop_percentage: 80,
+        time_window_seconds: 5,
+        check_interval_seconds: 5,
+        recipient_users: [],
+        recipient_emails: [],
+        recipient_phones: [],
+        notify_email: true,
+        notify_whatsapp: true,
+        is_active: true
+      });
+    }
+    setPowerDropEmailInputValue('');
+    setPowerDropPhoneInputValue('');
+    setOpenPowerDropDialog(true);
+  };
+
+  const handleClosePowerDropDialog = () => {
+    setOpenPowerDropDialog(false);
+    setEditingPowerDropAlert(null);
+    setPowerDropEmailInputValue('');
+    setPowerDropPhoneInputValue('');
+    setAvailableBaseStations([]);
+    setAvailableMetrics([]);
+  };
+
+  const handleNodeChange = (nodeName) => {
+    setPowerDropFormData({ 
+      ...powerDropFormData, 
+      node_name: nodeName,
+      base_station_name: '',
+      metric_mapping_id: ''
+    });
+    setAvailableBaseStations([]);
+    setAvailableMetrics([]);
+    
+    if (nodeName) {
+      fetchBaseStationsForNode(nodeName);
+    }
+  };
+
+  const handleBaseStationChange = (baseStationName) => {
+    setPowerDropFormData({ 
+      ...powerDropFormData, 
+      base_station_name: baseStationName,
+      metric_mapping_id: ''
+    });
+    setAvailableMetrics([]);
+    
+    if (baseStationName && powerDropFormData.node_name) {
+      fetchMetricsForNodeAndBaseStation(powerDropFormData.node_name, baseStationName);
+    }
+  };
+
+  const handleSavePowerDropAlert = async () => {
+    if (!powerDropFormData.name?.trim() || !powerDropFormData.node_name || 
+        !powerDropFormData.base_station_name || !powerDropFormData.metric_mapping_id) {
+      showSnackbar('Please fill in all required fields: Name, Node, Base Station, and Metric', 'warning');
+      return;
+    }
+
+    // Flush any typed but unconfirmed email
+    const finalEmails = powerDropEmailInputValue.trim()
+      ? [...powerDropFormData.recipient_emails, powerDropEmailInputValue.trim()]
+      : powerDropFormData.recipient_emails;
+    
+    // Flush any typed but unconfirmed phone
+    const finalPhones = powerDropPhoneInputValue.trim()
+      ? [...powerDropFormData.recipient_phones, powerDropPhoneInputValue.trim()]
+      : powerDropFormData.recipient_phones;
+
+    const payload = { 
+      ...powerDropFormData, 
+      recipient_emails: finalEmails, 
+      recipient_phones: finalPhones 
+    };
+
+    try {
+      if (editingPowerDropAlert) {
+        await axios.put(`/api/power-drop-alerts/${editingPowerDropAlert.id}`, payload);
+        showSnackbar('Power drop alert updated successfully', 'success');
+      } else {
+        await axios.post('/api/power-drop-alerts', payload);
+        showSnackbar('Power drop alert created successfully', 'success');
+      }
+      handleClosePowerDropDialog();
+      fetchPowerDropAlerts();
+    } catch (error) {
+      showSnackbar(error.response?.data?.error || 'Failed to save power drop alert', 'error');
+    }
+  };
+
+  const handleDeletePowerDropAlert = async (id) => {
+    if (!window.confirm('Delete this power drop alert configuration?')) return;
+    try {
+      await axios.delete(`/api/power-drop-alerts/${id}`);
+      showSnackbar('Power drop alert deleted', 'success');
+      fetchPowerDropAlerts();
+    } catch (error) {
+      showSnackbar('Failed to delete power drop alert', 'error');
     }
   };
 
@@ -413,6 +654,7 @@ const Alerts = () => {
         >
           <Tab icon={<ScheduleIcon />} iconPosition="start" label="Scheduled Reports" />
           <Tab icon={<WifiOffIcon />} iconPosition="start" label="Offline Alerts" />
+          <Tab icon={<PowerIcon />} iconPosition="start" label="Power Drops" />
           <Tab icon={<EmailIcon />} iconPosition="start" label="Email Test" />
         </Tabs>
 
@@ -624,6 +866,157 @@ const Alerts = () => {
           )}
 
           {activeTab === 2 && (
+            <>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Box>
+                  <Typography variant="h6">
+                    Power Drop Alerts ({powerDropAlerts.length})
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Monitor sudden drops in metrics like Forward Power
+                  </Typography>
+                </Box>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => handleOpenPowerDropDialog()}
+                  sx={{
+                    background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.dark} 100%)`,
+                  }}
+                >
+                  New Power Drop Alert
+                </Button>
+              </Box>
+
+              {powerDropAlerts.length > 0 ? (
+                <TableContainer>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Node / Station</TableCell>
+                        <TableCell>Metric</TableCell>
+                        <TableCell>Drop Threshold</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Last Triggered</TableCell>
+                        <TableCell align="center">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {powerDropAlerts.map((alert) => (
+                        <TableRow key={alert.id}>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight={500}>
+                              {alert.name}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+                              {alert.notify_email && (
+                                <Chip size="small" icon={<EmailIcon />} label="Email" />
+                              )}
+                              {alert.notify_whatsapp && (
+                                <Chip size="small" icon={<NotificationsActiveIcon />} label="WhatsApp" />
+                              )}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {alert.node_name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {alert.base_station_name}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {alert.metric_name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {alert.column_name}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {alert.drop_percentage}%
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {alert.time_window_seconds}s window
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              size="small"
+                              label={alert.status === 'active' ? 'Alert Active' : 'Normal'}
+                              color={alert.status === 'active' ? 'error' : 'success'}
+                              variant="outlined"
+                            />
+                            {alert.alert_count > 0 && (
+                              <Typography variant="caption" display="block" color="text.secondary">
+                                {alert.alert_count} alert(s) sent
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">
+                              {alert.last_triggered ? 
+                                new Date(alert.last_triggered).toLocaleString() : 
+                                'Never'
+                              }
+                            </Typography>
+                            {alert.recovered_at && (
+                              <Typography variant="caption" color="success.main" display="block">
+                                Recovered: {new Date(alert.recovered_at).toLocaleString()}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Tooltip title="Edit">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenPowerDropDialog(alert)}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Delete">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeletePowerDropAlert(alert.id)}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              ) : (
+                <Box sx={{ textAlign: 'center', py: 4 }}>
+                  <PowerIcon sx={{ fontSize: 64, color: BSI_COLORS.primary, mb: 2 }} />
+                  <Typography variant="h6" gutterBottom>
+                    No Power Drop Alerts
+                  </Typography>
+                  <Typography color="text.secondary" sx={{ mb: 3 }}>
+                    Create alerts to monitor sudden drops in metrics like Forward Power.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => handleOpenPowerDropDialog()}
+                    sx={{
+                      background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.dark} 100%)`,
+                    }}
+                  >
+                    Create Power Drop Alert
+                  </Button>
+                </Box>
+              )}
+            </>
+          )}
+
+          {activeTab === 3 && (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <EmailIcon sx={{ fontSize: 64, color: BSI_COLORS.primary, mb: 2 }} />
               <Typography variant="h6" gutterBottom>
@@ -1142,6 +1535,219 @@ const Alerts = () => {
             sx={{ background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.primaryDark} 100%)`, fontWeight: 600 }}
           >
             {editingAlertConfig ? 'Update' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Power Drop Alert Dialog */}
+      <Dialog open={openPowerDropDialog} onClose={handleClosePowerDropDialog} maxWidth="md" fullWidth>
+        <DialogTitle
+          sx={{
+            background: `linear-gradient(135deg, ${BSI_COLORS.navy} 0%, ${BSI_COLORS.dark} 100%)`,
+            color: 'white', fontSize: '1.2rem', fontWeight: 600, py: 2, px: 3,
+            display: 'flex', alignItems: 'center', gap: 2
+          }}
+        >
+          <PowerIcon sx={{ fontSize: 24, color: BSI_COLORS.primary }} />
+          {editingPowerDropAlert ? 'Edit Power Drop Alert' : 'New Power Drop Alert'}
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Grid container spacing={2}>
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                label="Alert Name"
+                value={powerDropFormData.name}
+                onChange={(e) => setPowerDropFormData({ ...powerDropFormData, name: e.target.value })}
+                required
+              />
+            </Grid>
+            <Grid size={6}>
+              <FormControl fullWidth required>
+                <InputLabel>Node</InputLabel>
+                <Select
+                  value={powerDropFormData.node_name}
+                  label="Node"
+                  onChange={(e) => handleNodeChange(e.target.value)}
+                >
+                  {nodes.map((node) => (
+                    <MenuItem key={node} value={node}>{node}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={6}>
+              <FormControl fullWidth required>
+                <InputLabel>Base Station</InputLabel>
+                <Select
+                  value={powerDropFormData.base_station_name}
+                  label="Base Station"
+                  onChange={(e) => handleBaseStationChange(e.target.value)}
+                  disabled={!powerDropFormData.node_name}
+                >
+                  {availableBaseStations.map((station) => (
+                    <MenuItem key={station} value={station}>{station}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={12}>
+              <FormControl fullWidth required>
+                <InputLabel>Metric to Monitor</InputLabel>
+                <Select
+                  value={powerDropFormData.metric_mapping_id}
+                  label="Metric to Monitor"
+                  onChange={(e) => setPowerDropFormData({ ...powerDropFormData, metric_mapping_id: e.target.value })}
+                  disabled={!powerDropFormData.base_station_name}
+                >
+                  {availableMetrics.map((metric) => (
+                    <MenuItem key={metric.id} value={metric.id}>
+                      {metric.metric_name} ({metric.column_name})
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={4}>
+              <TextField
+                fullWidth
+                label="Drop Threshold (%)"
+                type="number"
+                value={powerDropFormData.drop_percentage}
+                onChange={(e) => setPowerDropFormData({ ...powerDropFormData, drop_percentage: parseFloat(e.target.value) || 0 })}
+                inputProps={{ min: 1, max: 100 }}
+                helperText="Percentage drop to trigger alert"
+              />
+            </Grid>
+            <Grid size={4}>
+              <TextField
+                fullWidth
+                label="Time Window (seconds)"
+                type="number"
+                value={powerDropFormData.time_window_seconds}
+                onChange={(e) => setPowerDropFormData({ ...powerDropFormData, time_window_seconds: parseInt(e.target.value) || 5 })}
+                inputProps={{ min: 1, max: 300 }}
+                helperText="Time period to compare"
+              />
+            </Grid>
+            <Grid size={4}>
+              <TextField
+                fullWidth
+                label="Check Interval (seconds)"
+                type="number"
+                value={powerDropFormData.check_interval_seconds}
+                onChange={(e) => setPowerDropFormData({ ...powerDropFormData, check_interval_seconds: parseInt(e.target.value) || 5 })}
+                inputProps={{ min: 1, max: 300 }}
+                helperText="How often to check"
+              />
+            </Grid>
+            <Grid size={6}>
+              <Autocomplete
+                multiple
+                options={users}
+                getOptionLabel={(option) => option.username || option}
+                value={users.filter(u => powerDropFormData.recipient_users.includes(u.id))}
+                onChange={(e, newValue) => {
+                  setPowerDropFormData({ 
+                    ...powerDropFormData, 
+                    recipient_users: newValue.map(u => u.id) 
+                  });
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Notify Users" placeholder="Select users..." />
+                )}
+              />
+            </Grid>
+            <Grid size={6}>
+              <Autocomplete
+                multiple
+                freeSolo
+                options={[]}
+                value={powerDropFormData.recipient_emails}
+                inputValue={powerDropEmailInputValue}
+                onInputChange={(e, val) => setPowerDropEmailInputValue(val)}
+                onChange={(e, newValue) => {
+                  setPowerDropFormData({ ...powerDropFormData, recipient_emails: newValue });
+                  setPowerDropEmailInputValue('');
+                }}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => {
+                    const { key, ...tagProps } = getTagProps({ index });
+                    return <Chip key={key} variant="outlined" label={option} size="small" color="primary" {...tagProps} />;
+                  })
+                }
+                renderInput={(params) => (
+                  <TextField {...params} label="External Emails" placeholder="Type email and press Enter..." helperText="Press Enter to add" />
+                )}
+              />
+            </Grid>
+            <Grid size={6}>
+              <Autocomplete
+                multiple
+                freeSolo
+                options={[]}
+                value={powerDropFormData.recipient_phones}
+                inputValue={powerDropPhoneInputValue}
+                onInputChange={(e, val) => setPowerDropPhoneInputValue(val)}
+                onChange={(e, newValue) => {
+                  setPowerDropFormData({ ...powerDropFormData, recipient_phones: newValue });
+                  setPowerDropPhoneInputValue('');
+                }}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => {
+                    const { key, ...tagProps } = getTagProps({ index });
+                    return <Chip key={key} variant="outlined" label={option} size="small" color="success" {...tagProps} />;
+                  })
+                }
+                renderInput={(params) => (
+                  <TextField {...params} label="WhatsApp Phone Numbers" placeholder="Type +254... and press Enter..." helperText="International format: +254712345678. Press Enter to add." />
+                )}
+              />
+            </Grid>
+            <Grid size={6}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={powerDropFormData.notify_email}
+                      onChange={(e) => setPowerDropFormData({ ...powerDropFormData, notify_email: e.target.checked })}
+                      color="primary"
+                    />
+                  }
+                  label="Send Email Notifications"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={powerDropFormData.notify_whatsapp}
+                      onChange={(e) => setPowerDropFormData({ ...powerDropFormData, notify_whatsapp: e.target.checked })}
+                      color="primary"
+                    />
+                  }
+                  label="Send WhatsApp Notifications"
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={powerDropFormData.is_active}
+                      onChange={(e) => setPowerDropFormData({ ...powerDropFormData, is_active: e.target.checked })}
+                      color="primary"
+                    />
+                  }
+                  label="Active"
+                />
+              </Box>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button onClick={handleClosePowerDropDialog} variant="outlined">Cancel</Button>
+          <Button
+            onClick={handleSavePowerDropAlert}
+            variant="contained"
+            sx={{ background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.primaryDark} 100%)`, fontWeight: 600 }}
+          >
+            {editingPowerDropAlert ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>

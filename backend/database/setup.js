@@ -265,6 +265,14 @@ async function setupDatabase() {
       migrationsToRun.add('015_create_column_stats_cache.sql');
     }
 
+    // Check for power drop alert tables (migration 016)
+    if (await checkTableExists(connection, 'power_drop_alert_configs')) {
+      console.log('✅ Table: power_drop_alert_configs');
+    } else {
+      console.log('❌ Table: power_drop_alert_configs (missing - needs migration 016)');
+      migrationsToRun.add('016_create_power_drop_alert_tables.sql');
+    }
+
     console.log('\n================================\n');
     
     if (migrationsToRun.size === 0) {
