@@ -12,6 +12,7 @@ const router = express.Router();
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const logger = require('../utils/logger');
 const crypto = require('crypto');
+const manualReportProcessor = require('../services/manualReportProcessor');
 
 // Get database connection from app
 let db;
@@ -428,8 +429,9 @@ router.post('/generate', async (req, res) => {
         deliveryMethod
       });
 
-      // TODO: Start background report generation process
-      // This will be implemented in Phase 1.3
+      // Start background report generation process
+      manualReportProcessor.setDatabase(db);
+      manualReportProcessor.startProcessing(reportId);
     }
 
     res.status(201).json({
@@ -500,12 +502,20 @@ router.get('/status/:id', async (req, res) => {
 
     const report = reports[0];
 
-    // Calculate progress (simplified for now)
+    // Get real-time progress from background processor
     let progress = 0;
+    let processorStatus = null;
+    
     if (report.status === 'completed') {
       progress = 100;
     } else if (report.status === 'generating') {
-      progress = 50; // Placeholder - will be improved in Phase 1.3
+      const processorProgress = manualReportProcessor.getProgress(reportId);
+      if (processorProgress) {
+        progress = processorProgress.progress;
+        processorStatus = processorProgress.status;
+      } else {
+        progress = 10; // Default if processor not found
+      }
     }
 
     res.json({
@@ -513,6 +523,7 @@ router.get('/status/:id', async (req, res) => {
       reportId: report.id,
       status: report.status,
       progress,
+      processorStatus,
       generationTime: report.generation_time_ms,
       pdfSize: report.pdf_size_bytes,
       errorMessage: report.error_message,
@@ -854,6 +865,91 @@ router.get('/stats', async (req, res) => {
 
     res.status(500).json({
       error: 'Failed to fetch statistics',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/manual-reports/cancel/:id
+ * Cancel report processing
+ */
+router.post('/cancel/:id', async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.id);
+    
+    if (isNaN(reportId)) {
+      return res.status(400).json({
+        error: 'Invalid report ID'
+      });
+    }
+
+    // Check if report belongs to user and is in generating state
+    const [reports] = await db.query(
+      `SELECT id, status, generated_by FROM manual_reports 
+       WHERE id = ? AND generated_by = ?`,
+      [reportId, req.user.id]
+    );
+
+    if (reports.length === 0) {
+      return res.status(404).json({
+        error: 'Report not found'
+      });
+    }
+
+    const report = reports[0];
+
+    if (report.status !== 'generating') {
+      return res.status(400).json({
+        error: 'Report cannot be cancelled',
+        status: report.status
+      });
+    }
+
+    // Cancel processing
+    const cancelled = await manualReportProcessor.cancelProcessing(reportId);
+
+    if (cancelled) {
+      // Log cancellation
+      await logAuditAction({
+        reportId: report.id,
+        action: 'error',
+        userId: req.user.id,
+        reportType: 'unknown',
+        targetIds: [],
+        dateRangeStart: new Date(),
+        dateRangeEnd: new Date(),
+        status: 'success',
+        message: 'Report processing was cancelled by user',
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+
+      logger.info('ManualReports', 'Report processing cancelled', {
+        userId: req.user.id,
+        reportId
+      });
+
+      res.json({
+        success: true,
+        message: 'Report processing cancelled successfully'
+      });
+
+    } else {
+      res.status(500).json({
+        error: 'Failed to cancel report processing'
+      });
+    }
+
+  } catch (error) {
+    logger.error('ManualReports', 'Cancel processing failed', {
+      userId: req.user.id,
+      reportId: req.params.id,
+      error: error.message
+    });
+
+    res.status(500).json({
+      error: 'Failed to cancel report processing',
       message: error.message
     });
   }

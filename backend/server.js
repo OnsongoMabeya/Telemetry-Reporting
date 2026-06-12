@@ -888,8 +888,10 @@ app.get('/api/basestations-map', authenticateToken, async (req, res) => {
 // Initialize report scheduler and report data service
 const scheduler = require('./services/scheduler');
 const reportDataService = require('./services/reportDataService');
+const manualReportProcessor = require('./services/manualReportProcessor');
 scheduler.setDatabase(pool.promise());
 reportDataService.setDatabase(pool.promise());
+manualReportProcessor.setDatabase(pool.promise());
 setSiteAlertsDb(pool.promise());
 
 // Start the server
