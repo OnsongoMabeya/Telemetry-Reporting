@@ -955,4 +955,267 @@ router.post('/cancel/:id', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/manual-reports/preview
+ * Generate report preview without creating a full report
+ */
+router.post('/preview', async (req, res) => {
+  try {
+    const {
+      reportType,
+      targetIds,
+      dateRangeStart,
+      dateRangeEnd
+    } = req.body;
+
+    // Validate input
+    if (!reportType || !targetIds || targetIds.length === 0) {
+      return res.status(400).json({
+        error: 'Missing required fields: reportType, targetIds'
+      });
+    }
+
+    if (!dateRangeStart || !dateRangeEnd) {
+      return res.status(400).json({
+        error: 'Missing required fields: dateRangeStart, dateRangeEnd'
+      });
+    }
+
+    // Parse dates
+    const startDate = new Date(dateRangeStart);
+    const endDate = new Date(dateRangeEnd);
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      return res.status(400).json({
+        error: 'Invalid date format'
+      });
+    }
+
+    if (startDate > endDate) {
+      return res.status(400).json({
+        error: 'Start date must be before end date'
+      });
+    }
+
+    const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    if (daysDiff > 90) {
+      return res.status(400).json({
+        error: 'Date range cannot exceed 90 days'
+      });
+    }
+
+    // Get target information
+    let targets = [];
+    if (reportType === 'service') {
+      const [services] = await db.query(
+        'SELECT id, name, client_name FROM services WHERE id IN (?)',
+        [targetIds]
+      );
+      targets = services;
+    } else {
+      const [clients] = await db.query(
+        'SELECT id, name FROM clients WHERE id IN (?)',
+        [targetIds]
+      );
+      targets = clients;
+    }
+
+    if (targets.length === 0) {
+      return res.status(404).json({
+        error: 'No valid targets found'
+      });
+    }
+
+    // Get sample telemetry data for preview (limited to first 3 targets and 1 day)
+    const previewTargets = targetIds.slice(0, 3);
+    const previewEndDate = new Date(Math.min(endDate.getTime(), startDate.getTime() + 24 * 60 * 60 * 1000));
+    
+    let previewData = [];
+    
+    if (reportType === 'service') {
+      for (const serviceId of previewTargets) {
+        const [telemetry] = await db.query(`
+          SELECT 
+            DATE_FORMAT(t.timestamp, '%Y-%m-%d %H:00:00') as hour,
+            AVG(t.value) as avg_value,
+            MIN(t.value) as min_value,
+            MAX(t.value) as max_value,
+            COUNT(t.id) as data_points
+          FROM telemetry t
+          WHERE t.service_id = ? 
+            AND t.timestamp BETWEEN ? AND ?
+          GROUP BY DATE_FORMAT(t.timestamp, '%Y-%m-%d %H:00:00')
+          ORDER BY hour ASC
+          LIMIT 24
+        `, [serviceId, startDate, previewEndDate]);
+        
+        const service = targets.find(t => t.id === serviceId);
+        previewData.push({
+          targetId: serviceId,
+          targetName: service.name,
+          clientName: service.client_name,
+          dataPoints: telemetry.length,
+          avgValue: telemetry.length > 0 ? telemetry.reduce((sum, t) => sum + parseFloat(t.avg_value), 0) / telemetry.length : 0,
+          sampleData: telemetry.map(t => ({
+            hour: t.hour,
+            avgValue: parseFloat(t.avg_value),
+            minValue: parseFloat(t.min_value),
+            maxValue: parseFloat(t.max_value),
+            dataPoints: t.data_points
+          }))
+        });
+      }
+    } else {
+      for (const clientId of previewTargets) {
+        const [telemetry] = await db.query(`
+          SELECT 
+            COUNT(DISTINCT t.service_id) as services_with_data,
+            COUNT(t.id) as total_data_points,
+            AVG(t.value) as avg_value,
+            MIN(t.value) as min_value,
+            MAX(t.value) as max_value
+          FROM telemetry t
+          JOIN services s ON t.service_id = s.id
+          WHERE s.client_id = ? 
+            AND t.timestamp BETWEEN ? AND ?
+        `, [clientId, startDate, previewEndDate]);
+        
+        const client = targets.find(t => t.id === clientId);
+        const stats = telemetry[0] || {};
+        
+        previewData.push({
+          targetId: clientId,
+          targetName: client.name,
+          dataPoints: parseInt(stats.total_data_points || 0),
+          servicesWithData: parseInt(stats.services_with_data || 0),
+          avgValue: parseFloat(stats.avg_value || 0),
+          minValue: parseFloat(stats.min_value || 0),
+          maxValue: parseFloat(stats.max_value || 0)
+        });
+      }
+    }
+
+    // Calculate estimated report size and generation time
+    const estimatedDataPoints = previewData.reduce((sum, item) => sum + item.dataPoints, 0);
+    const totalTargets = targetIds.length;
+    const estimatedTotalDataPoints = Math.round((estimatedDataPoints / previewTargets.length) * totalTargets);
+    
+    // Estimate file size (rough calculation: ~100 bytes per data point + 50KB base)
+    const estimatedFileSize = Math.round(estimatedTotalDataPoints * 100 + 50 * 1024);
+    
+    // Estimate generation time (rough calculation: ~1ms per 10 data points + 2 seconds base)
+    const estimatedGenerationTime = Math.round(estimatedTotalDataPoints / 10 + 2000);
+
+    res.json({
+      success: true,
+      preview: {
+        reportType,
+        dateRange: {
+          start: dateRangeStart,
+          end: dateRangeEnd,
+          days: daysDiff
+        },
+        targets: targets.map(t => ({
+          id: t.id,
+          name: t.name,
+          clientName: t.client_name
+        })),
+        sampleData: previewData,
+        estimates: {
+          totalDataPoints: estimatedTotalDataPoints,
+          fileSizeBytes: estimatedFileSize,
+          fileSizeHuman: formatFileSize(estimatedFileSize),
+          generationTimeMs: estimatedGenerationTime,
+          generationTimeHuman: formatDuration(estimatedGenerationTime)
+        },
+        quality: {
+          dataCompleteness: estimatedDataPoints > 0 ? 'good' : 'no_data',
+          recommendedAction: estimatedDataPoints > 0 ? 'proceed' : 'adjust_date_range'
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('ManualReports', 'Preview generation failed', {
+      userId: req.user?.id,
+      error: error.message
+    });
+
+    res.status(500).json({
+      error: 'Failed to generate preview',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/manual-reports/download-history
+ * Get download history for the current user
+ */
+router.get('/download-history', async (req, res) => {
+  try {
+    const [history] = await db.query(`
+      SELECT 
+        mr.id,
+        mr.report_type,
+        mr.target_count,
+        mr.date_range_start,
+        mr.date_range_end,
+        mr.status,
+        mr.pdf_size_bytes,
+        mr.created_at,
+        mr.completed_at,
+        mra.action,
+        mra.created_at as action_time
+      FROM manual_reports mr
+      LEFT JOIN manual_reports_audit mra ON mr.id = mra.report_id AND mra.action = 'downloaded'
+      WHERE mr.generated_by = ? 
+        AND mr.status = 'completed'
+      ORDER BY mr.created_at DESC
+      LIMIT 50
+    `, [req.user.id]);
+
+    const formattedHistory = history.map(item => ({
+      ...item,
+      fileSizeHuman: item.pdf_size_bytes ? formatFileSize(item.pdf_size_bytes) : 'Unknown',
+      downloaded: item.action === 'downloaded',
+      downloadTime: item.action_time
+    }));
+
+    res.json({
+      success: true,
+      history: formattedHistory
+    });
+
+  } catch (error) {
+    logger.error('ManualReports', 'Download history fetch failed', {
+      userId: req.user.id,
+      error: error.message
+    });
+
+    res.status(500).json({
+      error: 'Failed to fetch download history',
+      message: error.message
+    });
+  }
+});
+
+// Helper functions
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function formatDuration(ms) {
+  if (ms < 1000) return ms + 'ms';
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return seconds + 's';
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}m ${remainingSeconds}s`;
+}
+
 module.exports = router;

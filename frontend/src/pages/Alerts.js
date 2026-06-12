@@ -140,6 +140,9 @@ const Alerts = () => {
   const [manualReportStep, setManualReportStep] = useState(1);
   const [processingReports, setProcessingReports] = useState(new Map());
   const [manualReportEmailInputValue, setManualReportEmailInputValue] = useState('');
+  const [openPreviewDialog, setOpenPreviewDialog] = useState(false);
+  const [previewData, setPreviewData] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [manualReportFormData, setManualReportFormData] = useState({
     reportType: 'service',
     targetIds: [],
@@ -835,6 +838,27 @@ const Alerts = () => {
       } else if (errorMessage.includes('date')) {
         setManualReportStep(3);
       }
+    }
+  };
+
+  // Preview handler function
+  const handlePreviewReport = async () => {
+    try {
+      setPreviewLoading(true);
+      
+      const response = await axios.post('/api/manual-reports/preview', {
+        reportType: manualReportFormData.reportType,
+        targetIds: manualReportFormData.targetIds,
+        dateRangeStart: new Date(manualReportFormData.dateRangeStart).toISOString(),
+        dateRangeEnd: new Date(manualReportFormData.dateRangeEnd).toISOString()
+      });
+
+      setPreviewData(response.data.preview);
+      setOpenPreviewDialog(true);
+    } catch (error) {
+      showSnackbar(error.response?.data?.message || 'Failed to generate preview', 'error');
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -2187,6 +2211,9 @@ const Alerts = () => {
                 <StepLabel>Delivery</StepLabel>
               </Step>
               <Step>
+                <StepLabel>Preview</StepLabel>
+              </Step>
+              <Step>
                 <StepLabel>Generate</StepLabel>
               </Step>
             </Stepper>
@@ -2553,8 +2580,91 @@ const Alerts = () => {
             </Box>
           )}
 
-          {/* Step 5: Summary */}
+          {/* Step 5: Preview */}
           {manualReportStep === 5 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Report Preview
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 3 }}>
+                Preview your report data before generating the full report
+              </Typography>
+              
+              <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+                <Button
+                  variant="contained"
+                  onClick={handlePreviewReport}
+                  disabled={previewLoading}
+                  startIcon={previewLoading ? <CircularProgress size={16} /> : <AssessmentIcon />}
+                  sx={{
+                    background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.primaryDark} 100%)`,
+                  }}
+                >
+                  {previewLoading ? 'Generating Preview...' : 'Generate Preview'}
+                </Button>
+                
+                {previewData && (
+                  <Button
+                    variant="outlined"
+                    onClick={() => setOpenPreviewDialog(true)}
+                  >
+                    View Detailed Preview
+                  </Button>
+                )}
+              </Box>
+
+              {previewData && (
+                <Paper sx={{ p: 2, backgroundColor: isDark ? 'rgba(0,153,255,0.05)' : '#f8f9fa' }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Preview Summary
+                  </Typography>
+                  <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="text.secondary">Data Quality:</Typography>
+                      <Chip 
+                        size="small"
+                        label={previewData.quality.dataCompleteness === 'good' ? 'Good' : 'No Data'}
+                        color={previewData.quality.dataCompleteness === 'good' ? 'success' : 'warning'}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="text.secondary">Est. File Size:</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                        {previewData.estimates.fileSizeHuman}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="text.secondary">Est. Generation Time:</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                        {previewData.estimates.generationTimeHuman}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="body2" color="text.secondary">Data Points:</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                        {previewData.estimates.totalDataPoints.toLocaleString()}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                  
+                  {previewData.quality.recommendedAction === 'adjust_date_range' && (
+                    <Alert severity="warning" sx={{ mt: 2 }}>
+                      No data found for the selected date range. Consider adjusting the date range or selecting different targets.
+                    </Alert>
+                  )}
+                  
+                  {previewData.quality.recommendedAction === 'proceed' && (
+                    <Alert severity="success" sx={{ mt: 2 }}>
+                      Data looks good! You can proceed with generating the full report.
+                    </Alert>
+                  )}
+                </Paper>
+              )}
+            </Box>
+          )}
+
+          {/* Step 6: Summary */}
+          {manualReportStep === 6 && (
             <Box>
               <Typography variant="h6" gutterBottom>
                 Report Summary
@@ -2635,7 +2745,191 @@ const Alerts = () => {
               fontWeight: 600
             }}
           >
-            {manualReportStep < 5 ? 'Next' : 'Generate Report'}
+            {manualReportStep < 6 ? 'Next' : 'Generate Report'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Detailed Preview Dialog */}
+      <Dialog 
+        open={openPreviewDialog} 
+        onClose={() => setOpenPreviewDialog(false)} 
+        maxWidth="lg" 
+        fullWidth
+      >
+        <DialogTitle sx={{ 
+          background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.primaryDark} 100%)`,
+          color: 'white',
+          py: 2
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <AssessmentIcon />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Report Preview Details
+            </Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 3 }}>
+          {previewData && (
+            <Box>
+              {/* Report Overview */}
+              <Paper sx={{ p: 2, mb: 3, backgroundColor: isDark ? 'rgba(0,153,255,0.05)' : '#f8f9fa' }}>
+                <Typography variant="h6" gutterBottom>
+                  Report Overview
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary">Report Type:</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {previewData.reportType === 'service' ? 'Service Report' : 'Client Report'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary">Date Range:</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {new Date(previewData.dateRange.start).toLocaleDateString()} - {new Date(previewData.dateRange.end).toLocaleDateString()} ({previewData.dateRange.days} days)
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary">Targets Selected:</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {previewData.targets.length} {previewData.reportType === 'service' ? 'services' : 'clients'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Typography variant="body2" color="text.secondary">Estimated File Size:</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {previewData.estimates.fileSizeHuman}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Paper>
+
+              {/* Sample Data Preview */}
+              <Typography variant="h6" gutterBottom>
+                Sample Data Preview
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                Showing sample data from first 3 targets for a 24-hour period
+              </Typography>
+
+              <TableContainer sx={{ mb: 3 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: isDark ? 'rgba(0,153,255,0.15)' : BSI_COLORS.light }}>
+                      <TableCell><strong>Target Name</strong></TableCell>
+                      {previewData.reportType === 'service' && <TableCell><strong>Client</strong></TableCell>}
+                      <TableCell><strong>Data Points</strong></TableCell>
+                      <TableCell><strong>Avg Value</strong></TableCell>
+                      <TableCell><strong>Min Value</strong></TableCell>
+                      <TableCell><strong>Max Value</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {previewData.sampleData.map((item, index) => (
+                      <TableRow key={index} hover>
+                        <TableCell>{item.targetName}</TableCell>
+                        {previewData.reportType === 'service' && (
+                          <TableCell>{item.clientName || '-'}</TableCell>
+                        )}
+                        <TableCell>{item.dataPoints.toLocaleString()}</TableCell>
+                        <TableCell>{item.avgValue.toFixed(2)}</TableCell>
+                        <TableCell>{item.minValue?.toFixed(2) || '-'}</TableCell>
+                        <TableCell>{item.maxValue?.toFixed(2) || '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+              {/* Estimates and Quality */}
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2, backgroundColor: isDark ? 'rgba(0,153,255,0.05)' : '#f8f9fa' }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Performance Estimates
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Total Data Points:</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          {previewData.estimates.totalDataPoints.toLocaleString()}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">Generation Time:</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          {previewData.estimates.generationTimeHuman}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography variant="body2" color="text.secondary">File Size:</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                          {previewData.estimates.fileSizeHuman}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 2, backgroundColor: isDark ? 'rgba(0,153,255,0.05)' : '#f8f9fa' }}>
+                    <Typography variant="subtitle2" gutterBottom>
+                      Data Quality Assessment
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Data Completeness:</Typography>
+                        <Chip 
+                          size="small"
+                          label={previewData.quality.dataCompleteness === 'good' ? 'Good' : 'No Data'}
+                          color={previewData.quality.dataCompleteness === 'good' ? 'success' : 'warning'}
+                          sx={{ mt: 1 }}
+                        />
+                      </Box>
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">Recommendation:</Typography>
+                        <Typography variant="body1" sx={{ fontWeight: 600, mt: 1 }}>
+                          {previewData.quality.recommendedAction === 'proceed' ? 
+                            'Proceed with report generation' : 
+                            'Adjust date range or targets'
+                          }
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Paper>
+                </Grid>
+              </Grid>
+
+              {/* Target List */}
+              <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+                Selected Targets
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {previewData.targets.map((target) => (
+                  <Chip
+                    key={target.id}
+                    label={`${target.name}${target.clientName ? ` (${target.clientName})` : ''}`}
+                    variant="outlined"
+                    size="small"
+                    color="primary"
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button 
+            onClick={() => setOpenPreviewDialog(false)} 
+            variant="contained"
+            sx={{
+              background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.primaryDark} 100%)`,
+              fontWeight: 600
+            }}
+          >
+            Close Preview
           </Button>
         </DialogActions>
       </Dialog>
