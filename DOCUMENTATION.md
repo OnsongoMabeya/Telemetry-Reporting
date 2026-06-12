@@ -217,41 +217,34 @@ The main dashboard provides:
 The manual report generation follows a 6-step workflow:
 
 #### Step 1: Report Type Selection
-
 Choose between:
-
 - **Service Reports**: Individual service performance analysis
 - **Client Reports**: Consolidated reports for all services under a client
 
 #### Step 2: Target Selection
 
 **For Service Reports:**
-
 - Use search bar to find specific services
 - Apply filters by client, status, or performance metrics
 - Use bulk selection for multiple services
 
 **For Client Reports:**
-
 - Select from active client list
 - Automatically includes all associated services
 - Option to exclude specific services if needed
 
 #### Step 3: Date Range Selection
-
 - **Predefined Ranges**: Last 7 days, 30 days, 90 days
 - **Custom Range**: Select specific start and end dates
 - **Date Validation**: Ensures data availability for selected range
 
 #### Step 4: Delivery Configuration
 Choose delivery method:
-
 - **Download**: Immediate download to local device
 - **Email**: Send to specified recipients
 - **Both**: Download and email delivery
 
 **Email Configuration:**
-
 - Add multiple recipients
 - Custom subject and message
 - Attachment size limits
@@ -317,7 +310,7 @@ All API endpoints require JWT authentication and admin privileges. Include the t
 Authorization: Bearer <your-jwt-token>
 ```
 
-### Power Drop Alerts API
+### Power Drop Alerts
 
 #### Get All Power Drop Alert Configurations
 
@@ -380,7 +373,7 @@ DELETE /api/power-drop-alerts/configs/:id
 GET /api/power-drop-alerts/history?node_id=NODE_001&start_date=2024-01-01&end_date=2024-01-31
 ```
 
-### Manual Reports API
+### Manual Reports
 
 #### Generate Manual Report
 
@@ -522,7 +515,7 @@ POST /api/manual-reports/cache/clear
 }
 ```
 
-### Performance Monitoring API
+### Performance Monitoring
 
 #### Get Performance Metrics
 
@@ -1283,14 +1276,13 @@ k6 run --vus 100 --duration 10m k6-stress-test.js
 
 #### Power Drop Alert Issues
 
-##### Issue: Not receiving alerts
-
+**Issue: Not receiving alerts**
 - Check alert configuration status
 - Verify notification channel settings
 - Review recent alert history
 - Test notification delivery
 
-##### Issue: Too many false alerts
+**Issue: Too many false alerts**
 - Adjust threshold values
 - Increase drop duration requirements
 - Review metric selection
@@ -1298,14 +1290,13 @@ k6 run --vus 100 --duration 10m k6-stress-test.js
 
 #### Manual Report Issues
 
-##### Issue: Report generation fails
-
+**Issue: Report generation fails**
 - Check target data availability
 - Verify date range validity
 - Review system performance status
 - Check available disk space
 
-##### Issue: Slow report generation
+**Issue: Slow report generation**
 - Check system performance metrics
 - Review cache effectiveness
 - Consider reducing report scope
@@ -1313,8 +1304,7 @@ k6 run --vus 100 --duration 10m k6-stress-test.js
 
 #### Performance Issues
 
-##### Issue: Slow API responses
-
+**Issue: Slow API responses**
 - Check performance monitoring dashboard
 - Review database optimization status
 - Clear query cache if needed
@@ -1322,7 +1312,7 @@ k6 run --vus 100 --duration 10m k6-stress-test.js
 
 #### Database Connection Issues
 
-##### Issue: Cannot connect to database
+**Issue: Cannot connect to database**
 - Verify database server is running
 - Check connection credentials
 - Review firewall settings
@@ -1370,46 +1360,46 @@ k6 run --vus 100 --duration 10m k6-stress-test.js
 
 ### General Questions
 
-#### Q: What browsers are supported?
+**Q: What browsers are supported?**
 A: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+
 
-#### Q: Is there a mobile app?
+**Q: Is there a mobile app?**
 A: Yes, mobile apps are available for iOS and Android
 
-#### Q: How often is data updated?
+**Q: How often is data updated?**
 A: Real-time data is updated every 5 seconds
 
 ### Power Drop Alert FAQs
 
-#### Q: Can I set different thresholds for different times of day?
+**Q: Can I set different thresholds for different times of day?**
 A: Yes, advanced configurations support time-based thresholds
 
-#### Q: How do I prevent alert fatigue?
+**Q: How do I prevent alert fatigue?**
 A: Use the smart alert features that learn from your response patterns
 
-#### Q: Can alerts be escalated automatically?
+**Q: Can alerts be escalated automatically?**
 A: Yes, configure escalation rules in the alert settings
 
 ### Manual Report FAQs
 
-#### Q: What's the maximum report size?
+**Q: What's the maximum report size?**
 A: Reports are limited to 100MB for email delivery, unlimited for download
 
-#### Q: Can I save report templates?
+**Q: Can I save report templates?**
 A: Yes, create and save custom templates for repeated use
 
-#### Q: How long are reports stored?
+**Q: How long are reports stored?**
 A: Reports are stored for 90 days by default, configurable up to 1 year
 
 ### Performance FAQs
 
-#### Q: How can I improve report generation speed?
+**Q: How can I improve report generation speed?**
 A: Use the preview feature, select appropriate date ranges, and leverage caching
 
-#### Q: What affects system performance?
+**Q: What affects system performance?**
 A: Concurrent report generation, data volume, and system resources
 
-#### Q: How often should I optimize the database?
+**Q: How often should I optimize the database?**
 A: Weekly optimization is recommended for high-usage systems
 
 ---
