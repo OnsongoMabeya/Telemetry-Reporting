@@ -49,8 +49,13 @@ Default login: `BSI` / `Reporting2026`
 
 ## 📖 Documentation
 
-- **[Detailed Guide](DETAILED_GUIDE.md)** - Complete installation, configuration, and deployment documentation
-- **[API Reference](DETAILED_GUIDE.md#api-reference)** - API endpoints and examples
+**📖 [Complete Documentation](DOCUMENTATION.md)** - Comprehensive guide covering:
+- Installation & Setup
+- User Guide with step-by-step instructions
+- Complete API Reference with examples
+- Production Deployment Guide
+- Testing & Performance procedures
+- Troubleshooting and FAQ
 
 ## 🏗️ System Architecture
 
