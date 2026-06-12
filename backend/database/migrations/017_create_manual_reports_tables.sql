@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS manual_reports_cache_stats (
     cached_at DATETIME DEFAULT NULL COMMENT 'When the report was cached',
     expires_at DATETIME DEFAULT NULL COMMENT 'When cache expires',
     file_path VARCHAR(500) DEFAULT NULL COMMENT 'Path to cached PDF file',
+    pdf_size_bytes INT DEFAULT NULL COMMENT 'Size of cached PDF file in bytes',
     report_parameters JSON DEFAULT NULL COMMENT 'Stored report parameters for validation',
     
     INDEX idx_last_requested (last_requested),
