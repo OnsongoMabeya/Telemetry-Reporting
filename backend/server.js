@@ -890,6 +890,12 @@ const scheduler = require('./services/scheduler');
 const reportDataService = require('./services/reportDataService');
 const manualReportProcessor = require('./services/manualReportProcessor');
 const ManualReportCacheManager = require('./services/manualReportCacheManager');
+const PerformanceMonitor = require('./services/performanceMonitor');
+
+// Initialize performance monitoring
+const performanceMonitor = new PerformanceMonitor();
+performanceMonitor.setDatabase(pool.promise());
+performanceMonitor.startMonitoring();
 
 // Initialize cache manager
 const cacheManager = new ManualReportCacheManager(pool.promise());
@@ -901,8 +907,12 @@ manualReportProcessor.setDatabase(pool.promise());
 manualReportProcessor.setCacheManager(cacheManager);
 setSiteAlertsDb(pool.promise());
 
-// Set cache manager in app for routes to access
+// Set services in app for routes to access
+app.set('performanceMonitor', performanceMonitor);
 app.set('cacheManager', cacheManager);
+
+// Add performance monitoring middleware
+app.use('/api/manual-reports', performanceMonitor.createMiddleware());
 
 // Start the server
 const PORT = process.env.PORT || 5000;

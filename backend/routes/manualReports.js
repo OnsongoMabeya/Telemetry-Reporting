@@ -14,17 +14,30 @@ const logger = require('../utils/logger');
 const crypto = require('crypto');
 const manualReportProcessor = require('../services/manualReportProcessor');
 const ManualReportCacheManager = require('../services/manualReportCacheManager');
+const PerformanceMonitor = require('../services/performanceMonitor');
+const QueryOptimizer = require('../services/queryOptimizer');
 const db = require('../config/database');
 
 // Get database connection from app
 let db;
+let queryOptimizer;
 router.use((req, res, next) => {
   db = req.app.get('db');
-  if (!cacheManager) {
+  
+  // Initialize cache manager
+  if (!req.app.get('cacheManager')) {
     const cacheManager = new ManualReportCacheManager(db);
     cacheManager.scheduleMaintenance();
-    router.app.set('cacheManager', cacheManager);
+    req.app.set('cacheManager', cacheManager);
   }
+  
+  // Initialize query optimizer
+  if (!queryOptimizer) {
+    const performanceMonitor = req.app.get('performanceMonitor');
+    queryOptimizer = new QueryOptimizer(db, performanceMonitor);
+    req.app.set('queryOptimizer', queryOptimizer);
+  }
+  
   next();
 });
 
@@ -737,29 +750,29 @@ router.get('/history', async (req, res) => {
   try {
     const { page = 1, limit = 20, status } = req.query;
     const offset = (page - 1) * limit;
+    const queryOptimizer = req.app.get('queryOptimizer');
 
-    let whereClause = 'WHERE generated_by = ?';
-    const params = [req.user.id];
-
-    if (status) {
-      whereClause += ' AND status = ?';
-      params.push(status);
+    if (!queryOptimizer) {
+      return res.status(503).json({
+        error: 'Query optimizer not available'
+      });
     }
 
-    const [reports] = await db.query(
-      `SELECT id, report_type, target_ids, date_range_start, date_range_end,
-              status, generation_time_ms, pdf_size_bytes, delivery_method,
-              is_cached, created_at, updated_at
-       FROM manual_reports 
-       ${whereClause}
-       ORDER BY created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...params, parseInt(limit), offset]
-    );
+    const filters = {
+      userId: req.user.id,
+      status,
+      limit: parseInt(limit),
+      offset
+    };
 
-    const [totalCount] = await db.query(
-      `SELECT COUNT(*) as total FROM manual_reports ${whereClause}`,
-      params
+    const [reports] = await queryOptimizer.getManualReportsHistory(filters);
+
+    // Get total count with optimized query
+    const [totalCount] = await queryOptimizer.executeQuery(
+      'SELECT COUNT(*) as total FROM manual_reports WHERE generated_by = ?' + 
+      (status ? ' AND status = ?' : ''),
+      status ? [req.user.id, status] : [req.user.id],
+      { cache: true }
     );
 
     const processedReports = reports.map(report => {
@@ -1337,6 +1350,234 @@ router.post('/cache/clear', async (req, res) => {
     res.status(500).json({
       error: 'Failed to clear cache',
       message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/manual-reports/performance
+ * Get performance metrics and statistics
+ */
+router.get('/performance', async (req, res) => {
+  try {
+    const performanceMonitor = req.app.get('performanceMonitor');
+    const queryOptimizer = req.app.get('queryOptimizer');
+    
+    if (!performanceMonitor) {
+      return res.status(503).json({
+        error: 'Performance monitor not available'
+      });
+    }
+
+    const { type = null, timeRange = 60 } = req.query;
+    
+    const stats = await performanceMonitor.getPerformanceStats(type, parseInt(timeRange));
+    
+    // Add query optimizer stats
+    let queryStats = {};
+    if (queryOptimizer) {
+      queryStats = {
+        cacheStats: queryOptimizer.getCacheStats(),
+        cacheEnabled: true
+      };
+    }
+
+    res.json({
+      success: true,
+      performance: {
+        summary: stats.summary,
+        topSlowQueries: stats.topSlowQueries,
+        metrics: stats.metrics,
+        queryOptimizer: queryStats,
+        monitoring: {
+          isActive: performanceMonitor.isMonitoring,
+          slowQueryThreshold: performanceMonitor.slowQueryThreshold,
+          memoryThreshold: performanceMonitor.memoryThreshold
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('ManualReports', 'Performance stats fetch failed', {
+      userId: req.user.id,
+      error: error.message
+    });
+
+    res.status(500).json({
+      error: 'Failed to fetch performance statistics',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/manual-reports/performance/optimize
+ * Run database optimization tasks
+ */
+router.post('/performance/optimize', async (req, res) => {
+  try {
+    const queryOptimizer = req.app.get('queryOptimizer');
+    
+    if (!queryOptimizer) {
+      return res.status(503).json({
+        error: 'Query optimizer not available'
+      });
+    }
+
+    const { operation = 'all' } = req.body;
+    
+    let results = {};
+    
+    if (operation === 'all' || operation === 'optimize') {
+      results.optimize = await queryOptimizer.optimizeTables();
+    }
+    
+    if (operation === 'all' || operation === 'analyze') {
+      results.analyze = await queryOptimizer.analyzeTables();
+    }
+    
+    if (operation === 'all' || operation === 'cache') {
+      queryOptimizer.clearCache();
+      results.cache = { status: 'success', message: 'Query cache cleared' };
+    }
+
+    // Log optimization action
+    await logAuditAction({
+      action: 'performance_optimize',
+      userId: req.user.id,
+      status: 'success',
+      message: `Database optimization completed: ${operation}`,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+
+    res.json({
+      success: true,
+      message: 'Database optimization completed',
+      results,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    logger.error('ManualReports', 'Database optimization failed', {
+      userId: req.user.id,
+      error: error.message
+    });
+
+    res.status(500).json({
+      error: 'Failed to optimize database',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/manual-reports/performance/health
+ * Get system health metrics
+ */
+router.get('/performance/health', async (req, res) => {
+  try {
+    const performanceMonitor = req.app.get('performanceMonitor');
+    const queryOptimizer = req.app.get('queryOptimizer');
+    const cacheManager = req.app.get('cacheManager');
+    
+    const health = {
+      timestamp: new Date().toISOString(),
+      status: 'healthy',
+      components: {}
+    };
+
+    // Check performance monitor
+    if (performanceMonitor) {
+      health.components.performanceMonitor = {
+        status: 'active',
+        isMonitoring: performanceMonitor.isMonitoring
+      };
+    } else {
+      health.components.performanceMonitor = {
+        status: 'inactive',
+        message: 'Performance monitor not initialized'
+      };
+      health.status = 'degraded';
+    }
+
+    // Check query optimizer
+    if (queryOptimizer) {
+      const cacheStats = queryOptimizer.getCacheStats();
+      health.components.queryOptimizer = {
+        status: 'active',
+        cacheSize: cacheStats.size,
+        cacheMaxSize: cacheStats.maxSize
+      };
+    } else {
+      health.components.queryOptimizer = {
+        status: 'inactive',
+        message: 'Query optimizer not initialized'
+      };
+      health.status = 'degraded';
+    }
+
+    // Check cache manager
+    if (cacheManager) {
+      const cacheStats = await cacheManager.getCacheStatistics();
+      health.components.cacheManager = {
+        status: 'active',
+        totalEntries: cacheStats.statistics.total_entries || 0,
+        hitRate: Math.round(cacheStats.hitRate || 0)
+      };
+    } else {
+      health.components.cacheManager = {
+        status: 'inactive',
+        message: 'Cache manager not initialized'
+      };
+      health.status = 'degraded';
+    }
+
+    // Check memory usage
+    const memUsage = process.memoryUsage();
+    health.components.memory = {
+      status: 'active',
+      heapUsed: `${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`,
+      heapTotal: `${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`,
+      external: `${Math.round(memUsage.external / 1024 / 1024)}MB`,
+      rss: `${Math.round(memUsage.rss / 1024 / 1024)}MB`
+    };
+
+    // Check database connection
+    try {
+      await db.query('SELECT 1');
+      health.components.database = {
+        status: 'active',
+        message: 'Database connection successful'
+      };
+    } catch (error) {
+      health.components.database = {
+        status: 'error',
+        message: 'Database connection failed'
+      };
+      health.status = 'unhealthy';
+    }
+
+    const statusCode = health.status === 'healthy' ? 200 : 
+                       health.status === 'degraded' ? 206 : 503;
+
+    res.status(statusCode).json({
+      success: health.status !== 'unhealthy',
+      health
+    });
+
+  } catch (error) {
+    logger.error('ManualReports', 'Health check failed', {
+      error: error.message
+    });
+
+    res.status(500).json({
+      success: false,
+      health: {
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: error.message
+      }
     });
   }
 });
