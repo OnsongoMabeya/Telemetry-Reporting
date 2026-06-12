@@ -35,7 +35,8 @@ import {
   Step,
   StepLabel,
   RadioGroup,
-  Radio
+  Radio,
+  Checkbox
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -145,7 +146,8 @@ const Alerts = () => {
     dateRangeStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     dateRangeEnd: new Date().toISOString().split('T')[0],
     deliveryMethod: 'download',
-    recipients: []
+    recipients: [],
+    searchQuery: ''
   });
 
   // Form state
@@ -726,15 +728,57 @@ const Alerts = () => {
 
   const handleGenerateManualReport = async () => {
     try {
-      // Validate form data
+      // Enhanced form validation
       if (manualReportFormData.targetIds.length === 0) {
-        showSnackbar('Please select at least one target', 'error');
+        showSnackbar(`Please select at least one ${manualReportFormData.reportType}`, 'error');
+        setManualReportStep(2); // Go back to target selection step
+        return;
+      }
+
+      // Validate date range
+      const startDate = new Date(manualReportFormData.dateRangeStart);
+      const endDate = new Date(manualReportFormData.dateRangeEnd);
+      const daysDiff = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff > 90) {
+        showSnackbar('Date range cannot exceed 90 days', 'error');
+        setManualReportStep(3); // Go back to date range step
+        return;
+      }
+
+      if (startDate > endDate) {
+        showSnackbar('Start date must be before end date', 'error');
+        setManualReportStep(3); // Go back to date range step
+        return;
+      }
+
+      // Validate email recipients if email delivery is selected
+      if ((manualReportFormData.deliveryMethod === 'email' || manualReportFormData.deliveryMethod === 'both') && 
+          manualReportFormData.recipients.length === 0) {
+        showSnackbar('Please add at least one email recipient', 'error');
+        setManualReportStep(4); // Go back to delivery step
+        return;
+      }
+
+      // Validate that selected targets still exist
+      const availableTargets = manualReportFormData.reportType === 'service' ? services : clients;
+      const validTargetIds = manualReportFormData.targetIds.filter(id => 
+        availableTargets.some(target => (target.id || target) === id)
+      );
+
+      if (validTargetIds.length !== manualReportFormData.targetIds.length) {
+        showSnackbar('Some selected targets are no longer available. Please update your selection.', 'error');
+        setManualReportFormData({
+          ...manualReportFormData,
+          targetIds: validTargetIds
+        });
+        setManualReportStep(2); // Go back to target selection step
         return;
       }
 
       const response = await axios.post('/api/manual-reports/generate', {
         reportType: manualReportFormData.reportType,
-        targetIds: manualReportFormData.targetIds,
+        targetIds: validTargetIds,
         dateRangeStart: new Date(manualReportFormData.dateRangeStart).toISOString(),
         dateRangeEnd: new Date(manualReportFormData.dateRangeEnd).toISOString(),
         deliveryMethod: manualReportFormData.deliveryMethod,
@@ -744,6 +788,17 @@ const Alerts = () => {
       showSnackbar(response.data.message, 'success');
       setOpenManualReportDialog(false);
       setManualReportStep(1);
+      
+      // Reset form data for next use
+      setManualReportFormData({
+        reportType: 'service',
+        targetIds: [],
+        dateRangeStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dateRangeEnd: new Date().toISOString().split('T')[0],
+        deliveryMethod: 'download',
+        recipients: [],
+        searchQuery: ''
+      });
       
       // Start polling for progress
       const reportId = response.data.reportId;
@@ -769,7 +824,17 @@ const Alerts = () => {
 
       fetchManualReports();
     } catch (error) {
-      showSnackbar(error.response?.data?.message || 'Failed to generate report', 'error');
+      const errorMessage = error.response?.data?.message || 'Failed to generate report';
+      showSnackbar(errorMessage, 'error');
+      
+      // Handle specific validation errors
+      if (errorMessage.includes('rate limit')) {
+        showSnackbar('You have reached your daily limit. Please try again tomorrow.', 'error');
+      } else if (errorMessage.includes('target')) {
+        setManualReportStep(2);
+      } else if (errorMessage.includes('date')) {
+        setManualReportStep(3);
+      }
     }
   };
 
@@ -2155,7 +2220,7 @@ const Alerts = () => {
             </Box>
           )}
 
-          {/* Step 2: Target Selection */}
+          {/* Step 2: Enhanced Target Selection */}
           {manualReportStep === 2 && (
             <Box>
               <Typography variant="h6" gutterBottom>
@@ -2164,9 +2229,76 @@ const Alerts = () => {
               <Typography color="text.secondary" sx={{ mb: 2 }}>
                 Choose the {manualReportFormData.reportType === 'service' ? 'services' : 'clients'} to include in the report
               </Typography>
+
+              {/* Search and Filter Controls */}
+              <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+                <TextField
+                  size="small"
+                  placeholder={`Search ${manualReportFormData.reportType === 'service' ? 'services' : 'clients'}...`}
+                  value={manualReportFormData.searchQuery || ''}
+                  onChange={(e) => setManualReportFormData({ 
+                    ...manualReportFormData, 
+                    searchQuery: e.target.value 
+                  })}
+                  sx={{ flexGrow: 1 }}
+                  InputProps={{
+                    startAdornment: <AssessmentIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    const allTargets = manualReportFormData.reportType === 'service' ? services : clients;
+                    setManualReportFormData({
+                      ...manualReportFormData,
+                      targetIds: allTargets.map(item => item.id || item)
+                    });
+                  }}
+                >
+                  Select All
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setManualReportFormData({
+                      ...manualReportFormData,
+                      targetIds: []
+                    });
+                  }}
+                >
+                  Clear All
+                </Button>
+              </Box>
+
+              {/* Selection Summary */}
+              <Box sx={{ mb: 2, p: 2, backgroundColor: isDark ? 'rgba(0,153,255,0.05)' : '#f8f9fa', borderRadius: 1 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Selected: {manualReportFormData.targetIds.length} of {(manualReportFormData.reportType === 'service' ? services : clients).length} {manualReportFormData.reportType === 'service' ? 'services' : 'clients'}
+                </Typography>
+                {manualReportFormData.targetIds.length > 0 && (
+                  <Typography variant="caption" color="primary" sx={{ mt: 0.5, display: 'block' }}>
+                    {manualReportFormData.targetIds.length > 10 ? 
+                      `${manualReportFormData.targetIds.length} targets selected` :
+                      (manualReportFormData.reportType === 'service' ? services : clients)
+                        .filter(item => manualReportFormData.targetIds.includes(item.id || item))
+                        .map(item => item.name || item)
+                        .join(', ')
+                    }
+                  </Typography>
+                )}
+              </Box>
+
+              {/* Enhanced Autocomplete with Filtering */}
               <Autocomplete
                 multiple
-                options={manualReportFormData.reportType === 'service' ? services : clients}
+                options={(manualReportFormData.reportType === 'service' ? services : clients).filter(item => {
+                  const searchQuery = manualReportFormData.searchQuery || '';
+                  const itemName = (item.name || '').toLowerCase();
+                  const searchLower = searchQuery.toLowerCase();
+                  return itemName.includes(searchLower);
+                })}
                 getOptionLabel={(option) => option.name || option}
                 value={(manualReportFormData.reportType === 'service' ? services : clients).filter(item => 
                   manualReportFormData.targetIds.includes(item.id || item)
@@ -2183,7 +2315,42 @@ const Alerts = () => {
                     label={`Select ${manualReportFormData.reportType === 'service' ? 'Services' : 'Clients'}`}
                     placeholder="Choose targets..."
                     fullWidth
+                    helperText={`Start typing to search ${manualReportFormData.reportType === 'service' ? 'services' : 'clients'}`}
                   />
+                )}
+                renderOption={(props, option, { selected }) => (
+                  <li {...props} key={option.id || option}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                      <Checkbox
+                        checked={selected}
+                        size="small"
+                        sx={{ mr: 1 }}
+                      />
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="body2">
+                          {option.name || option}
+                        </Typography>
+                        {manualReportFormData.reportType === 'service' && option.client_name && (
+                          <Typography variant="caption" color="text.secondary">
+                            Client: {option.client_name}
+                          </Typography>
+                        )}
+                        {manualReportFormData.reportType === 'client' && option.service_count !== undefined && (
+                          <Typography variant="caption" color="text.secondary">
+                            {option.service_count} service{option.service_count !== 1 ? 's' : ''}
+                          </Typography>
+                        )}
+                      </Box>
+                      {selected && (
+                        <Chip 
+                          size="small" 
+                          label="Selected" 
+                          color="primary" 
+                          variant="outlined"
+                        />
+                      )}
+                    </Box>
+                  </li>
                 )}
                 renderTags={(value, getTagProps) =>
                   value.map((option, index) => {
@@ -2195,12 +2362,92 @@ const Alerts = () => {
                         label={option.name || option} 
                         size="small" 
                         color="primary" 
+                        onDelete={() => {
+                          const newTargetIds = manualReportFormData.targetIds.filter(id => 
+                            id !== (option.id || option)
+                          );
+                          setManualReportFormData({ 
+                            ...manualReportFormData, 
+                            targetIds: newTargetIds 
+                          });
+                        }}
                         {...tagProps} 
                       />
                     );
                   })
                 }
+                limitTags={5}
+                noOptionsText={
+                  manualReportFormData.searchQuery ? 
+                    `No ${manualReportFormData.reportType === 'service' ? 'services' : 'clients'} found matching "${manualReportFormData.searchQuery}"` :
+                    `No ${manualReportFormData.reportType === 'service' ? 'services' : 'clients'} available`
+                }
               />
+
+              {/* Quick Selection Groups */}
+              {manualReportFormData.reportType === 'client' && clients.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Quick Selection by Client Type
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {[
+                      { label: 'Active Clients', filter: (c) => c.is_active || c.isActive },
+                      { label: 'Inactive Clients', filter: (c) => !(c.is_active || c.isActive) }
+                    ].map((group) => {
+                      const filteredClients = clients.filter(group.filter);
+                      return (
+                        <Button
+                          key={group.label}
+                          variant="outlined"
+                          size="small"
+                          onClick={() => {
+                            const filteredIds = filteredClients.map(c => c.id || c);
+                            setManualReportFormData({
+                              ...manualReportFormData,
+                              targetIds: [...new Set([...manualReportFormData.targetIds, ...filteredIds])]
+                            });
+                          }}
+                          disabled={filteredClients.length === 0}
+                        >
+                          {group.label} ({filteredClients.length})
+                        </Button>
+                      );
+                    })}
+                  </Box>
+                </Box>
+              )}
+
+              {manualReportFormData.reportType === 'service' && services.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Quick Selection by Client
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {Array.from(new Set(services.map(s => s.client_name).filter(Boolean)))
+                      .sort()
+                      .map((clientName) => {
+                        const clientServices = services.filter(s => s.client_name === clientName);
+                        return (
+                          <Button
+                            key={clientName}
+                            variant="outlined"
+                            size="small"
+                            onClick={() => {
+                              const serviceIds = clientServices.map(s => s.id || s);
+                              setManualReportFormData({
+                                ...manualReportFormData,
+                                targetIds: [...new Set([...manualReportFormData.targetIds, ...serviceIds])]
+                              });
+                            }}
+                          >
+                            {clientName} ({clientServices.length})
+                          </Button>
+                        );
+                      })}
+                  </Box>
+                </Box>
+              )}
             </Box>
           )}
 
