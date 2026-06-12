@@ -13,11 +13,18 @@ const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const logger = require('../utils/logger');
 const crypto = require('crypto');
 const manualReportProcessor = require('../services/manualReportProcessor');
+const ManualReportCacheManager = require('../services/manualReportCacheManager');
+const db = require('../config/database');
 
 // Get database connection from app
 let db;
 router.use((req, res, next) => {
   db = req.app.get('db');
+  if (!cacheManager) {
+    const cacheManager = new ManualReportCacheManager(db);
+    cacheManager.scheduleMaintenance();
+    router.app.set('cacheManager', cacheManager);
+  }
   next();
 });
 
@@ -308,141 +315,135 @@ router.post('/generate', async (req, res) => {
     // Update rate limit counter
     await updateRateLimit(req.user.id);
 
-    // Generate cache key
-    const cacheKey = generateCacheKey(reportType, targetIds, startDate, endDate);
+    // Check cache for existing report
+    const cacheManager = req.app.get('cacheManager');
+    if (!cacheManager) {
+      logger.error('ManualReports', 'Cache manager not available');
+    } else {
+      const cachedReport = await cacheManager.getCachedReport(
+        reportType, 
+        targetIds, 
+        dateRangeStart, 
+        dateRangeEnd
+      );
 
-    // Update cache statistics
-    await updateCacheStats(cacheKey, {
+      if (cachedReport) {
+        // Cache hit - return cached report
+        const reportId = await createReportRecord({
+          reportType,
+          targetIds,
+          dateRangeStart: startDate,
+          dateRangeEnd: endDate,
+          deliveryMethod,
+          recipients,
+          generatedBy: req.user.id,
+          status: 'completed',
+          pdfSizeBytes: cachedReport.metadata.fileSize,
+          completedAt: new Date(),
+          processingTimeMs: 0, // Instant from cache
+          isFromCache: true
+        });
+
+        // Log cache hit
+        await logAuditAction({
+          action: 'cache_hit',
+          userId: req.user.id,
+          reportId,
+          reportType,
+          targetIds,
+          dateRangeStart: startDate,
+          dateRangeEnd: endDate,
+          status: 'completed',
+          message: `Report served from cache (size: ${cachedReport.metadata.fileSize} bytes)`,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+
+        // Handle delivery methods for cached report
+        if (deliveryMethod === 'email' || deliveryMethod === 'both') {
+          await handleEmailDelivery(reportId, cachedReport.data, {
+            reportType,
+            targetIds,
+            dateRangeStart: startDate,
+            dateRangeEnd: endDate,
+            recipients
+          });
+        }
+
+        logger.info('ManualReports', 'Cache hit - report served from cache', {
+          reportId,
+          cacheKey: cacheManager.generateCacheKey(reportType, targetIds, startDate, endDate),
+          userId: req.user.id
+        });
+
+        return res.json({
+          success: true,
+          message: 'Report generated successfully (from cache)',
+          reportId,
+          fromCache: true,
+          processingTime: 0,
+          fileSize: cachedReport.metadata.fileSize
+        });
+      }
+    }
+
+    // Create new report entry (cache miss - generate new report)
+    const [result] = await db.query(
+      `INSERT INTO manual_reports 
+       (report_type, target_ids, date_range_start, date_range_end, generated_by,
+        status, delivery_method, recipients)
+       VALUES (?, ?, ?, ?, ?, 'generating', ?, ?)`,
+      [
+        reportType,
+        JSON.stringify(targetIds),
+        startDate,
+        endDate,
+        req.user.id,
+        deliveryMethod,
+        JSON.stringify(recipients)
+      ]
+    );
+    
+    const reportId = result.insertId;
+    const isFromCache = false;
+
+    // Log generation start
+    await logAuditAction({
+      reportId,
+      action: 'generate',
+      userId: req.user.id,
       reportType,
       targetIds,
       dateRangeStart: startDate,
-      dateRangeEnd: endDate
+      dateRangeEnd: endDate,
+      status: 'pending',
+      message: 'Report generation started',
+      deliveryMethod,
+      recipientsCount: recipients.length,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent')
     });
 
-    // Check if report is cached
-    const [cachedReport] = await db.query(
-      `SELECT file_path, pdf_size_bytes FROM manual_reports_cache_stats 
-       WHERE cache_key = ? AND is_cached = TRUE AND expires_at > NOW()`,
-      [cacheKey]
-    );
+    logger.info('ManualReports', 'Report generation started', {
+      userId: req.user.id,
+      reportId,
+      reportType,
+      targetCount: targetIds.length,
+      dateRange: `${dateRangeStart} to ${dateRangeEnd}`,
+      deliveryMethod
+    });
 
-    let reportId;
-    let isFromCache = false;
-
-    if (cachedReport.length > 0) {
-      // Create report entry for cached report
-      const [result] = await db.query(
-        `INSERT INTO manual_reports 
-         (report_type, target_ids, date_range_start, date_range_end, generated_by,
-          status, delivery_method, recipients, cache_key, is_cached, 
-          pdf_size_bytes, file_path, expires_at)
-         VALUES (?, ?, ?, ?, ?, 'completed', ?, ?, ?, TRUE, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
-        [
-          reportType,
-          JSON.stringify(targetIds),
-          startDate,
-          endDate,
-          req.user.id,
-          deliveryMethod,
-          JSON.stringify(recipients),
-          cacheKey,
-          cachedReport[0].pdf_size_bytes,
-          cachedReport[0].file_path
-        ]
-      );
-      
-      reportId = result.insertId;
-      isFromCache = true;
-
-      // Log cache hit
-      await logAuditAction({
-        reportId,
-        cacheKey,
-        action: 'cache_hit',
-        userId: req.user.id,
-        reportType,
-        targetIds,
-        dateRangeStart: startDate,
-        dateRangeEnd: endDate,
-        status: 'success',
-        message: 'Report served from cache',
-        deliveryMethod,
-        recipientsCount: recipients.length,
-        pdfSizeBytes: cachedReport[0].pdf_size_bytes,
-        executionTimeMs: Date.now() - startTime,
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-
-      logger.info('ManualReports', 'Report served from cache', {
-        userId: req.user.id,
-        reportId,
-        cacheKey,
-        executionTime: Date.now() - startTime
-      });
-
-    } else {
-      // Create new report entry
-      const [result] = await db.query(
-        `INSERT INTO manual_reports 
-         (report_type, target_ids, date_range_start, date_range_end, generated_by,
-          status, delivery_method, recipients, cache_key, expires_at)
-         VALUES (?, ?, ?, ?, ?, 'generating', ?, ?, ?, DATE_ADD(NOW(), INTERVAL 24 HOUR))`,
-        [
-          reportType,
-          JSON.stringify(targetIds),
-          startDate,
-          endDate,
-          req.user.id,
-          deliveryMethod,
-          JSON.stringify(recipients),
-          cacheKey
-        ]
-      );
-      
-      reportId = result.insertId;
-
-      // Log generation start
-      await logAuditAction({
-        reportId,
-        cacheKey,
-        action: 'generate',
-        userId: req.user.id,
-        reportType,
-        targetIds,
-        dateRangeStart: startDate,
-        dateRangeEnd: endDate,
-        status: 'pending',
-        message: 'Report generation started',
-        deliveryMethod,
-        recipientsCount: recipients.length,
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-
-      logger.info('ManualReports', 'Report generation started', {
-        userId: req.user.id,
-        reportId,
-        reportType,
-        targetCount: targetIds.length,
-        dateRange: `${dateRangeStart} to ${dateRangeEnd}`,
-        deliveryMethod
-      });
-
-      // Start background report generation process
-      manualReportProcessor.setDatabase(db);
-      manualReportProcessor.startProcessing(reportId);
-    }
+    // Start background report generation process
+    manualReportProcessor.setDatabase(db);
+    manualReportProcessor.startProcessing(reportId);
 
     res.status(201).json({
       success: true,
       reportId,
-      status: isFromCache ? 'completed' : 'generating',
+      status: 'generating',
       isFromCache,
-      message: isFromCache ? 
-        'Report generated successfully from cache' : 
-        'Report generation started',
-      estimatedTime: isFromCache ? 0 : 30000 // 30 seconds estimate
+      message: 'Report generation started',
+      estimatedTime: 30000 // 30 seconds estimate
     });
 
   } catch (error) {
@@ -1217,5 +1218,127 @@ function formatDuration(ms) {
   const remainingSeconds = seconds % 60;
   return `${minutes}m ${remainingSeconds}s`;
 }
+
+/**
+ * GET /api/manual-reports/cache-stats
+ * Get cache statistics and performance metrics
+ */
+router.get('/cache-stats', async (req, res) => {
+  try {
+    const cacheManager = req.app.get('cacheManager');
+    if (!cacheManager) {
+      return res.status(503).json({
+        error: 'Cache manager not available'
+      });
+    }
+
+    const stats = await cacheManager.getCacheStatistics();
+    
+    res.json({
+      success: true,
+      cacheStatistics: {
+        totalEntries: stats.statistics.total_entries || 0,
+        totalSizeBytes: stats.statistics.total_size || 0,
+        totalSizeHuman: formatFileSize(stats.statistics.total_size || 0),
+        totalAccesses: stats.statistics.total_accesses || 0,
+        avgAccessCount: stats.statistics.avg_accesses || 0,
+        hitRate: stats.hitRate || 0,
+        oldestEntry: stats.statistics.oldest_entry,
+        mostRecentAccess: stats.statistics.most_recent_access,
+        lastUpdated: stats.statistics.updated_at
+      },
+      topEntries: stats.topEntries.map(entry => ({
+        cacheKey: entry.cache_key,
+        reportType: entry.report_type,
+        accessCount: entry.access_count,
+        fileSize: entry.file_size,
+        fileSizeHuman: formatFileSize(entry.file_size),
+        lastAccessed: entry.last_accessed,
+        createdAt: entry.created_at
+      })),
+      performance: {
+        hitRatePercentage: Math.round(stats.hitRate || 0),
+        cacheEfficiency: stats.hitRate > 50 ? 'excellent' : stats.hitRate > 25 ? 'good' : 'needs_improvement'
+      }
+    });
+
+  } catch (error) {
+    logger.error('ManualReports', 'Cache stats fetch failed', {
+      userId: req.user.id,
+      error: error.message
+    });
+
+    res.status(500).json({
+      error: 'Failed to fetch cache statistics',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/manual-reports/cache/clear
+ * Clear cache entries (admin only)
+ */
+router.post('/cache/clear', async (req, res) => {
+  try {
+    const { targetIds, reportType, dateRangeStart, dateRangeEnd } = req.body;
+    const cacheManager = req.app.get('cacheManager');
+    
+    if (!cacheManager) {
+      return res.status(503).json({
+        error: 'Cache manager not available'
+      });
+    }
+
+    let clearedCount = 0;
+
+    if (targetIds && reportType && dateRangeStart && dateRangeEnd) {
+      // Clear specific cache entry
+      const success = await cacheManager.invalidateCache(
+        reportType,
+        targetIds,
+        dateRangeStart,
+        dateRangeEnd
+      );
+      clearedCount = success ? 1 : 0;
+    } else {
+      // Clear all expired cache entries
+      await cacheManager.cleanupExpiredCache();
+      await cacheManager.cleanupBySize();
+      clearedCount = 'all_expired';
+    }
+
+    // Log cache clear action
+    await logAuditAction({
+      action: 'cache_clear',
+      userId: req.user.id,
+      reportType,
+      targetIds,
+      dateRangeStart: dateRangeStart ? new Date(dateRangeStart) : null,
+      dateRangeEnd: dateRangeEnd ? new Date(dateRangeEnd) : null,
+      status: 'success',
+      message: `Cache cleared: ${clearedCount} entries`,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+
+    res.json({
+      success: true,
+      message: `Cache cleared successfully (${clearedCount} entries)`,
+      clearedCount
+    });
+
+  } catch (error) {
+    logger.error('ManualReports', 'Cache clear failed', {
+      userId: req.user.id,
+      error: error.message
+    });
+
+    res.status(500).json({
+      error: 'Failed to clear cache',
+      message: error.message
+    });
+  }
+});
 
 module.exports = router;

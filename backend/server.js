@@ -889,10 +889,20 @@ app.get('/api/basestations-map', authenticateToken, async (req, res) => {
 const scheduler = require('./services/scheduler');
 const reportDataService = require('./services/reportDataService');
 const manualReportProcessor = require('./services/manualReportProcessor');
+const ManualReportCacheManager = require('./services/manualReportCacheManager');
+
+// Initialize cache manager
+const cacheManager = new ManualReportCacheManager(pool.promise());
+cacheManager.scheduleMaintenance();
+
 scheduler.setDatabase(pool.promise());
 reportDataService.setDatabase(pool.promise());
 manualReportProcessor.setDatabase(pool.promise());
+manualReportProcessor.setCacheManager(cacheManager);
 setSiteAlertsDb(pool.promise());
+
+// Set cache manager in app for routes to access
+app.set('cacheManager', cacheManager);
 
 // Start the server
 const PORT = process.env.PORT || 5000;

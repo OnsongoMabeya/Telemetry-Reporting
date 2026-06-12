@@ -17,6 +17,15 @@ class ManualReportProcessor {
     this.processingQueue = [];
     this.activeJobs = new Map(); // reportId -> job info
     this.db = null;
+    this.cacheManager = null;
+  }
+
+  /**
+   * Set cache manager
+   * @param {Object} cacheManager - Manual report cache manager instance
+   */
+  setCacheManager(cacheManager) {
+    this.cacheManager = cacheManager;
   }
 
   /**
@@ -622,6 +631,57 @@ class ManualReportProcessor {
          WHERE id = ?`,
         [generationTime, fileSize, filePath, reportId]
       );
+
+      // Get report details for caching
+      const [reportData] = await this.db.query(
+        `SELECT report_type, target_ids, date_range_start, date_range_end 
+         FROM manual_reports WHERE id = ?`,
+        [reportId]
+      );
+
+      if (reportData.length > 0 && this.cacheManager) {
+        const report = reportData[0];
+        
+        // Check if this report should be cached
+        const shouldCache = await this.cacheManager.shouldCacheReport(
+          report.report_type,
+          JSON.parse(report.target_ids),
+          report.date_range_start,
+          report.date_range_end
+        );
+
+        if (shouldCache) {
+          try {
+            // Read the generated PDF file
+            const pdfData = await fs.readFile(filePath);
+            
+            // Cache the report
+            const cacheSuccess = await this.cacheManager.cacheReport(reportId, pdfData, {
+              reportType: report.report_type,
+              targetIds: JSON.parse(report.target_ids),
+              dateRangeStart: report.date_range_start,
+              dateRangeEnd: report.date_range_end
+            });
+
+            if (cacheSuccess) {
+              logger.info('ManualReportProcessor', 'Report cached successfully', {
+                reportId,
+                cacheKey: this.cacheManager.generateCacheKey(
+                  report.report_type,
+                  JSON.parse(report.target_ids),
+                  report.date_range_start,
+                  report.date_range_end
+                )
+              });
+            }
+          } catch (cacheError) {
+            logger.warn('ManualReportProcessor', 'Failed to cache report', {
+              reportId,
+              error: cacheError.message
+            });
+          }
+        }
+      }
 
       logger.info('ManualReportProcessor', 'Report marked as completed', {
         reportId,
