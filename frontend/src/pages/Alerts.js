@@ -30,7 +30,12 @@ import {
   Alert,
   Snackbar,
   Tooltip,
-  CircularProgress
+  CircularProgress,
+  Stepper,
+  Step,
+  StepLabel,
+  RadioGroup,
+  Radio
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -45,7 +50,11 @@ import {
   People as PeopleIcon,
   NotificationsActive as NotificationsActiveIcon,
   WifiOff as WifiOffIcon,
-  Power as PowerIcon
+  Power as PowerIcon,
+  Description as DescriptionIcon,
+  Download as DownloadIcon,
+  Send as SendIcon,
+  Cancel as CancelIcon
 } from '@mui/icons-material';
 import axios from '../services/axiosInterceptor';
 import { useAuth } from '../context/AuthContext';
@@ -123,6 +132,22 @@ const Alerts = () => {
     is_active: true
   });
 
+  // Manual Reports state
+  const [manualReports, setManualReports] = useState([]);
+  const [manualReportStats, setManualReportStats] = useState(null);
+  const [openManualReportDialog, setOpenManualReportDialog] = useState(false);
+  const [manualReportStep, setManualReportStep] = useState(1);
+  const [processingReports, setProcessingReports] = useState(new Map());
+  const [manualReportEmailInputValue, setManualReportEmailInputValue] = useState('');
+  const [manualReportFormData, setManualReportFormData] = useState({
+    reportType: 'service',
+    targetIds: [],
+    dateRangeStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    dateRangeEnd: new Date().toISOString().split('T')[0],
+    deliveryMethod: 'download',
+    recipients: []
+  });
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -153,6 +178,8 @@ const Alerts = () => {
     fetchPowerDropAlerts();
     fetchMetricMappings();
     fetchNodes();
+    fetchManualReports();
+    fetchManualReportStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -250,6 +277,26 @@ const Alerts = () => {
     } catch (error) {
       console.error('Failed to fetch nodes:', error);
       setNodes([]);
+    }
+  };
+
+  const fetchManualReports = async () => {
+    try {
+      const response = await axios.get('/api/manual-reports/history');
+      setManualReports(response.data.reports || []);
+    } catch (error) {
+      console.error('Failed to fetch manual reports:', error);
+      setManualReports([]);
+    }
+  };
+
+  const fetchManualReportStats = async () => {
+    try {
+      const response = await axios.get('/api/manual-reports/stats');
+      setManualReportStats(response.data.statistics);
+    } catch (error) {
+      console.error('Failed to fetch manual report stats:', error);
+      setManualReportStats(null);
     }
   };
 
@@ -635,6 +682,97 @@ const Alerts = () => {
     return <Chip size="small" label="Active" color="success" />;
   };
 
+  // Manual Reports handler functions
+  const handleCancelManualReport = async (reportId) => {
+    try {
+      await axios.post(`/api/manual-reports/cancel/${reportId}`);
+      showSnackbar('Report generation cancelled', 'success');
+      fetchManualReports();
+    } catch (error) {
+      showSnackbar('Failed to cancel report', 'error');
+    }
+  };
+
+  const handleDownloadManualReport = async (reportId) => {
+    try {
+      const response = await axios.get(`/api/manual-reports/download/${reportId}`);
+      // Create download link
+      const link = document.createElement('a');
+      link.href = response.data.downloadUrl;
+      link.download = response.data.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showSnackbar('Report downloaded successfully', 'success');
+    } catch (error) {
+      showSnackbar('Failed to download report', 'error');
+    }
+  };
+
+  const handleEmailManualReport = async (reportId) => {
+    try {
+      const recipients = prompt('Enter email addresses (comma-separated):');
+      if (recipients) {
+        const emailArray = recipients.split(',').map(email => email.trim()).filter(email => email);
+        await axios.post(`/api/manual-reports/send-email/${reportId}`, {
+          recipients: emailArray
+        });
+        showSnackbar('Report sent via email', 'success');
+      }
+    } catch (error) {
+      showSnackbar('Failed to send report via email', 'error');
+    }
+  };
+
+  const handleGenerateManualReport = async () => {
+    try {
+      // Validate form data
+      if (manualReportFormData.targetIds.length === 0) {
+        showSnackbar('Please select at least one target', 'error');
+        return;
+      }
+
+      const response = await axios.post('/api/manual-reports/generate', {
+        reportType: manualReportFormData.reportType,
+        targetIds: manualReportFormData.targetIds,
+        dateRangeStart: new Date(manualReportFormData.dateRangeStart).toISOString(),
+        dateRangeEnd: new Date(manualReportFormData.dateRangeEnd).toISOString(),
+        deliveryMethod: manualReportFormData.deliveryMethod,
+        recipients: manualReportFormData.recipients
+      });
+
+      showSnackbar(response.data.message, 'success');
+      setOpenManualReportDialog(false);
+      setManualReportStep(1);
+      
+      // Start polling for progress
+      const reportId = response.data.reportId;
+      const progressInterval = setInterval(async () => {
+        try {
+          const statusResponse = await axios.get(`/api/manual-reports/status/${reportId}`);
+          const progress = statusResponse.data.progress;
+          
+          setProcessingReports(prev => new Map(prev.set(reportId, {
+            progress,
+            status: statusResponse.data.processorStatus
+          })));
+
+          if (progress === 100 || statusResponse.data.status === 'failed' || statusResponse.data.status === 'completed') {
+            clearInterval(progressInterval);
+            fetchManualReports();
+            fetchManualReportStats();
+          }
+        } catch (error) {
+          clearInterval(progressInterval);
+        }
+      }, 2000);
+
+      fetchManualReports();
+    } catch (error) {
+      showSnackbar(error.response?.data?.message || 'Failed to generate report', 'error');
+    }
+  };
+
   return (
     <Box>
       <Typography variant="h4" sx={{ mb: 3, fontWeight: 600 }}>
@@ -655,6 +793,7 @@ const Alerts = () => {
           <Tab icon={<ScheduleIcon />} iconPosition="start" label="Scheduled Reports" />
           <Tab icon={<WifiOffIcon />} iconPosition="start" label="Offline Alerts" />
           <Tab icon={<PowerIcon />} iconPosition="start" label="Power Drops" />
+          <Tab icon={<DescriptionIcon />} iconPosition="start" label="Manual Reports" />
           <Tab icon={<EmailIcon />} iconPosition="start" label="Email Test" />
         </Tabs>
 
@@ -1017,6 +1156,197 @@ const Alerts = () => {
           )}
 
           {activeTab === 3 && (
+            <>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, alignItems: 'center' }}>
+                <Typography variant="h6">
+                  Manual Reports ({manualReports.length})
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<AssessmentIcon />}
+                    onClick={fetchManualReportStats}
+                  >
+                    Refresh Stats
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={() => setOpenManualReportDialog(true)}
+                    sx={{
+                      background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.dark} 100%)`,
+                    }}
+                  >
+                    Generate Report
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* Statistics Cards */}
+              {manualReportStats && (
+                <Grid container spacing={3} sx={{ mb: 3 }}>
+                  <Grid item xs={12} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center', background: isDark ? 'rgba(0,153,255,0.1)' : BSI_COLORS.light }}>
+                      <Typography variant="h4" color={BSI_COLORS.primary}>
+                        {manualReportStats.reports.total}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Total Reports
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center', background: isDark ? 'rgba(76,175,80,0.1)' : 'rgba(76,175,80,0.1)' }}>
+                      <Typography variant="h4" color="#4caf50">
+                        {manualReportStats.reports.successful}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Successful
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center', background: isDark ? 'rgba(255,152,0,0.1)' : 'rgba(255,152,0,0.1)' }}>
+                      <Typography variant="h4" color="#ff9800">
+                        {manualReportStats.rateLimits.dailyUsed}/{manualReportStats.rateLimits.dailyLimit}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Daily Used
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Paper sx={{ p: 2, textAlign: 'center', background: isDark ? 'rgba(156,39,176,0.1)' : 'rgba(156,39,176,0.1)' }}>
+                      <Typography variant="h4" color="#9c27b0">
+                        {Math.round(manualReportStats.reports.avgGenerationTime / 1000)}s
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Avg Time
+                      </Typography>
+                    </Paper>
+                  </Grid>
+                </Grid>
+              )}
+
+              {/* Reports Table */}
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ backgroundColor: isDark ? 'rgba(0,153,255,0.15)' : BSI_COLORS.light }}>
+                      <TableCell><strong>ID</strong></TableCell>
+                      <TableCell><strong>Type</strong></TableCell>
+                      <TableCell><strong>Targets</strong></TableCell>
+                      <TableCell><strong>Date Range</strong></TableCell>
+                      <TableCell><strong>Status</strong></TableCell>
+                      <TableCell><strong>Progress</strong></TableCell>
+                      <TableCell><strong>Created</strong></TableCell>
+                      <TableCell align="center"><strong>Actions</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {manualReports.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                          <Typography color="text.secondary">
+                            No manual reports generated yet. Click "Generate Report" to create your first report.
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      manualReports.map((report) => (
+                        <TableRow key={report.id} hover>
+                          <TableCell>#{report.id}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              size="small" 
+                              label={report.report_type === 'service' ? 'Service' : 'Client'}
+                              color={report.report_type === 'service' ? 'primary' : 'secondary'}
+                            />
+                          </TableCell>
+                          <TableCell>{report.targetCount} targets</TableCell>
+                          <TableCell>
+                            <Typography variant="caption" display="block">
+                              {new Date(report.date_range_start).toLocaleDateString()}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              to {new Date(report.date_range_end).toLocaleDateString()}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              size="small"
+                              label={report.status}
+                              color={
+                                report.status === 'completed' ? 'success' :
+                                report.status === 'generating' ? 'warning' :
+                                report.status === 'failed' ? 'error' : 'default'
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {report.status === 'generating' ? (
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CircularProgress size={16} />
+                                <Typography variant="caption">
+                                  {processingReports.get(report.id)?.progress || 0}%
+                                </Typography>
+                              </Box>
+                            ) : (
+                              <Typography variant="caption" color="text.secondary">
+                                {report.status === 'completed' ? '100%' : '-'}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="caption">
+                              {new Date(report.created_at).toLocaleString()}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center">
+                            {report.status === 'generating' && (
+                              <Tooltip title="Cancel">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleCancelManualReport(report.id)}
+                                  color="error"
+                                >
+                                  <CancelIcon />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {report.status === 'completed' && (
+                              <>
+                                <Tooltip title="Download">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleDownloadManualReport(report.id)}
+                                    color="primary"
+                                  >
+                                    <DownloadIcon />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Send Email">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => handleEmailManualReport(report.id)}
+                                    color="secondary"
+                                  >
+                                    <SendIcon />
+                                  </IconButton>
+                                </Tooltip>
+                              </>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          )}
+
+          {activeTab === 4 && (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <EmailIcon sx={{ fontSize: 64, color: BSI_COLORS.primary, mb: 2 }} />
               <Typography variant="h6" gutterBottom>
@@ -1748,6 +2078,317 @@ const Alerts = () => {
             sx={{ background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.primaryDark} 100%)`, fontWeight: 600 }}
           >
             {editingPowerDropAlert ? 'Update' : 'Create'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Manual Report Dialog */}
+      <Dialog 
+        open={openManualReportDialog} 
+        onClose={() => {
+          setOpenManualReportDialog(false);
+          setManualReportStep(1);
+        }} 
+        maxWidth="md" 
+        fullWidth
+      >
+        <DialogTitle sx={{ 
+          background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.primaryDark} 100%)`,
+          color: 'white',
+          py: 2
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <DescriptionIcon />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Generate Manual Report
+            </Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 3 }}>
+          {/* Step Indicator */}
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
+            <Stepper activeStep={manualReportStep - 1} alternativeLabel>
+              <Step>
+                <StepLabel>Report Type</StepLabel>
+              </Step>
+              <Step>
+                <StepLabel>Target Selection</StepLabel>
+              </Step>
+              <Step>
+                <StepLabel>Date Range</StepLabel>
+              </Step>
+              <Step>
+                <StepLabel>Delivery</StepLabel>
+              </Step>
+              <Step>
+                <StepLabel>Generate</StepLabel>
+              </Step>
+            </Stepper>
+          </Box>
+
+          {/* Step 1: Report Type */}
+          {manualReportStep === 1 && (
+            <Box sx={{ textAlign: 'center', py: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Select Report Type
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 3 }}>
+                Choose whether to generate a service-level or client-level report
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
+                <Button
+                  variant={manualReportFormData.reportType === 'service' ? 'contained' : 'outlined'}
+                  onClick={() => setManualReportFormData({ ...manualReportFormData, reportType: 'service' })}
+                  sx={{ minWidth: 150 }}
+                >
+                  Service Report
+                </Button>
+                <Button
+                  variant={manualReportFormData.reportType === 'client' ? 'contained' : 'outlined'}
+                  onClick={() => setManualReportFormData({ ...manualReportFormData, reportType: 'client' })}
+                  sx={{ minWidth: 150 }}
+                >
+                  Client Report
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {/* Step 2: Target Selection */}
+          {manualReportStep === 2 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Select {manualReportFormData.reportType === 'service' ? 'Services' : 'Clients'}
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                Choose the {manualReportFormData.reportType === 'service' ? 'services' : 'clients'} to include in the report
+              </Typography>
+              <Autocomplete
+                multiple
+                options={manualReportFormData.reportType === 'service' ? services : clients}
+                getOptionLabel={(option) => option.name || option}
+                value={(manualReportFormData.reportType === 'service' ? services : clients).filter(item => 
+                  manualReportFormData.targetIds.includes(item.id || item)
+                )}
+                onChange={(e, newValue) => {
+                  setManualReportFormData({ 
+                    ...manualReportFormData, 
+                    targetIds: newValue.map(item => item.id || item) 
+                  });
+                }}
+                renderInput={(params) => (
+                  <TextField 
+                    {...params} 
+                    label={`Select ${manualReportFormData.reportType === 'service' ? 'Services' : 'Clients'}`}
+                    placeholder="Choose targets..."
+                    fullWidth
+                  />
+                )}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => {
+                    const { key, ...tagProps } = getTagProps({ index });
+                    return (
+                      <Chip 
+                        key={key} 
+                        variant="outlined" 
+                        label={option.name || option} 
+                        size="small" 
+                        color="primary" 
+                        {...tagProps} 
+                      />
+                    );
+                  })
+                }
+              />
+            </Box>
+          )}
+
+          {/* Step 3: Date Range */}
+          {manualReportStep === 3 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Select Date Range
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                Choose the date range for the report (max 90 days)
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="Start Date"
+                    type="date"
+                    fullWidth
+                    value={manualReportFormData.dateRangeStart}
+                    onChange={(e) => setManualReportFormData({ ...manualReportFormData, dateRangeStart: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ max: manualReportFormData.dateRangeEnd }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    label="End Date"
+                    type="date"
+                    fullWidth
+                    value={manualReportFormData.dateRangeEnd}
+                    onChange={(e) => setManualReportFormData({ ...manualReportFormData, dateRangeEnd: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
+                    inputProps={{ min: manualReportFormData.dateRangeStart }}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+
+          {/* Step 4: Delivery Method */}
+          {manualReportStep === 4 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Delivery Method
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                Choose how you want to receive the report
+              </Typography>
+              <FormControl component="fieldset">
+                <RadioGroup
+                  value={manualReportFormData.deliveryMethod}
+                  onChange={(e) => setManualReportFormData({ ...manualReportFormData, deliveryMethod: e.target.value })}
+                >
+                  <FormControlLabel value="download" control={<Radio />} label="Download only" />
+                  <FormControlLabel value="email" control={<Radio />} label="Email only" />
+                  <FormControlLabel value="both" control={<Radio />} label="Both download and email" />
+                </RadioGroup>
+              </FormControl>
+
+              {(manualReportFormData.deliveryMethod === 'email' || manualReportFormData.deliveryMethod === 'both') && (
+                <Box sx={{ mt: 3 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    Email Recipients
+                  </Typography>
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    options={[]}
+                    value={manualReportFormData.recipients}
+                    inputValue={manualReportEmailInputValue}
+                    onInputChange={(e, val) => setManualReportEmailInputValue(val)}
+                    onChange={(e, newValue) => {
+                      setManualReportFormData({ ...manualReportFormData, recipients: newValue });
+                      setManualReportEmailInputValue('');
+                    }}
+                    renderTags={(value, getTagProps) =>
+                      value.map((option, index) => {
+                        const { key, ...tagProps } = getTagProps({ index });
+                        return (
+                          <Chip 
+                            key={key} 
+                            variant="outlined" 
+                            label={option} 
+                            size="small" 
+                            color="primary" 
+                            {...tagProps} 
+                          />
+                        );
+                      })
+                    }
+                    renderInput={(params) => (
+                      <TextField 
+                        {...params} 
+                        label="Email Addresses" 
+                        placeholder="Type email and press Enter..."
+                        helperText="Press Enter to add each email address"
+                        fullWidth
+                      />
+                    )}
+                  />
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {/* Step 5: Summary */}
+          {manualReportStep === 5 && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Report Summary
+              </Typography>
+              <Typography color="text.secondary" sx={{ mb: 3 }}>
+                Review your report configuration before generating
+              </Typography>
+              <Paper sx={{ p: 2, backgroundColor: isDark ? 'rgba(0,153,255,0.05)' : '#f8f9fa' }}>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Report Type:</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {manualReportFormData.reportType === 'service' ? 'Service Report' : 'Client Report'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Targets:</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {manualReportFormData.targetIds.length} selected
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Date Range:</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {new Date(manualReportFormData.dateRangeStart).toLocaleDateString()} - {new Date(manualReportFormData.dateRangeEnd).toLocaleDateString()}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Delivery:</Typography>
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {manualReportFormData.deliveryMethod === 'download' ? 'Download' :
+                       manualReportFormData.deliveryMethod === 'email' ? 'Email' : 'Both'}
+                    </Typography>
+                  </Grid>
+                  {(manualReportFormData.deliveryMethod === 'email' || manualReportFormData.deliveryMethod === 'both') && (
+                    <Grid item xs={12}>
+                      <Typography variant="body2" color="text.secondary">Recipients:</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                        {manualReportFormData.recipients.length > 0 ? manualReportFormData.recipients.join(', ') : 'None'}
+                      </Typography>
+                    </Grid>
+                  )}
+                </Grid>
+              </Paper>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button 
+            onClick={() => {
+              setOpenManualReportDialog(false);
+              setManualReportStep(1);
+            }} 
+            variant="outlined"
+          >
+            Cancel
+          </Button>
+          {manualReportStep > 1 && (
+            <Button 
+              onClick={() => setManualReportStep(manualReportStep - 1)} 
+              variant="outlined"
+            >
+              Previous
+            </Button>
+          )}
+          <Button
+            onClick={() => {
+              if (manualReportStep < 5) {
+                setManualReportStep(manualReportStep + 1);
+              } else {
+                handleGenerateManualReport();
+              }
+            }}
+            variant="contained"
+            sx={{
+              background: `linear-gradient(135deg, ${BSI_COLORS.primary} 0%, ${BSI_COLORS.primaryDark} 100%)`,
+              fontWeight: 600
+            }}
+          >
+            {manualReportStep < 5 ? 'Next' : 'Generate Report'}
           </Button>
         </DialogActions>
       </Dialog>
