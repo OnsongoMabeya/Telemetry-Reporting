@@ -111,14 +111,17 @@ class QueryOptimizer {
       SELECT 
         mr.id,
         mr.report_type,
-        mr.target_count,
+        mr.target_ids,
         mr.date_range_start,
         mr.date_range_end,
         mr.status,
         mr.pdf_size_bytes,
         mr.created_at,
-        mr.completed_at,
+        mr.updated_at,
         mr.generation_time_ms,
+        mr.error_message,
+        mr.delivery_method,
+        mr.recipients,
         u.username as generated_by_username,
         CASE 
           WHEN mr.status = 'completed' THEN 'success'
@@ -172,7 +175,7 @@ class QueryOptimizer {
       params.push(filters.offset);
     }
 
-    return await this.executeQuery(query, params, { cache: true });
+    return await this.executeQuery(query, params, { cache: !filters.nocache });
   }
 
   /**
@@ -190,19 +193,25 @@ class QueryOptimizer {
     const query = `
       SELECT 
         DATE_FORMAT(t.timestamp, ?) as time_period,
-        t.service_id,
-        AVG(t.value) as avg_value,
-        MIN(t.value) as min_value,
-        MAX(t.value) as max_value,
+        sma.service_id,
+        AVG(t.analog1_value) as avg_value,
+        MIN(t.analog1_value) as min_value,
+        MAX(t.analog1_value) as max_value,
         COUNT(t.id) as data_points,
         s.name as service_name,
-        s.client_name
+        c.name as client_name
       FROM telemetry t
-      JOIN services s ON t.service_id = s.id
-      WHERE t.service_id IN (?)
+      JOIN metric_mappings mm ON t.node_name = mm.node_name
+      JOIN service_metric_assignments sma ON mm.id = sma.metric_mapping_id
+      JOIN services s ON sma.service_id = s.id
+      JOIN client_services cs ON s.id = cs.service_id
+      JOIN clients c ON cs.client_id = c.id
+      WHERE sma.service_id IN (?)
         AND t.timestamp BETWEEN ? AND ?
-      GROUP BY time_period, t.service_id, s.name, s.client_name
-      ORDER BY time_period ASC, t.service_id ASC
+        AND sma.is_active = 1
+        AND mm.is_active = 1
+      GROUP BY time_period, sma.service_id, s.name, c.name
+      ORDER BY time_period ASC, sma.service_id ASC
     `;
 
     const params = [dateFormat, serviceIds, startDate, endDate];

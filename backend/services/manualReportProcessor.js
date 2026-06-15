@@ -59,7 +59,7 @@ class ManualReportProcessor {
       }
 
       const report = reports[0];
-      const targetIds = JSON.parse(report.target_ids);
+      const targetIds = typeof report.target_ids === 'string' ? JSON.parse(report.target_ids) : report.target_ids;
 
       // Initialize job tracking
       this.activeJobs.set(reportId, {
@@ -114,10 +114,16 @@ class ManualReportProcessor {
       if (daysDiff > 30) {
         // Split large date ranges into 30-day chunks
         chunks = this.splitDateRange(startDate, endDate, 30);
+        // Add targetIds to each chunk
+        chunks = chunks.map(chunk => ({
+          ...chunk,
+          targetIds: targetIds
+        }));
         logger.info('ManualReportProcessor', 'Split large date range into chunks', {
           reportId,
           totalDays: daysDiff,
-          chunkCount: chunks.length
+          chunkCount: chunks.length,
+          targetCount: targetIds.length
         });
       } else {
         // Single chunk for smaller ranges
@@ -150,6 +156,9 @@ class ManualReportProcessor {
           const progress = 20 + (processedChunks / chunks.length) * 60; // 20-80%
           await this.updateProgress(reportId, Math.round(progress), 
             `Processed ${processedChunks}/${chunks.length} chunks...`);
+
+          // Yield to event loop to prevent blocking other requests
+          await new Promise(resolve => setImmediate(resolve));
 
         } catch (chunkError) {
           logger.error('ManualReportProcessor', 'Chunk processing failed', {
@@ -215,16 +224,42 @@ class ManualReportProcessor {
         reportId,
         chunkIndex,
         dateRange: `${chunk.start.toISOString()} to ${chunk.end.toISOString()}`,
-        targetCount: chunk.targetIds.length
+        targetCount: chunk.targetIds ? chunk.targetIds.length : 'undefined'
       });
 
       // Get telemetry data for this chunk
+      logger.debug('ManualReportProcessor', 'Getting telemetry data for chunk', {
+        reportId,
+        chunkIndex
+      });
       const telemetryData = await this.getTelemetryData(report.report_type, chunk.targetIds, chunk.start, chunk.end);
+      logger.debug('ManualReportProcessor', 'Telemetry data received', {
+        reportId,
+        chunkIndex,
+        dataType: typeof telemetryData,
+        isArray: Array.isArray(telemetryData),
+        length: telemetryData ? telemetryData.length : 'undefined'
+      });
 
       // Get metric mappings for formatting
+      logger.debug('ManualReportProcessor', 'Getting metric mappings for chunk', {
+        reportId,
+        chunkIndex
+      });
       const metricMappings = await this.getMetricMappings(report.report_type, chunk.targetIds);
+      logger.debug('ManualReportProcessor', 'Metric mappings received', {
+        reportId,
+        chunkIndex,
+        dataType: typeof metricMappings,
+        isArray: Array.isArray(metricMappings),
+        length: metricMappings ? metricMappings.length : 'undefined'
+      });
 
       // Process and format data
+      logger.debug('ManualReportProcessor', 'Formatting telemetry data for chunk', {
+        reportId,
+        chunkIndex
+      });
       const processedData = this.formatTelemetryData(telemetryData, metricMappings, report.report_type);
 
       logger.debug('ManualReportProcessor', 'Chunk processed successfully', {
@@ -254,38 +289,57 @@ class ManualReportProcessor {
    */
   async getTelemetryData(reportType, targetIds, startDate, endDate) {
     try {
+      // Validate input parameters
+      if (!targetIds || !Array.isArray(targetIds) || targetIds.length === 0) {
+        logger.error('ManualReportProcessor', 'Invalid targetIds parameter', {
+          reportType,
+          targetIds: typeof targetIds,
+          isArray: Array.isArray(targetIds),
+          length: targetIds ? targetIds.length : 'undefined'
+        });
+        return [];
+      }
+
       let query;
       let params;
 
       if (reportType === 'service') {
         // Service-based query
+        const placeholders = targetIds.map(() => '?').join(',');
         query = `
-          SELECT td.*, s.name as service_name, c.name as client_name,
-                 n.node_name, bs.base_station_name
-          FROM telemetry_data td
-          JOIN services s ON td.service_id = s.id
-          JOIN clients c ON s.client_id = c.id
-          JOIN nodes n ON td.node_id = n.id
-          JOIN basestations bs ON td.base_station_id = bs.id
-          WHERE td.service_id IN (${targetIds.map(() => '?').join(',')})
-            AND td.timestamp BETWEEN ? AND ?
-          ORDER BY td.timestamp ASC, td.service_id, td.node_id, td.base_station_id
+          SELECT t.*, s.name as service_name, c.name as client_name,
+                 sma.service_id, cs.client_id, t.node_name, t.base_station as base_station_name
+          FROM telemetry t
+          JOIN metric_mappings mm ON t.node_name = mm.node_name
+          JOIN service_metric_assignments sma ON mm.id = sma.metric_mapping_id
+          JOIN services s ON sma.service_id = s.id
+          JOIN client_services cs ON s.id = cs.service_id
+          JOIN clients c ON cs.client_id = c.id
+          WHERE sma.service_id IN (${placeholders})
+            AND t.timestamp BETWEEN ? AND ?
+            AND sma.is_active = 1
+            AND mm.is_active = 1
+          ORDER BY t.timestamp ASC, sma.service_id, t.node_name, t.base_station
         `;
         params = [...targetIds, startDate, endDate];
 
       } else {
         // Client-based query (all services for these clients)
+        const placeholders = targetIds.map(() => '?').join(',');
         query = `
-          SELECT td.*, s.name as service_name, c.name as client_name,
-                 n.node_name, bs.base_station_name
-          FROM telemetry_data td
-          JOIN services s ON td.service_id = s.id
-          JOIN clients c ON s.client_id = c.id
-          JOIN nodes n ON td.node_id = n.id
-          JOIN basestations bs ON td.base_station_id = bs.id
-          WHERE c.id IN (${targetIds.map(() => '?').join(',')})
-            AND td.timestamp BETWEEN ? AND ?
-          ORDER BY td.timestamp ASC, c.id, td.service_id, td.node_id, td.base_station_id
+          SELECT t.*, s.name as service_name, c.name as client_name,
+                 sma.service_id, cs.client_id, t.node_name, t.base_station as base_station_name
+          FROM telemetry t
+          JOIN metric_mappings mm ON t.node_name = mm.node_name
+          JOIN service_metric_assignments sma ON mm.id = sma.metric_mapping_id
+          JOIN services s ON sma.service_id = s.id
+          JOIN client_services cs ON s.id = cs.service_id
+          JOIN clients c ON cs.client_id = c.id
+          WHERE c.id IN (${placeholders})
+            AND t.timestamp BETWEEN ? AND ?
+            AND sma.is_active = 1
+            AND mm.is_active = 1
+          ORDER BY t.timestamp ASC, c.id, sma.service_id, t.node_name, t.base_station
         `;
         params = [...targetIds, startDate, endDate];
       }
@@ -295,11 +349,20 @@ class ManualReportProcessor {
       logger.debug('ManualReportProcessor', 'Telemetry data retrieved', {
         reportType,
         targetCount: targetIds.length,
-        dataPoints: rows.length,
+        dataPoints: rows ? rows.length : 'undefined',
+        isArray: Array.isArray(rows),
         dateRange: `${startDate.toISOString()} to ${endDate.toISOString()}`
       });
 
-      return rows;
+      // Log a sample of the data to understand the structure
+      if (rows && rows.length > 0) {
+        logger.debug('ManualReportProcessor', 'Sample telemetry record', {
+          sample: rows[0],
+          keys: Object.keys(rows[0])
+        });
+      }
+
+      return rows || [];
 
     } catch (error) {
       logger.error('ManualReportProcessor', 'Failed to get telemetry data', {
@@ -318,27 +381,48 @@ class ManualReportProcessor {
    */
   async getMetricMappings(reportType, targetIds) {
     try {
+      // Validate input parameters
+      if (!targetIds || !Array.isArray(targetIds) || targetIds.length === 0) {
+        logger.error('ManualReportProcessor', 'Invalid targetIds parameter for metric mappings', {
+          reportType,
+          targetIds: typeof targetIds,
+          isArray: Array.isArray(targetIds),
+          length: targetIds ? targetIds.length : 'undefined'
+        });
+        return [];
+      }
+
       let query;
       let params;
 
       if (reportType === 'service') {
+        const placeholders = targetIds.map(() => '?').join(',');
         query = `
-          SELECT mm.*, s.name as service_name, c.name as client_name
+          SELECT mm.*, sma.service_id, s.name as service_name, c.name as client_name
           FROM metric_mappings mm
-          JOIN services s ON mm.service_id = s.id
-          JOIN clients c ON s.client_id = c.id
-          WHERE mm.service_id IN (${targetIds.map(() => '?').join(',')})
+          JOIN service_metric_assignments sma ON mm.id = sma.metric_mapping_id
+          JOIN services s ON sma.service_id = s.id
+          JOIN client_services cs ON s.id = cs.service_id
+          JOIN clients c ON cs.client_id = c.id
+          WHERE sma.service_id IN (${placeholders})
+            AND sma.is_active = 1
+            AND mm.is_active = 1
           ORDER BY s.id, mm.display_order
         `;
         params = targetIds;
 
       } else {
+        const placeholders = targetIds.map(() => '?').join(',');
         query = `
-          SELECT mm.*, s.name as service_name, c.name as client_name
+          SELECT mm.*, sma.service_id, s.name as service_name, c.name as client_name
           FROM metric_mappings mm
-          JOIN services s ON mm.service_id = s.id
-          JOIN clients c ON s.client_id = c.id
-          WHERE c.id IN (${targetIds.map(() => '?').join(',')})
+          JOIN service_metric_assignments sma ON mm.id = sma.metric_mapping_id
+          JOIN services s ON sma.service_id = s.id
+          JOIN client_services cs ON s.id = cs.service_id
+          JOIN clients c ON cs.client_id = c.id
+          WHERE c.id IN (${placeholders})
+            AND sma.is_active = 1
+            AND mm.is_active = 1
           ORDER BY c.id, s.id, mm.display_order
         `;
         params = targetIds;
@@ -349,10 +433,19 @@ class ManualReportProcessor {
       logger.debug('ManualReportProcessor', 'Metric mappings retrieved', {
         reportType,
         targetCount: targetIds.length,
-        mappingCount: rows.length
+        mappingCount: rows ? rows.length : 'undefined',
+        isArray: Array.isArray(rows)
       });
 
-      return rows;
+      // Log a sample of the metric mappings to understand the structure
+      if (rows && rows.length > 0) {
+        logger.debug('ManualReportProcessor', 'Sample metric mapping', {
+          sample: rows[0],
+          keys: Object.keys(rows[0])
+        });
+      }
+
+      return rows || [];
 
     } catch (error) {
       logger.error('ManualReportProcessor', 'Failed to get metric mappings', {
@@ -372,18 +465,50 @@ class ManualReportProcessor {
    */
   formatTelemetryData(telemetryData, metricMappings, reportType) {
     try {
-      // Group data by service/client and metric
-      const groupedData = {};
+      // Debug logging to understand the data structure
+      logger.info('ManualReportProcessor', 'Formatting telemetry data', {
+        reportType,
+        telemetryDataLength: telemetryData ? telemetryData.length : 'undefined',
+        metricMappingsLength: metricMappings ? metricMappings.length : 'undefined',
+        telemetryDataSample: telemetryData && telemetryData.length > 0 ? {
+          service_id: telemetryData[0].service_id,
+          service_id_type: typeof telemetryData[0].service_id,
+          node_name: telemetryData[0].node_name,
+          client_id: telemetryData[0].client_id
+        } : null,
+        metricMappingsSample: metricMappings && metricMappings.length > 0 ? {
+          service_id: metricMappings[0].service_id,
+          service_id_type: typeof metricMappings[0].service_id,
+          node_name: metricMappings[0].node_name
+        } : null
+      });
 
-      telemetryData.forEach(record => {
-        const groupKey = reportType === 'service' ? 
-          `service_${record.service_id}` : 
-          `client_${record.client_id}`;
+      // Check if telemetryData is defined and is an array
+      if (!telemetryData || !Array.isArray(telemetryData)) {
+        logger.error('ManualReportProcessor', 'Invalid telemetry data structure', {
+          telemetryData: typeof telemetryData,
+          isArray: Array.isArray(telemetryData)
+        });
+        return [];
+      }
+
+      // Group data by service and metric (for both service and client reports)
+      // This ensures client reports show data organized by service/base station like automated reports
+      const groupedData = {};
+      let matchedCount = 0;
+      let unmatchedCount = 0;
+      let unmatchedSamples = [];
+
+      telemetryData.forEach((record, index) => {
+        // Always group by service to maintain service-level organization
+        const groupKey = `service_${record.service_id}`;
         
         if (!groupedData[groupKey]) {
           groupedData[groupKey] = {
-            id: reportType === 'service' ? record.service_id : record.client_id,
-            name: reportType === 'service' ? record.service_name : record.client_name,
+            id: record.service_id,
+            name: record.service_name,
+            clientName: record.client_name,
+            clientId: record.client_id,
             metrics: {}
           };
         }
@@ -391,11 +516,27 @@ class ManualReportProcessor {
         // Find metric mapping for this record
         const mapping = metricMappings.find(m => 
           m.service_id === record.service_id && 
-          m.column_name === record.column_name
+          m.node_name === record.node_name
         );
 
+        // Debug first few records and track match rates
+        if (index < 3) {
+          console.log(`[DEBUG] Record ${index}: service_id=${record.service_id}, node_name=${record.node_name}`);
+          console.log(`[DEBUG] Available mappings for this service: ${metricMappings.filter(m => m.service_id === record.service_id).length}`);
+          console.log(`[DEBUG] Matching mappings: ${metricMappings.filter(m => m.service_id === record.service_id && m.node_name === record.node_name).map(m => m.node_name).join(', ')}`);
+        }
+
         if (mapping) {
-          const metricKey = mapping.metric_name || record.column_name;
+          matchedCount++;
+        } else {
+          unmatchedCount++;
+          if (unmatchedSamples.length < 3) {
+            unmatchedSamples.push({ service_id: record.service_id, node_name: record.node_name });
+          }
+        }
+
+        if (mapping) {
+          const metricKey = mapping.metric_name || mapping.column_name;
           
           if (!groupedData[groupKey].metrics[metricKey]) {
             groupedData[groupKey].metrics[metricKey] = {
@@ -405,9 +546,66 @@ class ManualReportProcessor {
             };
           }
 
+          // Use the appropriate analog value based on the column name
+          // Normalize column name to handle both PascalCase (Analog1Value, Digital1Value) and snake_case (analog1_value)
+          const colName = mapping.column_name ? mapping.column_name.toLowerCase().replace(/value$/, '_value') : '';
+          let value;
+          switch (colName) {
+            case 'analog1_value':
+            case 'analog1':
+            case 'digital1_value':
+            case 'digital1':
+              value = record.analog1_value;
+              break;
+            case 'analog2_value':
+            case 'analog2':
+            case 'digital2_value':
+            case 'digital2':
+              value = record.analog2_value;
+              break;
+            case 'analog3_value':
+            case 'analog3':
+            case 'digital3_value':
+            case 'digital3':
+              value = record.analog3_value;
+              break;
+            case 'analog4_value':
+            case 'analog4':
+            case 'digital4_value':
+            case 'digital4':
+              value = record.analog4_value;
+              break;
+            case 'analog5_value':
+            case 'analog5':
+            case 'digital5_value':
+            case 'digital5':
+              value = record.analog5_value;
+              break;
+            case 'analog6_value':
+            case 'analog6':
+            case 'digital6_value':
+            case 'digital6':
+              value = record.analog6_value;
+              break;
+            case 'analog7_value':
+            case 'analog7':
+            case 'digital7_value':
+            case 'digital7':
+              value = record.analog7_value;
+              break;
+            case 'analog8_value':
+            case 'analog8':
+            case 'digital8_value':
+            case 'digital8':
+              value = record.analog8_value;
+              break;
+            default:
+              value = record.analog1_value; // Default to analog1_value
+          }
+
           groupedData[groupKey].metrics[metricKey].data.push({
             timestamp: record.timestamp,
-            value: record.value,
+            value: value,
             nodeName: record.node_name,
             baseStationName: record.base_station_name
           });
@@ -416,10 +614,22 @@ class ManualReportProcessor {
 
       const formattedData = Object.values(groupedData);
       
-      logger.debug('ManualReportProcessor', 'Telemetry data formatted', {
+      console.log(`[DEBUG] Total records: ${telemetryData.length}, Matched: ${matchedCount}, Unmatched: ${unmatchedCount}`);
+      console.log(`[DEBUG] Unmatched samples: ${JSON.stringify(unmatchedSamples)}`);
+      console.log(`[DEBUG] Group count: ${formattedData.length}`);
+      
+      logger.info('ManualReportProcessor', 'Telemetry data formatted', {
         reportType,
         groupCount: formattedData.length,
-        totalDataPoints: telemetryData.length
+        totalDataPoints: telemetryData.length,
+        matchedCount,
+        unmatchedCount,
+        unmatchedSamples,
+        sampleGroup: formattedData.length > 0 ? {
+          id: formattedData[0].id,
+          name: formattedData[0].name,
+          metricCount: Object.keys(formattedData[0].metrics).length
+        } : null
       });
 
       return formattedData;
@@ -645,7 +855,7 @@ class ManualReportProcessor {
         // Check if this report should be cached
         const shouldCache = await this.cacheManager.shouldCacheReport(
           report.report_type,
-          JSON.parse(report.target_ids),
+          typeof report.target_ids === 'string' ? JSON.parse(report.target_ids) : report.target_ids,
           report.date_range_start,
           report.date_range_end
         );
@@ -658,7 +868,7 @@ class ManualReportProcessor {
             // Cache the report
             const cacheSuccess = await this.cacheManager.cacheReport(reportId, pdfData, {
               reportType: report.report_type,
-              targetIds: JSON.parse(report.target_ids),
+              targetIds: typeof report.target_ids === 'string' ? JSON.parse(report.target_ids) : report.target_ids,
               dateRangeStart: report.date_range_start,
               dateRangeEnd: report.date_range_end
             });
@@ -668,7 +878,7 @@ class ManualReportProcessor {
                 reportId,
                 cacheKey: this.cacheManager.generateCacheKey(
                   report.report_type,
-                  JSON.parse(report.target_ids),
+                  typeof report.target_ids === 'string' ? JSON.parse(report.target_ids) : report.target_ids,
                   report.date_range_start,
                   report.date_range_end
                 )

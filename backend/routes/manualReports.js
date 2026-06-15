@@ -12,11 +12,12 @@ const router = express.Router();
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const logger = require('../utils/logger');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const manualReportProcessor = require('../services/manualReportProcessor');
 const ManualReportCacheManager = require('../services/manualReportCacheManager');
 const PerformanceMonitor = require('../services/performanceMonitor');
 const QueryOptimizer = require('../services/queryOptimizer');
-const db = require('../config/database');
 
 // Get database connection from app
 let db;
@@ -610,7 +611,7 @@ router.get('/download/:id', async (req, res) => {
       action: 'download',
       userId: req.user.id,
       reportType: report.report_type,
-      targetIds: JSON.parse(report.target_ids),
+      targetIds: typeof report.target_ids === 'string' ? JSON.parse(report.target_ids) : report.target_ids,
       dateRangeStart: report.date_range_start,
       dateRangeEnd: report.date_range_end,
       status: 'success',
@@ -621,19 +622,30 @@ router.get('/download/:id', async (req, res) => {
       userAgent: req.get('User-Agent')
     });
 
+    // Check if file exists on disk
+    if (!fs.existsSync(report.file_path)) {
+      logger.error('ManualReports', 'Report file not found on disk', {
+        reportId: report.id,
+        filePath: report.file_path
+      });
+      return res.status(404).json({
+        error: 'Report file not found on server'
+      });
+    }
+
+    // Set headers for PDF download
+    const fileName = `manual_report_${report.report_type}_${report.id}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', report.pdf_size_bytes);
+
+    // Stream the file
+    const fileStream = fs.createReadStream(report.file_path);
+    fileStream.pipe(res);
+
     logger.info('ManualReports', 'Report downloaded', {
       userId: req.user.id,
       reportId: report.id,
-      fileSize: report.pdf_size_bytes
-    });
-
-    // TODO: Implement file download
-    // This will be implemented with file system integration
-    res.json({
-      success: true,
-      message: 'Report download ready',
-      downloadUrl: `/api/manual-reports/file/${report.id}`,
-      fileName: `manual_report_${report.report_type}_${report.id}.pdf`,
       fileSize: report.pdf_size_bytes
     });
 
@@ -646,6 +658,90 @@ router.get('/download/:id', async (req, res) => {
 
     res.status(500).json({
       error: 'Failed to download report',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/manual-reports/file/:id
+ * Serve the actual PDF file for download
+ */
+router.get('/file/:id', async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.id);
+    
+    if (isNaN(reportId)) {
+      return res.status(400).json({
+        error: 'Invalid report ID'
+      });
+    }
+
+    const [reports] = await db.query(
+      `SELECT id, status, file_path, pdf_size_bytes, report_type
+       FROM manual_reports 
+       WHERE id = ? AND generated_by = ?`,
+      [reportId, req.user.id]
+    );
+
+    if (reports.length === 0) {
+      return res.status(404).json({
+        error: 'Report not found'
+      });
+    }
+
+    const report = reports[0];
+
+    if (report.status !== 'completed') {
+      return res.status(400).json({
+        error: 'Report is not ready for download',
+        status: report.status
+      });
+    }
+
+    if (!report.file_path) {
+      return res.status(404).json({
+        error: 'Report file not found'
+      });
+    }
+
+    // Check if file exists
+    if (!fs.existsSync(report.file_path)) {
+      logger.error('ManualReports', 'Report file not found on disk', {
+        reportId,
+        filePath: report.file_path
+      });
+      return res.status(404).json({
+        error: 'Report file not found on server'
+      });
+    }
+
+    // Set headers for PDF download
+    const fileName = `manual_report_${report.report_type}_${reportId}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', report.pdf_size_bytes);
+
+    // Stream the file
+    const fileStream = fs.createReadStream(report.file_path);
+    fileStream.pipe(res);
+
+    logger.info('ManualReports', 'Report file served', {
+      userId: req.user.id,
+      reportId,
+      fileName,
+      fileSize: report.pdf_size_bytes
+    });
+
+  } catch (error) {
+    logger.error('ManualReports', 'File serve failed', {
+      userId: req.user.id,
+      reportId: req.params.id,
+      error: error.message
+    });
+
+    res.status(500).json({
+      error: 'Failed to serve report file',
       message: error.message
     });
   }
@@ -704,7 +800,7 @@ router.post('/send-email/:id', async (req, res) => {
       action: 'email',
       userId: req.user.id,
       reportType: report.report_type,
-      targetIds: JSON.parse(report.target_ids),
+      targetIds: typeof report.target_ids === 'string' ? JSON.parse(report.target_ids) : report.target_ids,
       dateRangeStart: report.date_range_start,
       dateRangeEnd: report.date_range_end,
       status: 'success',
@@ -765,19 +861,51 @@ router.get('/history', async (req, res) => {
       offset
     };
 
-    const [reports] = await queryOptimizer.getManualReportsHistory(filters);
+    // Temporarily disable cache to ensure fresh data
+    const [reports] = await queryOptimizer.getManualReportsHistory({...filters, nocache: true});
 
-    // Get total count with optimized query
+    // Get total count with fresh query (disable cache)
     const [totalCount] = await queryOptimizer.executeQuery(
       'SELECT COUNT(*) as total FROM manual_reports WHERE generated_by = ?' + 
       (status ? ' AND status = ?' : ''),
       status ? [req.user.id, status] : [req.user.id],
-      { cache: true }
+      { cache: false }
     );
 
     const processedReports = reports.map(report => {
       try {
-        const targetIds = JSON.parse(report.target_ids);
+                
+        // target_ids might already be an array (MySQL JSON parsing) or a string
+        let targetIds = report.target_ids;
+        
+        // Handle various data types and edge cases
+        if (targetIds === null || targetIds === undefined) {
+          targetIds = [];
+        } else if (typeof targetIds === 'string') {
+          try {
+            targetIds = JSON.parse(targetIds);
+          } catch (parseError) {
+            // If parsing fails, try to handle common edge cases
+            if (targetIds.trim() === '') {
+              targetIds = [];
+            } else if (targetIds.startsWith('[') && targetIds.endsWith(']')) {
+              // Try to extract numbers from brackets
+              const numbers = targetIds.match(/\d+/g);
+              targetIds = numbers ? numbers.map(Number) : [];
+            } else {
+              targetIds = [];
+            }
+          }
+        } else if (typeof targetIds === 'number') {
+          targetIds = [targetIds];
+        } else if (!Array.isArray(targetIds)) {
+          // If it's not an array but not null/undefined/string/number, convert to empty array
+          targetIds = [];
+        }
+        
+        // Ensure it's an array of numbers
+        targetIds = Array.isArray(targetIds) ? targetIds.filter(id => typeof id === 'number' && !isNaN(id)) : [];
+        
         return {
           ...report,
           targetIds,
@@ -787,6 +915,7 @@ router.get('/history', async (req, res) => {
         logger.error('ManualReports', 'Failed to parse target_ids', {
           reportId: report.id,
           targetIds: report.target_ids,
+          targetType: typeof report.target_ids,
           error: error.message
         });
         return {
@@ -923,37 +1052,58 @@ router.post('/cancel/:id', async (req, res) => {
     // Cancel processing
     const cancelled = await manualReportProcessor.cancelProcessing(reportId);
 
-    if (cancelled) {
-      // Log cancellation
-      await logAuditAction({
-        reportId: report.id,
-        action: 'error',
-        userId: req.user.id,
-        reportType: 'unknown',
-        targetIds: [],
-        dateRangeStart: new Date(),
-        dateRangeEnd: new Date(),
-        status: 'success',
-        message: 'Report processing was cancelled by user',
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
+    // If cancelProcessing returns false, the report might be orphaned (server restarted)
+    // In that case, we should still update the database to mark it as failed
+    if (!cancelled) {
+      logger.info('ManualReports', 'Attempting to cancel orphaned report', {
+        reportId,
+        dbAvailable: !!db
       });
 
-      logger.info('ManualReports', 'Report processing cancelled', {
-        userId: req.user.id,
-        reportId
-      });
-
-      res.json({
-        success: true,
-        message: 'Report processing cancelled successfully'
-      });
-
-    } else {
-      res.status(500).json({
-        error: 'Failed to cancel report processing'
-      });
+      if (db) {
+        await db.query(
+          `UPDATE manual_reports 
+           SET status = 'failed',
+               error_message = 'Report processing was cancelled',
+               updated_at = NOW()
+           WHERE id = ? AND status = 'generating'`,
+          [reportId]
+        );
+        logger.info('ManualReports', 'Database update completed for orphaned report', {
+          reportId
+        });
+      } else {
+        logger.error('ManualReports', 'Database connection not available in cancel endpoint', {
+          reportId
+        });
+      }
     }
+
+    // Log cancellation
+    await logAuditAction({
+      reportId: report.id,
+      action: 'cancel',
+      userId: req.user.id,
+      reportType: report.report_type || 'unknown',
+      targetIds: typeof report.target_ids === 'string' ? JSON.parse(report.target_ids) : report.target_ids,
+      dateRangeStart: report.date_range_start || new Date(),
+      dateRangeEnd: report.date_range_end || new Date(),
+      status: 'success',
+      message: 'Report processing was cancelled by user',
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent')
+    });
+
+    logger.info('ManualReports', 'Report processing cancelled', {
+      userId: req.user.id,
+      reportId,
+      wasActive: cancelled
+    });
+
+    res.json({
+      success: true,
+      message: 'Report processing cancelled successfully'
+    });
 
   } catch (error) {
     logger.error('ManualReports', 'Cancel processing failed', {
@@ -1051,13 +1201,17 @@ router.post('/preview', async (req, res) => {
         const [telemetry] = await db.query(`
           SELECT 
             DATE_FORMAT(t.timestamp, '%Y-%m-%d %H:00:00') as hour,
-            AVG(t.value) as avg_value,
-            MIN(t.value) as min_value,
-            MAX(t.value) as max_value,
+            AVG(t.analog1_value) as avg_value,
+            MIN(t.analog1_value) as min_value,
+            MAX(t.analog1_value) as max_value,
             COUNT(t.id) as data_points
           FROM telemetry t
-          WHERE t.service_id = ? 
+          JOIN metric_mappings mm ON t.node_name = mm.node_name
+          JOIN service_metric_assignments sma ON mm.id = sma.metric_mapping_id
+          WHERE sma.service_id = ? 
             AND t.timestamp BETWEEN ? AND ?
+            AND sma.is_active = 1
+            AND mm.is_active = 1
           GROUP BY DATE_FORMAT(t.timestamp, '%Y-%m-%d %H:00:00')
           ORDER BY hour ASC
           LIMIT 24
@@ -1083,15 +1237,20 @@ router.post('/preview', async (req, res) => {
       for (const clientId of previewTargets) {
         const [telemetry] = await db.query(`
           SELECT 
-            COUNT(DISTINCT t.service_id) as services_with_data,
+            COUNT(DISTINCT sma.service_id) as services_with_data,
             COUNT(t.id) as total_data_points,
-            AVG(t.value) as avg_value,
-            MIN(t.value) as min_value,
-            MAX(t.value) as max_value
+            AVG(t.analog1_value) as avg_value,
+            MIN(t.analog1_value) as min_value,
+            MAX(t.analog1_value) as max_value
           FROM telemetry t
-          JOIN services s ON t.service_id = s.id
-          WHERE s.client_id = ? 
+          JOIN metric_mappings mm ON t.node_name = mm.node_name
+          JOIN service_metric_assignments sma ON mm.id = sma.metric_mapping_id
+          JOIN services s ON sma.service_id = s.id
+          JOIN client_services cs ON s.id = cs.service_id
+          WHERE cs.client_id = ? 
             AND t.timestamp BETWEEN ? AND ?
+            AND sma.is_active = 1
+            AND mm.is_active = 1
         `, [clientId, startDate, previewEndDate]);
         
         const client = targets.find(t => t.id === clientId);

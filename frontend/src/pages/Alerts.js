@@ -700,16 +700,27 @@ const Alerts = () => {
 
   const handleDownloadManualReport = async (reportId) => {
     try {
-      const response = await axios.get(`/api/manual-reports/download/${reportId}`);
-      // Create download link
+      // Download file as binary blob
+      const response = await axios.get(`/api/manual-reports/download/${reportId}`, {
+        responseType: 'blob'
+      });
+      
+      // Create blob URL and trigger download
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = response.data.downloadUrl;
-      link.download = response.data.fileName;
+      link.href = url;
+      link.download = `manual_report_${reportId}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
+      // Clean up blob URL
+      window.URL.revokeObjectURL(url);
+      
       showSnackbar('Report downloaded successfully', 'success');
     } catch (error) {
+      console.error('Download error:', error);
       showSnackbar('Failed to download report', 'error');
     }
   };

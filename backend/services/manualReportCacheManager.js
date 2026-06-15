@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs').promises;
 const path = require('path');
-const logger = require('./logger');
+const logger = require('../utils/logger');
 
 class ManualReportCacheManager {
   constructor(db) {
@@ -193,7 +193,7 @@ class ManualReportCacheManager {
         metadata: {
           reportId: cache.report_id,
           reportType: cache.report_type,
-          targetIds: JSON.parse(cache.target_ids),
+          targetIds: cache.report_parameters && cache.report_parameters.targetIds ? cache.report_parameters.targetIds : [],
           dateRangeStart: cache.date_range_start,
           dateRangeEnd: cache.date_range_end,
           fileSize: cache.file_size,

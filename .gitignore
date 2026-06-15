@@ -34,6 +34,10 @@ logs/
 # Database exports (environment-specific, do not commit)
 backend/database/metric_mappings_export.sql
 
+# Manual reports and cache (generated files)
+backend/reports/manual/
+backend/cache/manual-reports/
+
 # macOS
 .DS_Store
 **/.DS_Store
