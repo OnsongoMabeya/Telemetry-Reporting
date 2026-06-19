@@ -142,7 +142,10 @@ class ManualReportProcessor {
       await this.updateProgress(reportId, 20, `Processing ${chunks.length} data chunks...`);
 
       // Process chunks and collect data
-      const allData = [];
+      // Now formatTelemetryData returns { services, baseStations, totalMetrics, totalBaseStations }
+      const allBaseStations = [];
+      const allServicesMap = {}; // Merge services across chunks
+      let totalMetrics = 0;
       let processedChunks = 0;
 
       for (let i = 0; i < chunks.length; i++) {
@@ -150,7 +153,28 @@ class ManualReportProcessor {
         
         try {
           const chunkData = await this.processChunk(reportId, report, chunk, i, chunks.length);
-          allData.push(...chunkData);
+          // chunkData is now an object with services and baseStations arrays
+          if (chunkData.baseStations && Array.isArray(chunkData.baseStations)) {
+            allBaseStations.push(...chunkData.baseStations);
+            totalMetrics += chunkData.totalMetrics || 0;
+          }
+          // Merge services from this chunk
+          if (chunkData.services && Array.isArray(chunkData.services)) {
+            chunkData.services.forEach(service => {
+              const key = `${service.service_id}_${service.service_name}`;
+              if (!allServicesMap[key]) {
+                allServicesMap[key] = {
+                  service_id: service.service_id,
+                  service_name: service.service_name,
+                  baseStations: []
+                };
+              }
+              // Add base stations from this service in this chunk
+              if (service.baseStations && Array.isArray(service.baseStations)) {
+                allServicesMap[key].baseStations.push(...service.baseStations);
+              }
+            });
+          }
           processedChunks++;
 
           const progress = 20 + (processedChunks / chunks.length) * 60; // 20-80%
@@ -172,8 +196,68 @@ class ManualReportProcessor {
 
       await this.updateProgress(reportId, 85, 'Generating PDF report...');
 
+      // Prepare final data structure matching automated reports
+      // Merge any duplicate base stations within each service AND combine their metrics
+      const mergedServices = Object.values(allServicesMap).map(service => {
+        const baseStationMap = {};
+        service.baseStations.forEach(bs => {
+          const key = `${bs.node_name}|${bs.base_station_name}`;
+          if (!baseStationMap[key]) {
+            baseStationMap[key] = { ...bs, metrics: [...bs.metrics] };
+          } else {
+            // Same base station from different chunk - merge metrics
+            bs.metrics.forEach(metric => {
+              const existingMetric = baseStationMap[key].metrics.find(m => 
+                m.metric_name === metric.metric_name || m.display_name === metric.display_name
+              );
+              if (!existingMetric) {
+                baseStationMap[key].metrics.push(metric);
+              } else {
+                // Metric exists - merge data points
+                existingMetric.data = [...existingMetric.data, ...metric.data];
+              }
+            });
+          }
+        });
+        return {
+          ...service,
+          baseStations: Object.values(baseStationMap)
+        };
+      });
+      
+      // Build flat base stations list from merged services (unique across all services)
+      const globalBaseStationMap = {};
+      mergedServices.forEach(service => {
+        service.baseStations.forEach(bs => {
+          const key = `${bs.node_name}|${bs.base_station_name}`;
+          if (!globalBaseStationMap[key]) {
+            globalBaseStationMap[key] = { ...bs };
+          }
+        });
+      });
+      const mergedBaseStations = Object.values(globalBaseStationMap);
+      
+      // Recalculate totals from merged data
+      const mergedTotalMetrics = mergedBaseStations.reduce((sum, bs) => sum + bs.metrics.length, 0);
+      const mergedTotalBaseStations = mergedBaseStations.length;
+      
+      const reportData = {
+        services: mergedServices,  // <-- Service hierarchy for PDF
+        baseStations: mergedBaseStations,
+        totalMetrics: mergedTotalMetrics,
+        totalBaseStations: mergedTotalBaseStations
+      };
+      
+      logger.info('ManualReportProcessor', 'Final report data prepared', {
+        reportId,
+        serviceCount: mergedServices.length,
+        serviceNames: mergedServices.map(s => s.service_name),
+        baseStationCount: mergedBaseStations.length,
+        totalMetrics: mergedTotalMetrics
+      });
+
       // Generate PDF from collected data
-      const pdfResult = await this.generatePDF(reportId, report, allData);
+      const pdfResult = await this.generatePDF(reportId, report, reportData);
 
       await this.updateProgress(reportId, 95, 'Finalizing report...');
 
@@ -492,57 +576,64 @@ class ManualReportProcessor {
         return [];
       }
 
-      // Group data by service and metric (for both service and client reports)
-      // This ensures client reports show data organized by service/base station like automated reports
-      const groupedData = {};
+      // Group data by SERVICE + BASE STATION (like automated reports)
+      // This allows the same base station to appear in multiple services
+      const baseStationsMap = {};
       let matchedCount = 0;
       let unmatchedCount = 0;
       let unmatchedSamples = [];
 
       telemetryData.forEach((record, index) => {
-        // Always group by service to maintain service-level organization
-        const groupKey = `service_${record.service_id}`;
+        // Group by (service_id, node_name, base_station_name) - allows same BS in multiple services
+        const groupKey = `${record.service_id}|${record.node_name}|${record.base_station_name}`;
         
-        if (!groupedData[groupKey]) {
-          groupedData[groupKey] = {
-            id: record.service_id,
-            name: record.service_name,
-            clientName: record.client_name,
-            clientId: record.client_id,
+        if (!baseStationsMap[groupKey]) {
+          baseStationsMap[groupKey] = {
+            node_name: record.node_name,
+            base_station_name: record.base_station_name,
+            service_name: record.service_name,
+            service_id: record.service_id,
+            client_name: record.client_name,
+            client_id: record.client_id,
             metrics: {}
           };
         }
 
-        // Find metric mapping for this record
-        const mapping = metricMappings.find(m => 
+        // Find ALL metric mappings for this record (one node can have multiple metrics)
+        const mappings = metricMappings.filter(m => 
           m.service_id === record.service_id && 
           m.node_name === record.node_name
         );
 
         // Debug first few records and track match rates
         if (index < 3) {
-          console.log(`[DEBUG] Record ${index}: service_id=${record.service_id}, node_name=${record.node_name}`);
+          console.log(`[DEBUG] Record ${index}: service_id=${record.service_id}, node_name=${record.node_name}, base_station=${record.base_station_name}`);
           console.log(`[DEBUG] Available mappings for this service: ${metricMappings.filter(m => m.service_id === record.service_id).length}`);
-          console.log(`[DEBUG] Matching mappings: ${metricMappings.filter(m => m.service_id === record.service_id && m.node_name === record.node_name).map(m => m.node_name).join(', ')}`);
+          console.log(`[DEBUG] Matching mappings: ${mappings.map(m => `${m.metric_name}(${m.column_name})`).join(', ')}`);
         }
 
-        if (mapping) {
-          matchedCount++;
+        if (mappings.length > 0) {
+          matchedCount += mappings.length;
         } else {
           unmatchedCount++;
           if (unmatchedSamples.length < 3) {
-            unmatchedSamples.push({ service_id: record.service_id, node_name: record.node_name });
+            unmatchedSamples.push({ service_id: record.service_id, node_name: record.node_name, base_station: record.base_station_name });
           }
         }
 
-        if (mapping) {
+        // Process ALL matching mappings for this record
+        mappings.forEach(mapping => {
           const metricKey = mapping.metric_name || mapping.column_name;
           
-          if (!groupedData[groupKey].metrics[metricKey]) {
-            groupedData[groupKey].metrics[metricKey] = {
+          if (!baseStationsMap[groupKey].metrics[metricKey]) {
+            baseStationsMap[groupKey].metrics[metricKey] = {
+              display_name: mapping.display_name || mapping.metric_name,
+              metric_name: mapping.metric_name,
               unit: mapping.unit,
               color: mapping.color,
-              data: []
+              column_name: mapping.column_name,
+              data: [],
+              stats: { latest: null, min: null, max: null, avg: null }
             };
           }
 
@@ -603,36 +694,94 @@ class ManualReportProcessor {
               value = record.analog1_value; // Default to analog1_value
           }
 
-          groupedData[groupKey].metrics[metricKey].data.push({
-            timestamp: record.timestamp,
-            value: value,
-            nodeName: record.node_name,
-            baseStationName: record.base_station_name
-          });
-        }
+          // Only add if value is not null
+          if (value !== null && value !== undefined) {
+            baseStationsMap[groupKey].metrics[metricKey].data.push({
+              timestamp: record.timestamp,
+              value: parseFloat(value),
+              nodeName: record.node_name,
+              baseStationName: record.base_station_name
+            });
+          }
+        });
       });
 
-      const formattedData = Object.values(groupedData);
+      // Convert metrics object to array for each base station and calculate stats
+      const baseStations = Object.values(baseStationsMap).map(bs => {
+        const metricsArray = Object.values(bs.metrics).map(metric => {
+          // Calculate stats like automated reports do
+          const values = metric.data.map(d => d.value).filter(v => !isNaN(v));
+          if (values.length > 0) {
+            // Use iterative approach to avoid stack overflow
+            let min = values[0];
+            let max = values[0];
+            let sum = 0;
+            for (let i = 0; i < values.length; i++) {
+              if (values[i] < min) min = values[i];
+              if (values[i] > max) max = values[i];
+              sum += values[i];
+            }
+            metric.stats = {
+              latest: parseFloat(values[values.length - 1].toFixed(2)),
+              min: parseFloat(min.toFixed(2)),
+              max: parseFloat(max.toFixed(2)),
+              avg: parseFloat((sum / values.length).toFixed(2))
+            };
+          }
+          return metric;
+        });
+        
+        return {
+          ...bs,
+          metrics: metricsArray
+        };
+      });
+
+      // Filter out base stations with no metrics
+      const validBaseStations = baseStations.filter(bs => bs.metrics.length > 0);
       
-      console.log(`[DEBUG] Total records: ${telemetryData.length}, Matched: ${matchedCount}, Unmatched: ${unmatchedCount}`);
-      console.log(`[DEBUG] Unmatched samples: ${JSON.stringify(unmatchedSamples)}`);
-      console.log(`[DEBUG] Group count: ${formattedData.length}`);
+      const totalMetrics = validBaseStations.reduce((sum, bs) => sum + bs.metrics.length, 0);
       
-      logger.info('ManualReportProcessor', 'Telemetry data formatted', {
+      // Build services hierarchy (like automated reports)
+      // Group base stations by service
+      const servicesMap = {};
+      validBaseStations.forEach(bs => {
+        const serviceKey = `${bs.service_id}_${bs.service_name}`;
+        if (!servicesMap[serviceKey]) {
+          servicesMap[serviceKey] = {
+            service_id: bs.service_id,
+            service_name: bs.service_name,
+            baseStations: []
+          };
+        }
+        servicesMap[serviceKey].baseStations.push(bs);
+      });
+      const services = Object.values(servicesMap);
+      
+      logger.info('ManualReportProcessor', 'Telemetry data formatted - base station grouping', {
         reportType,
-        groupCount: formattedData.length,
+        baseStationCount: validBaseStations.length,
+        totalMetrics,
         totalDataPoints: telemetryData.length,
+        serviceCount: services.length,
         matchedCount,
         unmatchedCount,
         unmatchedSamples,
-        sampleGroup: formattedData.length > 0 ? {
-          id: formattedData[0].id,
-          name: formattedData[0].name,
-          metricCount: Object.keys(formattedData[0].metrics).length
+        sampleBaseStation: validBaseStations.length > 0 ? {
+          node_name: validBaseStations[0].node_name,
+          base_station_name: validBaseStations[0].base_station_name,
+          metricCount: validBaseStations[0].metrics.length,
+          metrics: validBaseStations[0].metrics.map(m => m.display_name)
         } : null
       });
 
-      return formattedData;
+      // Return structure matching automated reports
+      return {
+        services,  // <-- Service hierarchy for PDF
+        baseStations: validBaseStations,
+        totalMetrics,
+        totalBaseStations: validBaseStations.length
+      };
 
     } catch (error) {
       logger.error('ManualReportProcessor', 'Failed to format telemetry data', {

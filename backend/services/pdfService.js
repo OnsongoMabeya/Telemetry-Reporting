@@ -43,51 +43,52 @@ async function generateManualReport(manualReportData) {
   try {
     logger.info('Generating manual report PDF...', {
       reportType: manualReportData.reportType,
-      dataGroups: manualReportData.data.length,
-      firstGroupSample: manualReportData.data.length > 0 ? {
-        id: manualReportData.data[0].id,
-        name: manualReportData.data[0].name,
-        metricKeys: Object.keys(manualReportData.data[0].metrics || {}),
-        metricCount: Object.keys(manualReportData.data[0].metrics || {}).length
-      } : null
+      dataStructure: manualReportData.data ? Object.keys(manualReportData.data) : 'undefined',
+      baseStationsCount: manualReportData.data?.baseStations?.length,
+      totalMetrics: manualReportData.data?.totalMetrics,
+      totalBaseStations: manualReportData.data?.totalBaseStations
     });
 
-    // Convert service-grouped data to baseStations format expected by ServiceReportDocument
-    // Each service becomes a "base station" with its metrics
-    const baseStations = manualReportData.data.map(group => {
-      // Convert metrics object to array format expected by PDF component
-      const metrics = Object.entries(group.metrics).map(([metricName, metricData]) => ({
-        display_name: metricName,
-        metricName: metricName,
-        unit: metricData.unit,
-        color: metricData.color,
-        data: metricData.data,
-        stats: metricData.stats || {},
-        view_type: metricData.view_type || 'graph',
-        metric_mapping_id: metricData.metric_mapping_id
-      }));
-
-      return {
-        base_station_name: group.name,
-        node_name: metrics[0]?.data?.[0]?.nodeName || group.name,
-        service_name: group.name,
-        service_id: group.id,
-        client_name: group.clientName,
-        client_id: group.clientId,
-        metrics: metrics
-      };
+    // The data now comes pre-structured from manualReportProcessor with baseStations array
+    // This matches the automated report structure from reportDataService
+    const baseStations = manualReportData.data?.baseStations || [];
+    const services = manualReportData.data?.services || [];  // <-- Service hierarchy
+    const totalMetrics = manualReportData.data?.totalMetrics || 0;
+    const totalBaseStations = manualReportData.data?.totalBaseStations || baseStations.length;
+    
+    logger.info('pdfService', 'Using pre-structured base station data', {
+      totalBaseStations: baseStations.length,
+      totalMetrics: totalMetrics,
+      serviceCount: services.length,  // <-- Log service count
+      serviceNames: services.map(s => s.service_name),  // <-- Log service names
+      baseStationNames: baseStations.map(bs => bs.base_station_name),
+      metricsPerBaseStation: baseStations.map(bs => ({ 
+        name: bs.base_station_name, 
+        count: bs.metrics?.length || 0 
+      }))
     });
 
     // Calculate summary table from metrics
-    const summaryTable = baseStations.flatMap(bs => 
-      bs.metrics.map(m => ({
-        metric: m.display_name,
-        latest: m.stats?.latest || (m.data?.[m.data.length - 1]?.value),
-        unit: m.unit,
-        node: bs.node_name,
-        base_station: bs.base_station_name
-      }))
-    );
+    const summaryTable = baseStations
+      .flatMap(bs => 
+        (bs.metrics || []).map(m => ({
+          display_name: m.display_name,
+          latest: m.stats?.latest ?? null,
+          unit: m.unit,
+          node_name: bs.node_name,
+          base_station_name: bs.base_station_name,
+          data: m.data,
+          stats: m.stats
+        }))
+      )
+      .sort((a, b) => {
+        // Sort by Node first, then by Base Station, then by Metric
+        const nodeCompare = (a.node_name || '').localeCompare(b.node_name || '');
+        if (nodeCompare !== 0) return nodeCompare;
+        const bsCompare = (a.base_station_name || '').localeCompare(b.base_station_name || '');
+        if (bsCompare !== 0) return bsCompare;
+        return (a.display_name || '').localeCompare(b.display_name || '');
+      });
 
     // Build report info
     const isClientReport = manualReportData.reportType === 'client';
@@ -103,9 +104,10 @@ async function generateManualReport(manualReportData) {
     const adaptedReportData = {
       reportInfo,
       summaryTable,
+      services,  // <-- Service hierarchy for PDF rendering
       baseStations,
-      totalMetrics: baseStations.reduce((sum, bs) => sum + bs.metrics.length, 0),
-      totalBaseStations: baseStations.length
+      totalMetrics: totalMetrics,
+      totalBaseStations: totalBaseStations
     };
 
     // Log adapted data
