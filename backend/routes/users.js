@@ -114,7 +114,7 @@ router.post('/signup', requireAdmin, createUserLimiter, async (req, res) => {
       [
         req.user.id,
         'INFO',
-        'users',
+        'CRUD',
         'CREATE_USER',
         'users',
         JSON.stringify({ newUserId: result.insertId, username, role: userRole }),
@@ -529,7 +529,7 @@ router.put('/:id', async (req, res) => {
       [
         req.user.id,
         'INFO',
-        'users',
+        'CRUD',
         'UPDATE_USER',
         'users',
         JSON.stringify({ targetUserId: userId, updates: Object.keys(req.body) }),
@@ -608,7 +608,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
       [
         req.user.id,
         'INFO',
-        'users',
+        'CRUD',
         'DELETE_USER',
         'users',
         JSON.stringify({ deletedUserId: userId, username: users[0].username }),
