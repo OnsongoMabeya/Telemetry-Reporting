@@ -431,7 +431,7 @@ router.post('/', requireAdmin, async (req, res) => {
       [
         req.user.id,
         'INFO',
-        'metric_mappings',
+        'CRUD',
         'CREATE',
         'metric_mapping',
         `Created mapping: ${metric_name} -> ${column_name} for ${node_name}/${base_station_name}`,
@@ -508,7 +508,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
       [
         req.user.id,
         'INFO',
-        'metric_mappings',
+        'CRUD',
         'UPDATE',
         'metric_mapping',
         `Updated mapping: ${metric_name} for ${oldMapping[0].node_name}/${oldMapping[0].base_station_name}`,
@@ -580,7 +580,7 @@ router.delete('/:id', requireAdmin, async (req, res) => {
       [
         req.user.id,
         'INFO',
-        'metric_mappings',
+        'CRUD',
         'DELETE',
         'metric_mapping',
         `Deleted mapping: ${mapping[0].metric_name} for ${mapping[0].node_name}/${mapping[0].base_station_name}`,
