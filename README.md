@@ -50,6 +50,7 @@ Default login: `BSI` / `Reporting2026`
 ## 📖 Documentation
 
 **📖 [Complete Documentation](DOCUMENTATION.md)** - Comprehensive guide covering:
+
 - Installation & Setup
 - User Guide with step-by-step instructions
 - Complete API Reference with examples
