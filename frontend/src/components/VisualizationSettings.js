@@ -496,18 +496,19 @@ const VisualizationSettings = () => {
                 <FormControl fullWidth>
                   <InputLabel>Node</InputLabel>
                   <Select
-                    value={selectedNode}
-                    onChange={(e) => setSelectedNode(e.target.value)}
+                    value={selectedNode && selectedBaseStation ? `${selectedNode}::${selectedBaseStation}` : ''}
+                    onChange={(e) => {
+                      const [nodeName, baseStationName] = e.target.value.split('::');
+                      setSelectedNode(nodeName);
+                      setSelectedBaseStation(baseStationName);
+                      fetchNodeSpecificColumns(nodeName, baseStationName);
+                    }}
                     label="Node"
                   >
                     {uniqueNodes.map((node) => (
                       <MenuItem
                         key={`${node.node_name}-${node.base_station_name}`}
-                        value={node.node_name}
-                        onClick={() => {
-                          setSelectedBaseStation(node.base_station_name);
-                          fetchNodeSpecificColumns(node.node_name, node.base_station_name);
-                        }}
+                        value={`${node.node_name}::${node.base_station_name}`}
                       >
                         {node.node_name} / {node.base_station_name}
                       </MenuItem>
