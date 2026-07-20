@@ -366,65 +366,98 @@ router.post('/', requireAdmin, async (req, res) => {
       });
     }
 
-    // Check if mapping already exists for this column
+    // Check if mapping already exists for this column (active or inactive)
     const [existingColumn] = await db.query(
-      `SELECT id, metric_name FROM metric_mappings 
+      `SELECT id, metric_name, is_active FROM metric_mappings 
        WHERE node_name = ? AND base_station_name = ? 
-       AND column_name = ?
-       AND is_active = TRUE`,
+       AND column_name = ?`,
       [node_name, base_station_name, column_name]
     );
 
-    if (existingColumn.length > 0) {
+    if (existingColumn.length > 0 && existingColumn[0].is_active) {
       return res.status(409).json({ 
         error: `Column ${column_name} is already mapped to "${existingColumn[0].metric_name}"`,
         code: 'DUPLICATE_COLUMN'
       });
     }
 
-    // Check if mapping already exists for this metric name
+    // Check if mapping already exists for this metric name (active or inactive)
     const [existingMetric] = await db.query(
-      `SELECT id, column_name FROM metric_mappings 
+      `SELECT id, column_name, is_active FROM metric_mappings 
        WHERE node_name = ? AND base_station_name = ? 
-       AND metric_name = ?
-       AND is_active = TRUE`,
+       AND metric_name = ?`,
       [node_name, base_station_name, metric_name]
     );
 
-    if (existingMetric.length > 0) {
+    if (existingMetric.length > 0 && existingMetric[0].is_active) {
       return res.status(409).json({ 
         error: `Metric name "${metric_name}" is already used for column ${existingMetric[0].column_name}`,
         code: 'DUPLICATE_METRIC_NAME'
       });
     }
 
-    // Insert new mapping
-    const [result] = await db.query(
-      `INSERT INTO metric_mappings 
-       (node_name, base_station_name, metric_name, column_name, unit, display_order, color, min_value, max_value, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [node_name, base_station_name, metric_name, column_name, unit || null, display_order || 0, color || null, min_value ?? 0, max_value ?? 100, req.user.id]
-    );
+    let mappingId;
+    let auditAction = 'CREATE';
+    let oldValues = null;
+
+    if (existingColumn.length > 0) {
+      // If an active mapping already uses this metric name under a different column, block it
+      if (existingMetric.length > 0 && existingMetric[0].is_active && existingMetric[0].id !== existingColumn[0].id) {
+        return res.status(409).json({
+          error: `Metric name "${metric_name}" is already used for column ${existingMetric[0].column_name}`,
+          code: 'DUPLICATE_METRIC_NAME'
+        });
+      }
+      // Reactivate/update the inactive mapping for this column
+      mappingId = existingColumn[0].id;
+      const [oldRow] = await db.query(
+        'SELECT * FROM metric_mappings WHERE id = ?',
+        [mappingId]
+      );
+      oldValues = JSON.stringify(oldRow[0]);
+      auditAction = 'UPDATE';
+      await db.query(
+        `UPDATE metric_mappings 
+         SET metric_name = ?, unit = ?, display_order = ?, color = ?, min_value = ?, max_value = ?, is_active = TRUE, created_by = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [metric_name, unit || null, display_order || 0, color || null, min_value ?? 0, max_value ?? 100, req.user.id, mappingId]
+      );
+    } else {
+      // Insert new mapping
+      const [result] = await db.query(
+        `INSERT INTO metric_mappings 
+         (node_name, base_station_name, metric_name, column_name, unit, display_order, color, min_value, max_value, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [node_name, base_station_name, metric_name, column_name, unit || null, display_order || 0, color || null, min_value ?? 0, max_value ?? 100, req.user.id]
+      );
+      mappingId = result.insertId;
+    }
 
     // Log to audit trail
     await db.query(
       `INSERT INTO metric_mapping_audit 
-       (mapping_id, node_name, base_station_name, metric_name, column_name, unit, action, changed_by, new_values, ip_address)
-       VALUES (?, ?, ?, ?, ?, ?, 'CREATE', ?, ?, ?)`,
+       (mapping_id, node_name, base_station_name, metric_name, column_name, unit, action, changed_by, old_values, new_values, ip_address)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        result.insertId,
+        mappingId,
         node_name,
         base_station_name,
         metric_name,
         column_name,
         unit || null,
+        auditAction,
         req.user.id,
+        oldValues,
         JSON.stringify({ metric_name, column_name, unit, display_order, color, min_value, max_value }),
         req.ip
       ]
     );
 
     // Log activity
+    const activityAction = auditAction === 'UPDATE' ? 'UPDATE' : 'CREATE';
+    const activityDetails = auditAction === 'UPDATE'
+      ? `Reactivated mapping: ${metric_name} -> ${column_name} for ${node_name}/${base_station_name}`
+      : `Created mapping: ${metric_name} -> ${column_name} for ${node_name}/${base_station_name}`;
     await db.query(
       `INSERT INTO user_activity_log (user_id, level, category, action, resource, details, metadata, ip_address)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -432,9 +465,9 @@ router.post('/', requireAdmin, async (req, res) => {
         req.user.id,
         'INFO',
         'CRUD',
-        'CREATE',
+        activityAction,
         'metric_mapping',
-        `Created mapping: ${metric_name} -> ${column_name} for ${node_name}/${base_station_name}`,
+        activityDetails,
         null,
         req.ip
       ]
@@ -442,8 +475,8 @@ router.post('/', requireAdmin, async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Metric mapping created successfully',
-      id: result.insertId
+      message: auditAction === 'UPDATE' ? 'Metric mapping reactivated successfully' : 'Metric mapping created successfully',
+      id: mappingId
     });
 
   } catch (error) {
