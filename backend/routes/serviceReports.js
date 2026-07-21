@@ -117,6 +117,68 @@ async function fetchTelemetryForMetric(metric, startTime, endTime) {
 }
 
 /**
+ * Fetch telemetry data for multiple metrics in batch.
+ * Groups metrics by node/base station and selects all required columns in one query per group.
+ * @param {Array} metrics - Metrics with node_name, base_station_name, column_name, metric_mapping_id
+ * @param {string} startTime - ISO start time
+ * @param {string} endTime - ISO end time
+ * @returns {Map} metric_mapping_id -> data array
+ */
+async function fetchTelemetryBatch(metrics, startTime, endTime) {
+  const dataMap = new Map();
+  if (!metrics || metrics.length === 0) return dataMap;
+
+  const groups = {};
+  metrics.forEach(metric => {
+    const key = `${metric.node_name}::${metric.base_station_name}`;
+    if (!groups[key]) {
+      groups[key] = { node_name: metric.node_name, base_station_name: metric.base_station_name, metrics: [] };
+    }
+    groups[key].metrics.push(metric);
+  });
+
+  await Promise.all(Object.values(groups).map(async group => {
+    const columnMetrics = {};
+    const validColumns = [];
+
+    group.metrics.forEach(metric => {
+      const col = metric.column_name;
+      if (!col || !/^[a-zA-Z0-9_]+$/.test(col)) return;
+      if (!columnMetrics[col]) {
+        columnMetrics[col] = [];
+        validColumns.push(col);
+      }
+      columnMetrics[col].push(metric);
+    });
+
+    if (validColumns.length === 0) return;
+
+    const columnSelects = validColumns.map(c => `${c} as ${c}`).join(', ');
+    const query = `SELECT time as sample_time, ${columnSelects}
+       FROM node_status_table
+       WHERE NodeName = ? AND NodeBaseStationName = ? AND time BETWEEN ? AND ?
+       ORDER BY time ASC`;
+
+    try {
+      const [rows] = await db.query(query, [group.node_name, group.base_station_name, startTime, endTime]);
+
+      Object.entries(columnMetrics).forEach(([col, ms]) => {
+        const colData = rows
+          .filter(row => row[col] !== null && row[col] !== undefined)
+          .map(row => ({ sample_time: row.sample_time, value: row[col] }));
+        ms.forEach(metric => {
+          dataMap.set(metric.metric_mapping_id, colData);
+        });
+      });
+    } catch (error) {
+      logger.error('Error fetching telemetry batch:', { node: group.node_name, baseStation: group.base_station_name, error: error.message });
+    }
+  }));
+
+  return dataMap;
+}
+
+/**
  * Calculate statistics from telemetry data
  * @param {Array} data - Array of {sample_time, value} objects
  * @returns {Object} Statistics (latest, min, max, avg)
@@ -333,33 +395,32 @@ router.post('/services/:serviceId/generate-report', authenticateToken, async (re
     );
     
     // Fetch telemetry and calculate stats for each metric
-    const metricsWithData = await Promise.all(
-      metrics.map(async (metric) => {
-        const data = await fetchTelemetryForMetric(metric, startTime, endTime);
-        const stats = calculateStats(data);
-        
-        return {
-          assignment_id: metric.assignment_id,
-          display_name: metric.display_name,
-          display_order: metric.display_order,
-          metric_mapping_id: metric.metric_mapping_id,
-          metric_name: metric.metric_name,
-          node_name: metric.node_name,
-          base_station_name: metric.base_station_name,
-          column_name: metric.column_name,
-          unit: metric.unit || '',
-          min_value: metric.min_value ?? 0,
-          max_value: metric.max_value ?? 100,
-          color: metric.color,
-          view_type: metric.view_type,
-          merge_group_id: metric.merge_group_id,
-          merge_group_name: metric.merge_group_name,
-          data: data, // Full data for graphs
-          sparkline: data.slice(-20), // Last 20 points for sparklines
-          stats: stats
-        };
-      })
-    );
+    const telemetryDataMap = await fetchTelemetryBatch(metrics, startTime, endTime);
+    const metricsWithData = metrics.map(metric => {
+      const data = telemetryDataMap.get(metric.metric_mapping_id) || [];
+      const stats = calculateStats(data);
+      
+      return {
+        assignment_id: metric.assignment_id,
+        display_name: metric.display_name,
+        display_order: metric.display_order,
+        metric_mapping_id: metric.metric_mapping_id,
+        metric_name: metric.metric_name,
+        node_name: metric.node_name,
+        base_station_name: metric.base_station_name,
+        column_name: metric.column_name,
+        unit: metric.unit || '',
+        min_value: metric.min_value ?? 0,
+        max_value: metric.max_value ?? 100,
+        color: metric.color,
+        view_type: metric.view_type,
+        merge_group_id: metric.merge_group_id,
+        merge_group_name: metric.merge_group_name,
+        data: data, // Full data for graphs
+        sparkline: data.slice(-20), // Last 20 points for sparklines
+        stats: stats
+      };
+    });
     
     // Create summary table
     const summaryTable = metricsWithData.map(m => ({
@@ -659,14 +720,9 @@ router.post('/reports/client/:clientId/generate', authenticateToken, async (req,
     
     // Get all services for this client
     const [services] = await db.query(
-      `SELECT s.id, s.name, mm.node_name, mm.base_station_name
+      `SELECT DISTINCT s.id, s.name
        FROM services s
        INNER JOIN client_services cs ON s.id = cs.service_id
-       LEFT JOIN (
-         SELECT DISTINCT id as metric_mapping_id, node_name, base_station_name
-         FROM metric_mappings
-         WHERE is_active = TRUE
-       ) mm ON cs.service_id = mm.metric_mapping_id
        WHERE cs.client_id = ? AND s.is_active = TRUE
        ORDER BY s.name`,
       [clientId]
@@ -706,33 +762,32 @@ router.post('/reports/client/:clientId/generate', authenticateToken, async (req,
         );
         
         // Fetch telemetry for each metric
-        const metricsWithData = await Promise.all(
-          metrics.map(async (metric) => {
-            const data = await fetchTelemetryForMetric(metric, startTime, endTime);
-            const stats = calculateStats(data);
-            
-            return {
-              assignment_id: metric.assignment_id,
-              display_name: metric.display_name,
-              display_order: metric.display_order,
-              metric_mapping_id: metric.metric_mapping_id,
-              metric_name: metric.metric_name,
-              node_name: metric.node_name,
-              base_station_name: metric.base_station_name,
-              column_name: metric.column_name,
-              unit: metric.unit || '',
-              min_value: metric.min_value ?? 0,
-              max_value: metric.max_value ?? 100,
-              color: metric.color,
-              view_type: metric.view_type,
-              merge_group_id: metric.merge_group_id,
-              merge_group_name: metric.merge_group_name,
-              data: data,
-              sparkline: data.slice(-20),
-              stats: stats
-            };
-          })
-        );
+        const telemetryDataMap = await fetchTelemetryBatch(metrics, startTime, endTime);
+        const metricsWithData = metrics.map(metric => {
+          const data = telemetryDataMap.get(metric.metric_mapping_id) || [];
+          const stats = calculateStats(data);
+          
+          return {
+            assignment_id: metric.assignment_id,
+            display_name: metric.display_name,
+            display_order: metric.display_order,
+            metric_mapping_id: metric.metric_mapping_id,
+            metric_name: metric.metric_name,
+            node_name: metric.node_name,
+            base_station_name: metric.base_station_name,
+            column_name: metric.column_name,
+            unit: metric.unit || '',
+            min_value: metric.min_value ?? 0,
+            max_value: metric.max_value ?? 100,
+            color: metric.color,
+            view_type: metric.view_type,
+            merge_group_id: metric.merge_group_id,
+            merge_group_name: metric.merge_group_name,
+            data: data,
+            sparkline: data.slice(-20),
+            stats: stats
+          };
+        });
         
         // Group metrics by base station
         const baseStationsMap = new Map();
