@@ -251,22 +251,25 @@ router.get('/clients/:clientId/services/:serviceId/metrics/:metricId/telemetry',
 
     const metric = metrics[0];
 
-    // Set timezone for this session
+    if (!/^[a-zA-Z0-9_]+$/.test(metric.column_name)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid metric column'
+      });
+    }
+
     await db.query(`SET time_zone = '+03:00'`);
 
-    // Get the time range of available data
-    const timeRangeQuery = `
-      SELECT 
-        CONVERT_TZ(MIN(time), @@session.time_zone, '+03:00') as earliest_time,
-        CONVERT_TZ(MAX(time), @@session.time_zone, '+03:00') as latest_time
-      FROM node_status_table
-      WHERE NodeName = ? AND NodeBaseStationName = ?
-    `;
+    const [[latestData]] = await db.query(
+      `SELECT time as latest_time
+       FROM node_status_table
+       WHERE NodeName = ? AND NodeBaseStationName = ?
+       ORDER BY time DESC
+       LIMIT 1`,
+      [metric.node_name, metric.base_station_name]
+    );
 
-    const [[timeRange]] = await db.query(timeRangeQuery, [metric.node_name, metric.base_station_name]);
-
-    // If no data is found, return empty result
-    if (!timeRange.earliest_time || !timeRange.latest_time) {
+    if (!latestData?.latest_time) {
       return res.json({
         success: true,
         data: [],
@@ -332,40 +335,25 @@ router.get('/clients/:clientId/services/:serviceId/metrics/:metricId/telemetry',
         timeStep = 1;
     }
 
-    // Calculate time range based on latest available data (not NOW())
-    const endTime = new Date(timeRange.latest_time);
+    const endTime = new Date(latestData.latest_time);
     const startTime = new Date(endTime.getTime() - (timeRangeMinutes * 60 * 1000));
+    const metricName = metric.metric_name.replace(/`/g, '``');
 
-    // Build query with time bucketing for performance
     const query = `
-      WITH time_buckets AS (
-        SELECT 
-          DATE_FORMAT(
-            CONVERT_TZ(
-              FROM_UNIXTIME(
-                FLOOR(UNIX_TIMESTAMP(time) / (? * 60)) * (? * 60)
-              ),
-              @@session.time_zone,
-              '+03:00'
-            ),
-            '%Y-%m-%d %H:%i:00'
-          ) as bucket_start,
-          ROUND(AVG(${metric.column_name}), 2) as \`${metric.metric_name}\`,
-          COUNT(*) as sample_count
-        FROM node_status_table
-        WHERE NodeName = ?
-          AND NodeBaseStationName = ?
-          AND time BETWEEN ? AND ?
-        GROUP BY bucket_start
-        HAVING sample_count > 0
-        ORDER BY bucket_start DESC
-        LIMIT 200
-      )
-      SELECT 
-        bucket_start as sample_time,
-        \`${metric.metric_name}\`
-      FROM time_buckets
+      SELECT
+        DATE_FORMAT(
+          FROM_UNIXTIME(FLOOR(UNIX_TIMESTAMP(time) / (? * 60)) * (? * 60)),
+          '%Y-%m-%d %H:%i:00'
+        ) as sample_time,
+        ROUND(AVG(\`${metric.column_name}\`), 2) as \`${metricName}\`
+      FROM node_status_table
+      WHERE NodeName = ?
+        AND NodeBaseStationName = ?
+        AND time BETWEEN ? AND ?
+        AND \`${metric.column_name}\` IS NOT NULL
+      GROUP BY sample_time
       ORDER BY sample_time ASC
+      LIMIT 200
     `;
 
     const [telemetryData] = await db.query(query, [

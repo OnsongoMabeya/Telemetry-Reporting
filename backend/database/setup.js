@@ -29,6 +29,15 @@ async function checkColumnExists(connection, tableName, columnName) {
   return rows[0].count > 0;
 }
 
+async function checkIndexExists(connection, tableName, indexName) {
+  const [rows] = await connection.query(
+    `SELECT COUNT(*) as count FROM information_schema.statistics
+     WHERE table_schema = ? AND table_name = ? AND index_name = ?`,
+    [dbConfig.database, tableName, indexName]
+  );
+  return rows[0].count > 0;
+}
+
 async function runMigration(connection, migrationFile) {
   console.log(`\n📄 Running migration: ${path.basename(migrationFile)}`);
   
@@ -279,6 +288,13 @@ async function setupDatabase() {
     } else {
       console.log('❌ Table: manual_reports (missing - needs migration 017)');
       migrationsToRun.add('017_create_manual_reports_tables.sql');
+    }
+
+    if (await checkIndexExists(connection, 'node_status_table', 'idx_node_status_node_base_time')) {
+      console.log('✅ Index: node_status_table.idx_node_status_node_base_time');
+    } else {
+      console.log('❌ Index: node_status_table.idx_node_status_node_base_time (missing - needs migration 018)');
+      migrationsToRun.add('018_add_node_status_telemetry_index.sql');
     }
 
     console.log('\n================================\n');
