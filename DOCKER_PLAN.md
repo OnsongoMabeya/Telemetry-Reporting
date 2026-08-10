@@ -149,6 +149,7 @@ networks:
 ## Phase 6: Configuration for External Database
 
 - **6.1** Create `.env.docker` template
+
   ```env
   # External Database Configuration
   DB_HOST=your-external-db-host.com
@@ -161,6 +162,7 @@ networks:
   ```
 
 - **6.2** Create `.env.example`
+
   ```env
   # External Database (required)
   DB_HOST=your-database-host.example.com
@@ -187,6 +189,7 @@ networks:
 
 - **7.1** Only persistent volume needed
   - `backend_logs`: Application logs (optional)
+
   ```yaml
   volumes:
     backend_logs:
@@ -218,6 +221,7 @@ networks:
 ## Phase 9: Health Checks
 
 - **9.1** Backend health check
+
   ```yaml
   healthcheck:
     test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
@@ -228,6 +232,7 @@ networks:
   ```
 
 - **9.2** Frontend health check
+
   ```yaml
   healthcheck:
     test: ["CMD", "curl", "-f", "http://localhost:80/"]
@@ -245,6 +250,7 @@ networks:
 ## Phase 10: Development & Production Variants
 
 - **10.1** Create `docker-compose.dev.yml`
+
   ```yaml
   version: '3.8'
   services:
@@ -294,30 +300,31 @@ networks:
 ## Phase 11: CI/CD Integration
 
 - **11.1** Update `Makefile`
-  ```makefile
-  build:
-  	docker-compose build
 
-  up:
-  	docker-compose up -d
+  ```makefile
+  build: 
+    docker-compose build
+
+  up: 
+    docker-compose up -d
 
   down:
-  	docker-compose down
+    docker-compose down
 
   logs:
-  	docker-compose logs -f
+    docker-compose logs -f
 
   dev:
-  	docker-compose -f docker-compose.dev.yml up
+    docker-compose -f docker-compose.dev.yml up
 
   dev-down:
-  	docker-compose -f docker-compose.dev.yml down
+    docker-compose -f docker-compose.dev.yml down
 
   restart:
-  	docker-compose restart
+    docker-compose restart
 
   clean:
-  	docker-compose down -v
+    docker-compose down -v
   ```
 
 ---
@@ -325,6 +332,7 @@ networks:
 ## Phase 12: Documentation
 
 - **12.1** Create `DOCKER.md`
+  
   ```markdown
   # Docker Setup Guide
 
@@ -342,15 +350,18 @@ networks:
      ```
 
   2. **Build and start:**
+
      ```bash
      docker-compose --env-file .env.docker up -d
      ```
 
   3. **Access the application:**
+
      - Frontend: http://localhost:3010
      - Backend API: http://localhost:5000
 
   4. **View logs:**
+
      ```bash
      docker-compose logs -f
      ```
@@ -358,12 +369,14 @@ networks:
   ## Database Migrations
 
   Run migrations on the external database before starting containers:
+
   ```bash
   # From your local machine
   npm run db:setup
   ```
 
   Or run inside the backend container:
+
   ```bash
   docker-compose exec backend npm run db:setup
   ```
@@ -371,6 +384,7 @@ networks:
   ## Development
 
   Use the development compose file with hot-reload:
+
   ```bash
   docker-compose -f docker-compose.dev.yml up
   ```
@@ -397,7 +411,7 @@ networks:
 
 ## Updated File Structure
 
-```
+```bash
 project-root/
 ├── docker-compose.yml              # Production
 ├── docker-compose.dev.yml          # Development
