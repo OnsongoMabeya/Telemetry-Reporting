@@ -94,6 +94,7 @@ const KenyaMap = ({ selectedNode, onStatusUpdate }) => {
   const [error, setError] = useState(null);
   const [selectedStation, setSelectedStation] = useState(null);
   const [hoveredStation, setHoveredStation] = useState(null);
+  const [enableAnimations, setEnableAnimations] = useState(false);
   const { isAuthenticated } = useAuth();
 
   const fetchBaseStations = useCallback(async () => {
@@ -242,14 +243,13 @@ const KenyaMap = ({ selectedNode, onStatusUpdate }) => {
           {baseStations.map((station, index) => (
             <motion.div
               key={station.id}
-              initial={{ opacity: 0, scale: 0 }}
+              initial={enableAnimations ? { opacity: 0, scale: 0 } : { opacity: 1, scale: 1 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ 
+              transition={enableAnimations ? { 
                 duration: 0.5, 
-                delay: index * 0.1,
                 type: "spring",
                 stiffness: 260
-              }}
+              } : { duration: 0 }}
             >
               <Marker
                 position={[station.lat, station.lng]}

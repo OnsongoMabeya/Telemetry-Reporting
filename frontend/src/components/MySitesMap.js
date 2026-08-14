@@ -125,6 +125,7 @@ const MySitesMap = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStation, setSelectedStation] = useState(null);
+  const [visibleMarkers, setVisibleMarkers] = useState([]);
   
   // Filter states
   const [viewType, setViewType] = useState('client'); // 'client' or 'service'
@@ -357,7 +358,8 @@ const MySitesMap = ({
           
           <MapBounds isFullscreen={isFullscreen} />
           
-          {filteredStations.map((station) => (
+          {/* Render only visible markers for better performance (lazy loading) */}
+          {(visibleMarkers.length > 0 ? visibleMarkers : filteredStations.slice(0, 50)).map((station) => (
             <Marker
               key={station.id}
               position={[station.lat, station.lng]}
