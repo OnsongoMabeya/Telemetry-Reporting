@@ -321,27 +321,34 @@ async function setupDatabase() {
       migrationsToRun.add('019_add_performance_indexes.sql');
     }
 
-    // Check for metric write optimization indexes (migration 020)
-    const metricWriteIndexes = [
-      { table: 'telemetry_data', index: 'idx_telemetry_data_timestamp' },
-      { table: 'telemetry_data', index: 'idx_telemetry_data_node_metric' },
-      { table: 'telemetry_data', index: 'idx_telemetry_data_range' }
-    ];
+    // Check for telemetry_data table (required for migration 020)
+    const hasTelemetryData = await checkTableExists(connection, 'telemetry_data');
+    
+    if (hasTelemetryData) {
+      // Check for metric write optimization indexes (migration 020)
+      const metricWriteIndexes = [
+        { table: 'telemetry_data', index: 'idx_telemetry_data_timestamp' },
+        { table: 'telemetry_data', index: 'idx_telemetry_data_node_metric' },
+        { table: 'telemetry_data', index: 'idx_telemetry_data_range' }
+      ];
 
-    let allMetricIndexesExist = true;
-    for (const { table, index } of metricWriteIndexes) {
-      const exists = await checkIndexExists(connection, table, index);
-      if (!exists) {
-        allMetricIndexesExist = false;
-        break;
+      let allMetricIndexesExist = true;
+      for (const { table, index } of metricWriteIndexes) {
+        const exists = await checkIndexExists(connection, table, index);
+        if (!exists) {
+          allMetricIndexesExist = false;
+          break;
+        }
       }
-    }
 
-    if (allMetricIndexesExist) {
-      console.log('✅ Indexes: Metric write optimization indexes');
+      if (allMetricIndexesExist) {
+        console.log('✅ Indexes: Metric write optimization indexes');
+      } else {
+        console.log('❌ Indexes: Metric write optimization (missing - needs migration 020)');
+        migrationsToRun.add('020_optimize_metric_writes.sql');
+      }
     } else {
-      console.log('❌ Indexes: Metric write optimization (missing - needs migration 020)');
-      migrationsToRun.add('020_optimize_metric_writes.sql');
+      console.log('⚠️  Table: telemetry_data (not found - skipping migration 020)');
     }
 
     console.log('\n================================\n');
