@@ -27,6 +27,7 @@ const { authenticateToken } = require('./middleware/auth');
 const logger = require('./utils/logger');
 const nodeCacheManager = require('./services/cacheManager');
 const CleanupManager = require('./services/cleanupManager');
+const MetricQueryOptimizer = require('./services/metricQueryOptimizer');
 
 // Helper function to get cache TTL based on time filter
 const getCacheTTL = (timeFilter) => {
@@ -938,6 +939,9 @@ cacheManager.scheduleMaintenance();
 const cleanupManager = new CleanupManager(pool.promise());
 cleanupManager.start();
 
+// Initialize metric query optimizer with caching
+const metricQueryOptimizer = new MetricQueryOptimizer(pool.promise());
+
 scheduler.setDatabase(pool.promise());
 reportDataService.setDatabase(pool.promise());
 manualReportProcessor.setDatabase(pool.promise());
@@ -948,6 +952,7 @@ setSiteAlertsDb(pool.promise());
 app.set('performanceMonitor', performanceMonitor);
 app.set('cacheManager', cacheManager);
 app.set('cleanupManager', cleanupManager);
+app.set('metricQueryOptimizer', metricQueryOptimizer);
 
 // Add performance monitoring middleware
 app.use('/api/manual-reports', performanceMonitor.createMiddleware());
