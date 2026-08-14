@@ -351,6 +351,28 @@ async function setupDatabase() {
       console.log('⚠️  Table: telemetry_data (not found - skipping migration 020)');
     }
 
+    // Check for map query optimization indexes (migration 021)
+    const mapQueryIndexes = [
+      { table: 'mapviewtable', index: 'idx_mapviewtable_basestationname' },
+      { table: 'metric_mappings', index: 'idx_metric_mappings_basestationname' }
+    ];
+
+    let allMapIndexesExist = true;
+    for (const { table, index } of mapQueryIndexes) {
+      const exists = await checkIndexExists(connection, table, index);
+      if (!exists) {
+        allMapIndexesExist = false;
+        break;
+      }
+    }
+
+    if (allMapIndexesExist) {
+      console.log('✅ Indexes: Map query optimization indexes');
+    } else {
+      console.log('❌ Indexes: Map query optimization (missing - needs migration 021)');
+      migrationsToRun.add('021_optimize_map_queries.sql');
+    }
+
     console.log('\n================================\n');
     
     if (migrationsToRun.size === 0) {

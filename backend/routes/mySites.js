@@ -454,34 +454,38 @@ router.get('/clients/:clientId/map-stations', async (req, res) => {
     const baseStationNames = baseStationRows.map(row => row.base_station_name.toUpperCase());
     const placeholders = baseStationNames.map(() => '?').join(',');
 
-    // Query mapviewtable for latest coordinates and status per station
-    const [mapData] = await db.query(`
-      SELECT 
-        BaseStationName,
-        Latitude,
-        Longitude,
-        BaseStationStatus,
-        time
-      FROM mapviewtable mv1
-      WHERE time = (
-        SELECT MAX(time) 
-        FROM mapviewtable mv2 
-        WHERE mv2.BaseStationName = mv1.BaseStationName
-      )
-      AND UPPER(BaseStationName) IN (${placeholders})
-    `, baseStationNames);
-
-    // Get latest status time from node_status_table for online/offline determination
+    // Parallelize queries for mapviewtable and node_status_table
+    // This reduces total query time significantly
     const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
     
-    const [statusRows] = await db.query(`
-      SELECT 
-        NodeBaseStationName,
-        MAX(time) as latestStatusTime
-      FROM node_status_table
-      WHERE UPPER(NodeBaseStationName) IN (${placeholders})
-      GROUP BY NodeBaseStationName
-    `, baseStationNames);
+    const [mapData, statusRows] = await Promise.all([
+      // Query mapviewtable for latest coordinates and status per station
+      db.query(`
+        SELECT 
+          BaseStationName,
+          Latitude,
+          Longitude,
+          BaseStationStatus,
+          time
+        FROM mapviewtable mv1
+        WHERE time = (
+          SELECT MAX(time) 
+          FROM mapviewtable mv2 
+          WHERE mv2.BaseStationName = mv1.BaseStationName
+        )
+        AND UPPER(BaseStationName) IN (${placeholders})
+      `, baseStationNames).then(result => result[0]),
+      
+      // Get latest status time from node_status_table for online/offline determination
+      db.query(`
+        SELECT 
+          NodeBaseStationName,
+          MAX(time) as latestStatusTime
+        FROM node_status_table
+        WHERE UPPER(NodeBaseStationName) IN (${placeholders})
+        GROUP BY NodeBaseStationName
+      `, baseStationNames).then(result => result[0])
+    ]);
 
     const statusTimeMap = new Map();
     statusRows.forEach(row => {
