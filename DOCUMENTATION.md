@@ -54,12 +54,14 @@ The BSI Telemetry Reporting System is a comprehensive monitoring solution for po
 ### System Requirements
 
 **Minimum Hardware:**
+
 - **Application Server**: 4 CPU cores, 8GB RAM, 100GB SSD
 - **Database Server**: 8 CPU cores, 16GB RAM, 500GB SSD
 - **Load Balancer**: 2 CPU cores, 4GB RAM
 - **Redis Cache**: 2 CPU cores, 4GB RAM
 
 **Software Requirements:**
+
 - **Operating System**: Ubuntu 20.04 LTS or CentOS 8
 - **Node.js**: 18.x LTS
 - **MySQL**: 8.0 or higher
@@ -152,11 +154,13 @@ WHATSAPP_WEBHOOK_VERIFY_TOKEN=your_verify_token
 ### Getting Started
 
 **Prerequisites:**
+
 - Active BSI Telemetry account with admin privileges
 - Modern web browser (Chrome, Firefox, Safari, Edge)
 - Stable internet connection
 
 **First Login:**
+
 1. Navigate to [https://telemetry.bsi.com](https://telemetry.bsi.com)
 2. Enter your credentials
 3. Complete two-factor authentication if enabled
@@ -165,6 +169,7 @@ WHATSAPP_WEBHOOK_VERIFY_TOKEN=your_verify_token
 ### Dashboard Overview
 
 The main dashboard provides:
+
 - **System Status**: Overall system health and performance metrics
 - **Recent Alerts**: Latest power drop alerts and notifications
 - **Quick Actions**: Fast access to common tasks
@@ -174,15 +179,18 @@ The main dashboard provides:
 
 #### Setting Up Power Drop Alerts
 
-**Step 1: Navigate to Power Drops Tab**
+##### Step 1: Navigate to Power Drops Tab
+
 1. Click on **Alerts** in the main navigation
 2. Select the **Power Drops** tab
 
-**Step 2: Create New Alert Configuration**
+##### Step 2: Create New Alert Configuration
+
 1. Click the **+ Add Configuration** button
 2. Fill in the required information:
 
 **Basic Configuration:**
+
 - **Node**: Select the monitoring node from dropdown
 - **Base Station**: Choose the specific base station
 - **Metric**: Select the metric to monitor (voltage, current, power, etc.)
@@ -190,6 +198,7 @@ The main dashboard provides:
 - **Drop Duration**: Minimum duration (in seconds) before triggering alert
 
 **Advanced Options:**
+
 - **Notification Channels**: Choose WhatsApp, email, or both
 - **Alert Severity**: Set priority level (low, medium, high, critical)
 - **Recovery Notification**: Enable/disable recovery alerts
@@ -198,16 +207,19 @@ The main dashboard provides:
 #### Managing Alert Configurations
 
 **Viewing Active Alerts:**
+
 - Active configurations are shown in a table format
 - Status indicators show if monitoring is active
 - Last check time and recent activity are displayed
 
 **Editing Configurations:**
+
 1. Click the **Edit** button next to any configuration
 2. Modify settings as needed
 3. Click **Save Changes** to update
 
 **Pausing/Resuming Alerts:**
+
 1. Use the toggle switch to temporarily pause monitoring
 2. Click **Resume** to restart monitoring
 3. Paused configurations retain their settings
@@ -217,44 +229,54 @@ The main dashboard provides:
 The manual report generation follows a 6-step workflow:
 
 #### Step 1: Report Type Selection
+
 Choose between:
+
 - **Service Reports**: Individual service performance analysis
 - **Client Reports**: Consolidated reports for all services under a client
 
 #### Step 2: Target Selection
 
 **For Service Reports:**
+
 - Use search bar to find specific services
 - Apply filters by client, status, or performance metrics
 - Use bulk selection for multiple services
 
 **For Client Reports:**
+
 - Select from active client list
 - Automatically includes all associated services
 - Option to exclude specific services if needed
 
 #### Step 3: Date Range Selection
+
 - **Predefined Ranges**: Last 7 days, 30 days, 90 days
 - **Custom Range**: Select specific start and end dates
 - **Date Validation**: Ensures data availability for selected range
 
 #### Step 4: Delivery Configuration
+
 Choose delivery method:
+
 - **Download**: Immediate download to local device
 - **Email**: Send to specified recipients
 - **Both**: Download and email delivery
 
 **Email Configuration:**
+
 - Add multiple recipients
 - Custom subject and message
 - Attachment size limits
 
 #### Step 5: Report Preview
+
 - **Sample Data**: Preview of actual report content
 - **Quality Assessment**: Data completeness and accuracy indicators
 - **Size Estimates**: Expected file size and generation time
 
 #### Step 6: Generation and Download
+
 - **Progress Tracking**: Real-time generation progress
 - **Estimated Time**: Dynamic time estimates based on data volume
 - **Download Options**: Multiple format options (PDF, Excel)
@@ -264,15 +286,18 @@ Choose delivery method:
 #### System Health Dashboard
 
 Access performance monitoring via:
+
 1. **Admin Panel** → **Performance** → **System Health**
 2. Direct URL: `/performance/health`
 
 **Health Indicators:**
+
 - **Overall Status**: Healthy, Degraded, or Unhealthy
 - **Component Status**: Individual service health
 - **Resource Usage**: Memory, CPU, and disk utilization
 
 #### Real-time Metrics
+
 - **API Response Times**: Average and percentile metrics
 - **Database Performance**: Query execution times and efficiency
 - **Cache Performance**: Hit rates and storage utilization
@@ -280,6 +305,7 @@ Access performance monitoring via:
 #### Optimization Tools
 
 **Database Optimization:**
+
 1. Navigate to **Performance** → **Optimization**
 2. Choose optimization type:
    - **Table Optimization**: Rebuild and optimize tables
@@ -288,6 +314,7 @@ Access performance monitoring via:
    - **Full Optimization**: Complete system optimization
 
 **Cache Management:**
+
 - **Cache Statistics**: View current cache performance
 - **Cache Cleanup**: Remove expired or invalid entries
 - **Cache Tuning**: Adjust cache size and expiration settings
@@ -310,7 +337,7 @@ All API endpoints require JWT authentication and admin privileges. Include the t
 Authorization: Bearer <your-jwt-token>
 ```
 
-### Power Drop Alerts
+### Power Drop Alerts - API Reference
 
 #### Get All Power Drop Alert Configurations
 
@@ -319,6 +346,7 @@ GET /api/power-drop-alerts/configs
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -345,6 +373,7 @@ POST /api/power-drop-alerts/configs
 ```
 
 **Request Body:**
+
 ```json
 {
   "node_id": "NODE_001",
@@ -373,7 +402,7 @@ DELETE /api/power-drop-alerts/configs/:id
 GET /api/power-drop-alerts/history?node_id=NODE_001&start_date=2024-01-01&end_date=2024-01-31
 ```
 
-### Manual Reports
+### Manual Reports - API reference
 
 #### Generate Manual Report
 
@@ -382,6 +411,7 @@ POST /api/manual-reports/generate
 ```
 
 **Request Body:**
+
 ```json
 {
   "reportType": "service",
@@ -394,6 +424,7 @@ POST /api/manual-reports/generate
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -411,6 +442,7 @@ GET /api/manual-reports/status/:id
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -437,6 +469,7 @@ GET /api/manual-reports/history?page=1&limit=20&status=completed
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -469,6 +502,7 @@ POST /api/manual-reports/preview
 ```
 
 **Request Body:**
+
 ```json
 {
   "reportType": "service",
@@ -487,6 +521,7 @@ GET /api/manual-reports/cache-stats
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -508,6 +543,7 @@ POST /api/manual-reports/cache/clear
 ```
 
 **Request Body (Optional):**
+
 ```json
 {
   "reportType": "service",
@@ -515,7 +551,7 @@ POST /api/manual-reports/cache/clear
 }
 ```
 
-### Performance Monitoring
+### Performance Monitoring - API Reference
 
 #### Get Performance Metrics
 
@@ -524,6 +560,7 @@ GET /api/manual-reports/performance?type=api&timeRange=60
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -554,6 +591,7 @@ POST /api/manual-reports/performance/optimize
 ```
 
 **Request Body:**
+
 ```json
 {
   "operation": "all" // "all", "optimize", "analyze", "cache"
@@ -567,6 +605,7 @@ GET /api/manual-reports/performance/health
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -602,6 +641,7 @@ GET /api/manual-reports/performance/health
 #### Rate Limiting
 
 API endpoints are rate-limited to prevent abuse:
+
 - **Daily Limit**: 10 requests per user
 - **Hourly Limit**: 5 requests per user
 
@@ -683,6 +723,7 @@ status = requests.get(
 #### Environment Setup
 
 **Create Deployment User:**
+
 ```bash
 # Create deployment user
 sudo useradd -m -s /bin/bash telemetry
@@ -693,6 +734,7 @@ sudo su - telemetry
 ```
 
 **Install Node.js:**
+
 ```bash
 # Install Node.js 18.x LTS
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
@@ -704,6 +746,7 @@ npm --version
 ```
 
 **Install MySQL:**
+
 ```bash
 # Install MySQL 8.0
 sudo apt update
@@ -727,6 +770,7 @@ FLUSH PRIVILEGES;
 ```
 
 **Install Redis:**
+
 ```bash
 # Install Redis
 sudo apt install redis-server
@@ -742,6 +786,7 @@ sudo systemctl enable redis-server
 #### Application Deployment
 
 **Clone Repository:**
+
 ```bash
 # Clone application
 cd /var/www
@@ -753,6 +798,7 @@ sudo chown -R telemetry:telemetry /var/www/telemetry-reporting
 ```
 
 **Install Dependencies:**
+
 ```bash
 # Install Node.js dependencies
 npm ci --production
@@ -762,6 +808,7 @@ sudo npm install -g pm2
 ```
 
 **Environment Configuration:**
+
 ```bash
 # Create production environment file
 cp .env.example .env.production
@@ -796,6 +843,7 @@ npm run seed:prod
 #### Process Management
 
 **PM2 Configuration:**
+
 ```bash
 # Create PM2 configuration file
 nano ecosystem.config.js
@@ -823,6 +871,7 @@ module.exports = {
 ```
 
 **Start Application:**
+
 ```bash
 # Create log directory
 sudo mkdir -p /var/log/telemetry
@@ -841,6 +890,7 @@ pm2 startup
 #### Web Server Configuration
 
 **Nginx Configuration:**
+
 ```bash
 # Create Nginx configuration
 sudo nano /etc/nginx/sites-available/telemetry.bsi.com
@@ -916,6 +966,7 @@ server {
 ```
 
 **Enable Site:**
+
 ```bash
 # Enable site
 sudo ln -s /etc/nginx/sites-available/telemetry.bsi.com /etc/nginx/sites-enabled/
@@ -930,6 +981,7 @@ sudo systemctl restart nginx
 #### SSL Certificate Setup
 
 **Let's Encrypt Certificate:**
+
 ```bash
 # Install Certbot
 sudo apt install certbot python3-certbot-nginx
@@ -949,6 +1001,7 @@ sudo crontab -e
 #### Monitoring and Logging
 
 **Log Rotation:**
+
 ```bash
 # Create logrotate configuration
 sudo nano /etc/logrotate.d/telemetry
@@ -968,6 +1021,7 @@ sudo nano /etc/logrotate.d/telemetry
 ```
 
 **System Monitoring:**
+
 ```bash
 # Install monitoring tools
 sudo apt install htop iotop nethogs
@@ -1033,6 +1087,7 @@ redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.
 #### Testing Objectives
 
 **Performance Goals:**
+
 - **API Response Time**: < 2 seconds for 95% of requests
 - **Concurrent Users**: Support 500+ concurrent users
 - **Throughput**: Handle 1000+ requests per minute
@@ -1040,6 +1095,7 @@ redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.
 - **System Resource Usage**: < 80% CPU, < 70% memory utilization
 
 **Testing Scenarios:**
+
 1. **Normal Load**: Typical daily usage patterns
 2. **Peak Load**: High-traffic periods (end of month reporting)
 3. **Stress Testing**: Maximum system capacity
@@ -1049,6 +1105,7 @@ redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.
 #### Testing Tools
 
 **Required Tools:**
+
 - **Artillery.js**: Load testing framework
 - **K6**: Modern load testing tool
 - **Apache JMeter**: Comprehensive testing suite
@@ -1056,6 +1113,7 @@ redis-cli --cluster create 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.
 - **Docker**: Containerized testing environments
 
 **Installation:**
+
 ```bash
 # Install Artillery
 npm install -g artillery
@@ -1076,6 +1134,7 @@ sudo mv apache-jmeter-5.5 /opt/jmeter
 #### Test Scenarios
 
 **Normal Load Testing - Artillery Configuration:**
+
 ```yaml
 # artillery-config-normal.yml
 config:
@@ -1122,6 +1181,7 @@ scenarios:
 ```
 
 **Peak Load Testing - K6 Configuration:**
+
 ```javascript
 // k6-peak-load.js
 import http from 'k6/http';
@@ -1152,6 +1212,7 @@ export default function() {
 ```
 
 **Stress Testing - K6 Configuration:**
+
 ```javascript
 // k6-stress-test.js
 import http from 'k6/http';
@@ -1233,6 +1294,7 @@ export default function() {
 #### Test Execution
 
 **Running Tests:**
+
 ```bash
 # Run normal load test
 artillery run artillery-config-normal.yml
@@ -1254,6 +1316,7 @@ k6 run --vus 100 --duration 10m k6-stress-test.js
 #### Performance Analysis
 
 **Key Metrics:**
+
 - **Average Response Time**: Overall API performance
 - **95th Percentile**: Worst-case scenario performance
 - **99th Percentile**: Extreme case performance
@@ -1263,6 +1326,7 @@ k6 run --vus 100 --duration 10m k6-stress-test.js
 - **Error Rate**: System reliability
 
 **Optimization Recommendations:**
+
 - **Database Optimization**: Add indexes, optimize queries
 - **Application Caching**: Implement Redis caching strategies
 - **Load Balancing**: Distribute traffic across multiple servers
@@ -1276,13 +1340,15 @@ k6 run --vus 100 --duration 10m k6-stress-test.js
 
 #### Power Drop Alert Issues
 
-**Issue: Not receiving alerts**
+##### Issue: Not receiving alerts
+
 - Check alert configuration status
 - Verify notification channel settings
 - Review recent alert history
 - Test notification delivery
 
-**Issue: Too many false alerts**
+##### Issue: Too many false alerts
+
 - Adjust threshold values
 - Increase drop duration requirements
 - Review metric selection
@@ -1290,13 +1356,15 @@ k6 run --vus 100 --duration 10m k6-stress-test.js
 
 #### Manual Report Issues
 
-**Issue: Report generation fails**
+##### Issue: Report generation fails
+
 - Check target data availability
 - Verify date range validity
 - Review system performance status
 - Check available disk space
 
-**Issue: Slow report generation**
+##### Issue: Slow report generation
+
 - Check system performance metrics
 - Review cache effectiveness
 - Consider reducing report scope
@@ -1304,7 +1372,8 @@ k6 run --vus 100 --duration 10m k6-stress-test.js
 
 #### Performance Issues
 
-**Issue: Slow API responses**
+##### Issue: Slow API responses
+
 - Check performance monitoring dashboard
 - Review database optimization status
 - Clear query cache if needed
@@ -1312,7 +1381,8 @@ k6 run --vus 100 --duration 10m k6-stress-test.js
 
 #### Database Connection Issues
 
-**Issue: Cannot connect to database**
+##### Issue: Cannot connect to database
+
 - Verify database server is running
 - Check connection credentials
 - Review firewall settings

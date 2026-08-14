@@ -349,18 +349,18 @@ networks:
      # Edit .env.docker with your external database details
      ```
 
-  2. **Build and start:**
+  1. **Build and start:**
 
      ```bash
      docker-compose --env-file .env.docker up -d
      ```
 
-  3. **Access the application:**
+  2. **Access the application:**
 
-     - Frontend: http://localhost:3010
-     - Backend API: http://localhost:5000
+     - Frontend: <http://localhost:3010>
+     - Backend API: <http://localhost:5000>
 
-  4. **View logs:**
+  3. **View logs:**
 
      ```bash
      docker-compose logs -f
@@ -403,9 +403,8 @@ networks:
     - Check firewall rules
 
   - **Frontend can't reach backend:**
-    - Verify nginx.conf proxies to http://backend:5000
+    - Verify nginx.conf proxies to <http://backend:5000>
     - Check docker-compose network configuration
-  ```
 
 ---
 

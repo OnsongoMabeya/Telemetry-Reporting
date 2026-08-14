@@ -25,6 +25,7 @@ const powerDropAlertsRoutes = require('./routes/powerDropAlerts');
 const manualReportsRoutes = require('./routes/manualReports');
 const { authenticateToken } = require('./middleware/auth');
 const logger = require('./utils/logger');
+const nodeCacheManager = require('./services/cacheManager');
 
 // Helper function to get cache TTL based on time filter
 const getCacheTTL = (timeFilter) => {
@@ -121,8 +122,10 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   port: process.env.DB_PORT,
   waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0
+  connectionLimit: parseInt(process.env.DB_POOL_LIMIT || '100'),
+  queueLimit: parseInt(process.env.DB_QUEUE_LIMIT || '200'),
+  enableKeepAlive: true,
+  keepAliveInitialDelayMs: 0
 });
 
 // Test database connection
@@ -590,29 +593,58 @@ const getTelemetryData = async (pool, nodeName, baseStation, timeFilter, page = 
 };
 
 // Get all available nodes
-app.get('/api/nodes', async (req, res) => {
+app.get('/api/nodes', authenticateToken, async (req, res) => {
   try {
-    const pool = mysql.createPool({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      port: process.env.DB_PORT || 3306,
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0
-    });
-
-    const [rows] = await pool.promise().query('SELECT DISTINCT node_name as id, node_name as name FROM telemetry_data ORDER BY node_name');
-    
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ error: 'No nodes found' });
+    // Check cache first
+    const cachedNodes = nodeCacheManager.getNodes(req.user.id);
+    if (cachedNodes) {
+      logger.debug('API', 'Cache hit for nodes', { metadata: { userId: req.user.id } });
+      return res.json(cachedNodes);
     }
 
-    res.json(rows);
+    // Check user access (with cache)
+    let userAccess = nodeCacheManager.getUserAccess(req.user.id);
+    if (!userAccess) {
+      const [accessData] = await pool.promise().query(
+        'SELECT access_all_nodes, role FROM users WHERE id = ?',
+        [req.user.id]
+      );
+      userAccess = accessData[0];
+      nodeCacheManager.setUserAccess(req.user.id, userAccess);
+    }
+
+    let nodes;
+    
+    if (userAccess.access_all_nodes || userAccess.role === 'admin') {
+      const [rows] = await pool.promise().query('SELECT DISTINCT NodeName FROM node_status_table ORDER BY NodeName');
+      nodes = rows.map(row => ({
+        id: row.NodeName,
+        name: row.NodeName
+      }));
+    } else {
+      const [rows] = await pool.promise().query(
+        `SELECT DISTINCT nst.NodeName 
+         FROM node_status_table nst
+         INNER JOIN user_node_assignments una ON nst.NodeName = una.node_name
+         WHERE una.user_id = ?
+         ORDER BY nst.NodeName`,
+        [req.user.id]
+      );
+      nodes = rows.map(row => ({
+        id: row.NodeName,
+        name: row.NodeName
+      }));
+    }
+    
+    // Cache the result
+    nodeCacheManager.setNodes(req.user.id, nodes);
+    res.json(nodes);
   } catch (error) {
     logger.error('CRUD', 'Error fetching nodes', { metadata: { error: error.message } });
-    res.status(500).json({ error: 'Failed to fetch nodes', details: error.message });
+    res.status(500).json({
+      error: 'Failed to fetch nodes',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

@@ -297,6 +297,30 @@ async function setupDatabase() {
       migrationsToRun.add('018_add_node_status_telemetry_index.sql');
     }
 
+    // Check for performance indexes (migration 019)
+    const performanceIndexes = [
+      { table: 'node_status_table', index: 'idx_node_status_nodename' },
+      { table: 'user_node_assignments', index: 'idx_user_node_assignments_user_id' },
+      { table: 'users', index: 'idx_users_access_all_nodes' },
+      { table: 'node_status_table', index: 'idx_node_status_nodename_basestation' }
+    ];
+
+    let allPerformanceIndexesExist = true;
+    for (const { table, index } of performanceIndexes) {
+      const exists = await checkIndexExists(connection, table, index);
+      if (!exists) {
+        allPerformanceIndexesExist = false;
+        break;
+      }
+    }
+
+    if (allPerformanceIndexesExist) {
+      console.log('✅ Indexes: Performance indexes for concurrent user scaling');
+    } else {
+      console.log('❌ Indexes: Performance indexes (missing - needs migration 019)');
+      migrationsToRun.add('019_add_performance_indexes.sql');
+    }
+
     console.log('\n================================\n');
     
     if (migrationsToRun.size === 0) {
