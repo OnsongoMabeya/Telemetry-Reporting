@@ -26,6 +26,7 @@ const manualReportsRoutes = require('./routes/manualReports');
 const { authenticateToken } = require('./middleware/auth');
 const logger = require('./utils/logger');
 const nodeCacheManager = require('./services/cacheManager');
+const CleanupManager = require('./services/cleanupManager');
 
 // Helper function to get cache TTL based on time filter
 const getCacheTTL = (timeFilter) => {
@@ -933,6 +934,10 @@ performanceMonitor.startMonitoring();
 const cacheManager = new ManualReportCacheManager(pool.promise());
 cacheManager.scheduleMaintenance();
 
+// Initialize cleanup manager for batch cleanup operations
+const cleanupManager = new CleanupManager(pool.promise());
+cleanupManager.start();
+
 scheduler.setDatabase(pool.promise());
 reportDataService.setDatabase(pool.promise());
 manualReportProcessor.setDatabase(pool.promise());
@@ -942,6 +947,7 @@ setSiteAlertsDb(pool.promise());
 // Set services in app for routes to access
 app.set('performanceMonitor', performanceMonitor);
 app.set('cacheManager', cacheManager);
+app.set('cleanupManager', cleanupManager);
 
 // Add performance monitoring middleware
 app.use('/api/manual-reports', performanceMonitor.createMiddleware());
