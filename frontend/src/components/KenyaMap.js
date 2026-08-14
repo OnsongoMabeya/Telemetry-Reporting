@@ -94,7 +94,7 @@ const KenyaMap = ({ selectedNode, onStatusUpdate }) => {
   const [error, setError] = useState(null);
   const [selectedStation, setSelectedStation] = useState(null);
   const [hoveredStation, setHoveredStation] = useState(null);
-  const [enableAnimations, setEnableAnimations] = useState(false);
+  const [enableAnimations] = useState(false);
   const { isAuthenticated } = useAuth();
 
   const fetchBaseStations = useCallback(async () => {

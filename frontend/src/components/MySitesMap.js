@@ -125,7 +125,7 @@ const MySitesMap = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStation, setSelectedStation] = useState(null);
-  const [visibleMarkers, setVisibleMarkers] = useState([]);
+  const [visibleMarkers] = useState([]);
   
   // Filter states
   const [viewType, setViewType] = useState('client'); // 'client' or 'service'
