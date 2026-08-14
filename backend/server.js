@@ -29,6 +29,7 @@ const nodeCacheManager = require('./services/cacheManager');
 const CleanupManager = require('./services/cleanupManager');
 const MetricQueryOptimizer = require('./services/metricQueryOptimizer');
 const PoolMonitor = require('./services/poolMonitor');
+const BulkInsertManager = require('./services/bulkInsertManager');
 
 // Helper function to get cache TTL based on time filter
 const getCacheTTL = (timeFilter) => {
@@ -951,6 +952,14 @@ const poolMonitor = new PoolMonitor(pool, {
 });
 poolMonitor.start();
 
+// Initialize bulk insert manager for batch metric writes
+const bulkInsertManager = new BulkInsertManager(pool.promise(), {
+  batchSize: 500, // Batch 500 metrics before inserting
+  flushInterval: 5000, // Flush every 5 seconds
+  maxRetries: 3
+});
+bulkInsertManager.start();
+
 scheduler.setDatabase(pool.promise());
 reportDataService.setDatabase(pool.promise());
 manualReportProcessor.setDatabase(pool.promise());
@@ -963,6 +972,7 @@ app.set('cacheManager', cacheManager);
 app.set('cleanupManager', cleanupManager);
 app.set('metricQueryOptimizer', metricQueryOptimizer);
 app.set('poolMonitor', poolMonitor);
+app.set('bulkInsertManager', bulkInsertManager);
 
 // Add performance monitoring middleware
 app.use('/api/manual-reports', performanceMonitor.createMiddleware());
