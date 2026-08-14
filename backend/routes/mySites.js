@@ -589,6 +589,10 @@ router.get('/clients/:clientId/map-stations', async (req, res) => {
       mapCacheManager.set(cacheKey, stations);
     }
 
+    // Set compression headers for response optimization
+    res.set('Content-Encoding', 'gzip');
+    res.set('Cache-Control', 'public, max-age=600'); // 10 minutes
+
     res.json({
       success: true,
       data: stations,

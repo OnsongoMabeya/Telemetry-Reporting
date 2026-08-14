@@ -104,6 +104,21 @@ app.use((req, res, next) => {
 });
 app.use(express.json());
 
+// Enable gzip compression for all responses
+const compression = require('compression');
+app.use(compression({
+  level: 6, // Balance between compression ratio and speed
+  threshold: 1024, // Only compress responses larger than 1KB
+  filter: (req, res) => {
+    // Don't compress if request has no-compression header
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    // Use compression filter function
+    return compression.filter(req, res);
+  }
+}));
+
 // Rate limiting middleware
 const rateLimit = require('express-rate-limit');
 
@@ -906,6 +921,9 @@ app.get('/api/basestations-map', authenticateToken, async (req, res) => {
     
     // Filter out null entries (stations we couldn't locate)
     const validStations = baseStations.filter(station => station !== null);
+    
+    // Set cache headers for response optimization
+    res.set('Cache-Control', 'public, max-age=600'); // 10 minutes
     
     res.json(validStations);
   } catch (error) {
