@@ -30,6 +30,7 @@ const CleanupManager = require('./services/cleanupManager');
 const MetricQueryOptimizer = require('./services/metricQueryOptimizer');
 const PoolMonitor = require('./services/poolMonitor');
 const BulkInsertManager = require('./services/bulkInsertManager');
+const MapCacheManager = require('./services/mapCacheManager');
 
 // Helper function to get cache TTL based on time filter
 const getCacheTTL = (timeFilter) => {
@@ -960,6 +961,12 @@ const bulkInsertManager = new BulkInsertManager(pool.promise(), {
 });
 bulkInsertManager.start();
 
+// Initialize map cache manager for map station data
+const mapCacheManager = new MapCacheManager({
+  ttl: 10 * 60 * 1000 // 10 minutes
+});
+mapCacheManager.startCleanup(5 * 60 * 1000); // Cleanup every 5 minutes
+
 scheduler.setDatabase(pool.promise());
 reportDataService.setDatabase(pool.promise());
 manualReportProcessor.setDatabase(pool.promise());
@@ -973,6 +980,7 @@ app.set('cleanupManager', cleanupManager);
 app.set('metricQueryOptimizer', metricQueryOptimizer);
 app.set('poolMonitor', poolMonitor);
 app.set('bulkInsertManager', bulkInsertManager);
+app.set('mapCacheManager', mapCacheManager);
 
 // Add performance monitoring middleware
 app.use('/api/manual-reports', performanceMonitor.createMiddleware());

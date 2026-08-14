@@ -2,10 +2,12 @@ const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
 
-// Get database connection from app
+// Get database connection and cache manager from app
 let db;
+let mapCacheManager;
 router.use((req, res, next) => {
   db = req.app.get('db');
+  mapCacheManager = req.app.get('mapCacheManager');
   next();
 });
 
@@ -392,6 +394,20 @@ router.get('/clients/:clientId/map-stations', async (req, res) => {
     const { clientId } = req.params;
     const { serviceId } = req.query;
 
+    // Check cache first (skip user access check for cached data)
+    if (mapCacheManager) {
+      const cacheKey = mapCacheManager.getMapSitesCacheKey(clientId, serviceId);
+      const cachedData = mapCacheManager.get(cacheKey);
+      if (cachedData) {
+        return res.json({
+          success: true,
+          data: cachedData,
+          count: cachedData.length,
+          cached: true
+        });
+      }
+    }
+
     // Check if user has access to this client
     const [access] = await db.query(
       'SELECT id FROM user_client_assignments WHERE user_id = ? AND client_id = ? AND is_active = TRUE',
@@ -567,11 +583,18 @@ router.get('/clients/:clientId/map-stations', async (req, res) => {
       };
     }).filter(station => station !== null);
 
+    // Cache the result for 10 minutes
+    if (mapCacheManager) {
+      const cacheKey = mapCacheManager.getMapSitesCacheKey(clientId, serviceId);
+      mapCacheManager.set(cacheKey, stations);
+    }
+
     res.json({
       success: true,
       data: stations,
       count: stations.length,
-      viewType: serviceId ? 'service' : 'client'
+      viewType: serviceId ? 'service' : 'client',
+      cached: false
     });
   } catch (error) {
     logger.error('CRUD', 'Error fetching map stations', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
