@@ -30,17 +30,20 @@ idx_node_status_base_station (NodeBaseStationName, timestamp)
 ```
 
 **Expected Impact:**
+
 - ✅ 10x faster metric write operations
 - ✅ 6x faster cleanup operations
 - ✅ Eliminates "Failed to store metric" errors
 - ✅ Eliminates "Failed to cleanup" errors
 
 ### 2. Cleanup Manager Service
+
 **File:** `backend/services/cleanupManager.js`
 
 New service for intelligent batch cleanup:
 
 **Features:**
+
 - Batch deletion with configurable batch size (5000 rows)
 - Prevents full table locks during cleanup
 - Automatic delay between batches (100-50ms)
@@ -48,28 +51,34 @@ New service for intelligent batch cleanup:
 - Cleanup statistics and monitoring
 
 **Cleanup Policies:**
+
 - Metrics: Delete older than 30 days
 - Slow queries: Delete older than 7 days
 - Application logs: Delete older than 14 days
 
 **Benefits:**
+
 - ✅ No more "Failed to cleanup" errors
 - ✅ Prevents database lock contention
 - ✅ Allows concurrent queries during cleanup
 - ✅ Automatic scheduling every 60 seconds
 
 ### 3. Database Setup Integration
+
 **File:** `backend/database/setup.js`
 
 Added migration 020 checks:
+
 - Verifies all metric write indexes exist
 - Automatically runs migration 020 if indexes are missing
 - Provides clear status reporting
 
 ### 4. Backend Server Integration
+
 **File:** `backend/server.js`
 
 Integrated cleanup manager:
+
 - Imports CleanupManager service
 - Initializes cleanup manager on server startup
 - Starts automatic cleanup every 60 seconds
@@ -80,7 +89,8 @@ Integrated cleanup manager:
 ## Performance Improvements
 
 ### Before Phase 1
-```
+
+```bash
 ❌ "Failed to store metric in database" - Every 60 seconds
 ❌ "Failed to cleanup old slow queries" - Every 60 seconds
 ❌ "Failed to cleanup old metrics" - Every 60 seconds
@@ -90,7 +100,8 @@ Integrated cleanup manager:
 ```
 
 ### After Phase 1
-```
+
+```bash
 ✅ Metric write latency: 50ms (10x faster)
 ✅ Cleanup duration: 5 seconds (6x faster)
 ✅ Database CPU: 30% (65% reduction)
@@ -104,27 +115,32 @@ Integrated cleanup manager:
 ## Deployment Instructions
 
 ### 1. Pull Latest Changes
+
 ```bash
 cd /var/www/telemetry-reporting
 git pull origin main
 ```
 
 ### 2. Install Dependencies (if needed)
+
 ```bash
 npm ci --production
 ```
 
 ### 3. Run Database Migrations
+
 ```bash
 node backend/database/setup.js
 ```
 
 This will automatically:
+
 - Check for missing indexes
 - Run migration 020 if needed
 - Verify all indexes were created
 
 ### 4. Restart Backend Service
+
 ```bash
 # If using PM2
 pm2 restart telemetry-backend
@@ -137,6 +153,7 @@ npm start
 ```
 
 ### 5. Verify Deployment
+
 ```bash
 # Check logs for successful startup
 tail -f /var/log/telemetry/backend.log
@@ -152,6 +169,7 @@ tail -f /var/log/telemetry/backend.log
 ## Monitoring
 
 ### Check Cleanup Status
+
 ```bash
 # View cleanup statistics
 curl -X GET http://localhost:5000/api/admin/cleanup-stats \
@@ -159,6 +177,7 @@ curl -X GET http://localhost:5000/api/admin/cleanup-stats \
 ```
 
 ### Monitor Database Performance
+
 ```bash
 # Check table sizes
 mysql> SELECT table_name, ROUND(((data_length + index_length) / 1024 / 1024), 2) AS size_mb 
@@ -176,6 +195,7 @@ mysql> SELECT * FROM mysql.slow_log ORDER BY start_time DESC LIMIT 10;
 ```
 
 ### Monitor Logs
+
 ```bash
 # Watch for cleanup messages
 tail -f /var/log/telemetry/backend.log | grep "cleanup\|Cleanup"
@@ -189,18 +209,21 @@ tail -f /var/log/telemetry/backend.log | grep "ERROR"
 ## Expected Results
 
 ### Immediate (First Hour)
+
 - ✅ Zero "Failed to store metric" errors
 - ✅ Zero "Failed to cleanup" errors
 - ✅ Faster metric ingestion
 - ✅ Cleanup completes in <5 seconds
 
 ### Short-term (First Week)
+
 - ✅ Database CPU usage drops to 30-40%
 - ✅ Query response times improve 5-10x
 - ✅ System handles 50+ concurrent users smoothly
 - ✅ No connection pool exhaustion
 
 ### Long-term (Ongoing)
+
 - ✅ Automatic cleanup prevents table bloat
 - ✅ Consistent performance over time
 - ✅ Reduced disk I/O
@@ -211,18 +234,21 @@ tail -f /var/log/telemetry/backend.log | grep "ERROR"
 ## Next Steps
 
 ### Phase 2: Query Optimization (Week 2)
+
 - [ ] Implement query result caching
 - [ ] Add metric aggregation caching
 - [ ] Optimize metric retrieval queries
 - [ ] Add query performance monitoring
 
 ### Phase 3: Connection Pool Optimization (Week 3)
+
 - [ ] Add pool health monitoring
 - [ ] Implement separate write pool
 - [ ] Add connection pool alerts
 - [ ] Monitor pool utilization
 
 ### Phase 4: Advanced Optimizations (Week 4)
+
 - [ ] Implement bulk insert for metrics
 - [ ] Add read replicas support
 - [ ] Implement queue for async writes

@@ -9,11 +9,13 @@
 ## Changes Implemented
 
 ### 1. MetricQueryOptimizer Service
+
 **File:** `backend/services/metricQueryOptimizer.js`
 
 Advanced query optimization with multi-level caching:
 
 **Features:**
+
 - Query result caching (5 min TTL)
 - Aggregated metrics caching (10 min TTL)
 - Latest metric caching (1 min TTL)
@@ -22,6 +24,7 @@ Advanced query optimization with multi-level caching:
 - Cache hit/miss statistics
 
 **Methods:**
+
 - `getMetrics()` - Get metrics with date range filtering
 - `getAggregatedMetrics()` - Hourly/daily aggregation
 - `getMetricsForNodes()` - Batch query for multiple nodes
@@ -31,13 +34,15 @@ Advanced query optimization with multi-level caching:
 
 ### 2. Optimized Queries
 
-#### Before (Slow):
+#### Before (Slow)
+
 ```javascript
 // Full table scan, no limit
 SELECT * FROM telemetry_data WHERE NodeName = ? ORDER BY timestamp DESC
 ```
 
-#### After (Fast):
+#### After (Fast)
+
 ```javascript
 // Uses indexes, limited results, date range
 SELECT NodeName, MetricName, value, timestamp, unit
@@ -48,6 +53,7 @@ LIMIT 1000
 ```
 
 **Improvements:**
+
 - ✅ Uses `idx_telemetry_data_node_metric` index
 - ✅ Limits results to 1000 rows
 - ✅ Date range filtering
@@ -72,6 +78,7 @@ ORDER BY period DESC
 ```
 
 **Benefits:**
+
 - ✅ 100x fewer rows returned
 - ✅ Cached for 10 minutes
 - ✅ Perfect for dashboards and reports
@@ -92,11 +99,13 @@ const metrics = await getMetricsForNodes(nodeIds, startDate, endDate);
 ```
 
 **Performance:**
+
 - ✅ 1 query instead of N queries
 - ✅ Uses `IN` clause for efficiency
 - ✅ Batch cached for 5 minutes
 
 ### 5. Backend Integration
+
 **File:** `backend/server.js`
 
 - Imported MetricQueryOptimizer
@@ -109,20 +118,20 @@ const metrics = await getMetricsForNodes(nodeIds, startDate, endDate);
 
 ### Query Response Times
 
-| Query Type | Before | After | Improvement |
-|-----------|--------|-------|-------------|
-| Single node metrics | 2-5s | 200-500ms | **5-10x faster** |
-| Aggregated metrics | 5-10s | 500ms-1s | **5-10x faster** |
-| Batch metrics (10 nodes) | 20-50s | 1-2s | **10-25x faster** |
-| Latest metric | 500ms | 50ms | **10x faster** |
+| Query Type               | Before | After     | Improvement       |
+|--------------------------|--------|-----------|-------------------|
+| Single node metrics      | 2-5s   | 200-500ms | **5-10x faster**  |
+| Aggregated metrics       | 5-10s  | 500ms-1s  | **5-10x faster**  |
+| Batch metrics (10 nodes) | 20-50s | 1-2s      | **10-25x faster** |
+| Latest metric            | 500ms  | 50ms      | **10x faster**    |
 
 ### Cache Hit Rates
 
-| Scenario | Hit Rate | Benefit |
-|----------|----------|---------|
-| Dashboard refresh | 70-80% | Instant load |
-| Report generation | 60-70% | 5-10x faster |
-| Real-time updates | 40-50% | Reduced DB load |
+| Scenario          | Hit Rate | Benefit         |
+|-------------------|----------|-----------------|
+| Dashboard refresh | 70-80%   | Instant load    |
+| Report generation | 60-70%   | 5-10x faster    |
+| Real-time updates | 40-50%   | Reduced DB load |
 
 ### Database Load Reduction
 
@@ -136,6 +145,7 @@ const metrics = await getMetricsForNodes(nodeIds, startDate, endDate);
 ## Usage Examples
 
 ### Get Metrics for a Node
+
 ```javascript
 const optimizer = app.get('metricQueryOptimizer');
 
@@ -148,6 +158,7 @@ const metrics = await optimizer.getMetrics(
 ```
 
 ### Get Aggregated Metrics
+
 ```javascript
 const hourlyMetrics = await optimizer.getAggregatedMetrics(
   'NODE_001',
@@ -159,6 +170,7 @@ const hourlyMetrics = await optimizer.getAggregatedMetrics(
 ```
 
 ### Get Metrics for Multiple Nodes
+
 ```javascript
 const batchMetrics = await optimizer.getMetricsForNodes(
   ['NODE_001', 'NODE_002', 'NODE_003'],
@@ -168,12 +180,14 @@ const batchMetrics = await optimizer.getMetricsForNodes(
 ```
 
 ### Get Latest Metric
+
 ```javascript
 const latest = await optimizer.getLatestMetric('NODE_001', 'voltage');
 // Returns: { NodeName, MetricName, value, timestamp, unit }
 ```
 
 ### Monitor Cache Performance
+
 ```javascript
 const stats = optimizer.getStats();
 console.log(stats);
@@ -190,6 +204,7 @@ console.log(stats);
 ```
 
 ### Clear Cache
+
 ```javascript
 // Clear cache for specific node
 optimizer.clearCache('NODE_001');
@@ -203,17 +218,20 @@ optimizer.clearCache();
 ## Deployment Instructions
 
 ### 1. Pull Latest Changes
+
 ```bash
 cd /var/www/telemetry-reporting
 git pull origin main
 ```
 
 ### 2. Install Dependencies (if needed)
+
 ```bash
 npm ci --production
 ```
 
 ### 3. Restart Backend Service
+
 ```bash
 # If using PM2
 pm2 restart telemetry-backend
@@ -223,6 +241,7 @@ sudo systemctl restart telemetry-backend
 ```
 
 ### 4. Verify Deployment
+
 ```bash
 # Check logs for successful startup
 tail -f /var/log/telemetry/backend.log
@@ -235,6 +254,7 @@ tail -f /var/log/telemetry/backend.log
 ## Monitoring
 
 ### Check Cache Statistics
+
 ```bash
 # Via API endpoint (to be added)
 curl -X GET http://localhost:5000/api/admin/query-cache-stats \
@@ -242,6 +262,7 @@ curl -X GET http://localhost:5000/api/admin/query-cache-stats \
 ```
 
 ### Monitor Query Performance
+
 ```bash
 # Watch for slow queries in logs
 tail -f /var/log/telemetry/backend.log | grep "SLOW_QUERY"
@@ -251,6 +272,7 @@ tail -f /var/log/telemetry/backend.log | grep "cache hit"
 ```
 
 ### Database Performance
+
 ```bash
 # Check query execution times
 mysql> SELECT * FROM mysql.slow_log ORDER BY start_time DESC LIMIT 10;
@@ -263,18 +285,21 @@ mysql> SELECT * FROM mysql.slow_log ORDER BY start_time DESC LIMIT 10;
 ## Expected Results
 
 ### Immediate (First Hour)
+
 - ✅ Metric queries 5-10x faster
 - ✅ Dashboard loads instantly (cached)
 - ✅ 70%+ cache hit rate
 - ✅ Database CPU drops further
 
 ### Short-term (First Week)
+
 - ✅ Report generation 5-10x faster
 - ✅ System handles 100+ concurrent users
 - ✅ Connection pool utilization: 20-30%
 - ✅ Zero slow query warnings
 
 ### Long-term (Ongoing)
+
 - ✅ Consistent fast performance
 - ✅ Reduced database server load
 - ✅ Better user experience
@@ -313,12 +338,14 @@ router.get('/api/metrics/:nodeId', authenticateToken, async (req, res) => {
 ## Next Steps
 
 ### Phase 3: Connection Pool Optimization (Week 3)
+
 - [ ] Add pool health monitoring
 - [ ] Implement separate write pool
 - [ ] Add connection pool alerts
 - [ ] Monitor pool utilization
 
 ### Phase 4: Advanced Optimizations (Week 4)
+
 - [ ] Implement bulk insert for metrics
 - [ ] Add read replicas support
 - [ ] Implement queue for async writes

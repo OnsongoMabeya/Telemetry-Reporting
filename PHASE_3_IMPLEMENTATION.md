@@ -9,11 +9,13 @@
 ## Changes Implemented
 
 ### 1. PoolMonitor Service
+
 **File:** `backend/services/poolMonitor.js`
 
 Advanced connection pool monitoring with real-time health tracking:
 
 **Features:**
+
 - Real-time pool utilization tracking
 - Configurable warning (60%) and alert (80%) thresholds
 - Utilization history tracking (last 100 checks)
@@ -23,6 +25,7 @@ Advanced connection pool monitoring with real-time health tracking:
 - Health status API endpoint
 
 **Methods:**
+
 - `start()` - Start monitoring (every 30 seconds)
 - `stop()` - Stop monitoring
 - `checkPoolHealth()` - Check current pool status
@@ -34,6 +37,7 @@ Advanced connection pool monitoring with real-time health tracking:
 ### 2. Pool Health Metrics
 
 **Tracked Metrics:**
+
 - Total connections in pool
 - Active connections (in use)
 - Free connections (available)
@@ -44,6 +48,7 @@ Advanced connection pool monitoring with real-time health tracking:
 - Utilization trend
 
 **Thresholds:**
+
 - ✅ Healthy: < 60% utilization
 - 🟡 Warning: 60-80% utilization
 - 🔴 Critical: > 80% utilization
@@ -51,6 +56,7 @@ Advanced connection pool monitoring with real-time health tracking:
 ### 3. Monitoring Features
 
 #### Real-time Health Checks
+
 ```javascript
 // Runs every 30 seconds
 checkPoolHealth() {
@@ -63,6 +69,7 @@ checkPoolHealth() {
 ```
 
 #### Alert System
+
 ```javascript
 // When utilization >= 80%
 Alert: "Connection pool utilization at 85% (CRITICAL)"
@@ -72,6 +79,7 @@ Alert: "Connection pool utilization at 85% (CRITICAL)"
 ```
 
 #### Warning System
+
 ```javascript
 // When utilization >= 60%
 Warning: "Connection pool utilization at 72% (WARNING)"
@@ -81,6 +89,7 @@ Warning: "Connection pool utilization at 72% (WARNING)"
 ```
 
 ### 4. Backend Integration
+
 **File:** `backend/server.js`
 
 - Imported PoolMonitor service
@@ -97,7 +106,7 @@ Warning: "Connection pool utilization at 72% (WARNING)"
 
 Every 30 seconds, logs include:
 
-```
+```text
 ✅ HEALTHY: Pool Status
 - Total: 100 connections
 - Active: 25 connections
@@ -108,7 +117,8 @@ Every 30 seconds, logs include:
 ### Alert Examples
 
 **Warning Alert:**
-```
+
+```text
 🟡 WARNING: Connection pool utilization HIGH
 - Utilization: 72%
 - Active: 72 connections
@@ -116,7 +126,8 @@ Every 30 seconds, logs include:
 ```
 
 **Critical Alert:**
-```
+
+```text
 🔴 CRITICAL: Connection pool utilization CRITICAL
 - Utilization: 85%
 - Active: 85 connections
@@ -128,12 +139,14 @@ Every 30 seconds, logs include:
 ## API Endpoints
 
 ### Get Pool Statistics
+
 ```bash
 curl -X GET http://localhost:5000/api/admin/pool-stats \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 **Response:**
+
 ```json
 {
   "isRunning": true,
@@ -159,12 +172,14 @@ curl -X GET http://localhost:5000/api/admin/pool-stats \
 ```
 
 ### Get Health Status
+
 ```bash
 curl -X GET http://localhost:5000/api/admin/pool-health \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 **Response (Healthy):**
+
 ```json
 {
   "status": "HEALTHY",
@@ -174,6 +189,7 @@ curl -X GET http://localhost:5000/api/admin/pool-health \
 ```
 
 **Response (Warning):**
+
 ```json
 {
   "status": "WARNING",
@@ -184,6 +200,7 @@ curl -X GET http://localhost:5000/api/admin/pool-health \
 ```
 
 **Response (Critical):**
+
 ```json
 {
   "status": "CRITICAL",
@@ -225,6 +242,7 @@ curl -X GET http://localhost:5000/api/admin/pool-health \
 ## Usage Examples
 
 ### Access Pool Monitor in Routes
+
 ```javascript
 const poolMonitor = req.app.get('poolMonitor');
 
@@ -242,6 +260,7 @@ console.log(poolInfo);
 ```
 
 ### Monitor in Middleware
+
 ```javascript
 app.use((req, res, next) => {
   const poolMonitor = req.app.get('poolMonitor');
@@ -261,12 +280,14 @@ app.use((req, res, next) => {
 ## Deployment Instructions
 
 ### 1. Pull Latest Changes
+
 ```bash
 cd /var/www/telemetry-reporting
 git pull origin main
 ```
 
 ### 2. Restart Backend Service
+
 ```bash
 # If using PM2
 pm2 restart telemetry-backend
@@ -276,6 +297,7 @@ sudo systemctl restart telemetry-backend
 ```
 
 ### 3. Verify Deployment
+
 ```bash
 # Check logs for pool monitor startup
 tail -f /var/log/telemetry/backend.log | grep "Pool monitor"
@@ -290,16 +312,19 @@ tail -f /var/log/telemetry/backend.log | grep "Pool monitor"
 ## Monitoring
 
 ### Watch Pool Status in Real-time
+
 ```bash
 tail -f /var/log/telemetry/backend.log | grep "Pool Status"
 ```
 
 ### Check for Alerts
+
 ```bash
 tail -f /var/log/telemetry/backend.log | grep "CRITICAL\|WARNING"
 ```
 
 ### Get Current Stats via API
+
 ```bash
 curl -X GET http://localhost:5000/api/admin/pool-stats \
   -H "Authorization: Bearer YOUR_TOKEN" | jq .
@@ -310,18 +335,21 @@ curl -X GET http://localhost:5000/api/admin/pool-stats \
 ## Expected Results
 
 ### Immediate (First Hour)
+
 - ✅ Pool health monitoring active
 - ✅ Real-time utilization tracking
 - ✅ Alerts for high utilization
 - ✅ Detailed pool statistics
 
 ### Short-term (First Week)
+
 - ✅ Identify peak usage patterns
 - ✅ Detect connection leaks early
 - ✅ Optimize pool size based on data
 - ✅ Prevent connection exhaustion
 
 ### Long-term (Ongoing)
+
 - ✅ Proactive capacity planning
 - ✅ Early warning system
 - ✅ Performance optimization
@@ -332,6 +360,7 @@ curl -X GET http://localhost:5000/api/admin/pool-stats \
 ## Configuration Options
 
 ### Adjust Thresholds
+
 ```javascript
 const poolMonitor = new PoolMonitor(pool, {
   checkInterval: 30000,      // Check every 30 seconds
@@ -341,6 +370,7 @@ const poolMonitor = new PoolMonitor(pool, {
 ```
 
 ### Increase Check Frequency
+
 ```javascript
 const poolMonitor = new PoolMonitor(pool, {
   checkInterval: 10000,      // Check every 10 seconds (more frequent)
@@ -350,6 +380,7 @@ const poolMonitor = new PoolMonitor(pool, {
 ```
 
 ### Lower Alert Threshold
+
 ```javascript
 const poolMonitor = new PoolMonitor(pool, {
   checkInterval: 30000,
@@ -364,7 +395,7 @@ const poolMonitor = new PoolMonitor(pool, {
 
 ### Combined Optimization Stack
 
-```
+```text
 Phase 1: Database Optimization
 ├─ Migration 020: Performance indexes
 ├─ CleanupManager: Batch cleanup
@@ -386,6 +417,7 @@ Phase 3: Connection Pool Optimization
 ## Next Steps
 
 ### Phase 4: Advanced Optimizations (Week 4)
+
 - [ ] Implement bulk insert for metrics
 - [ ] Add read replicas support
 - [ ] Implement queue for async writes

@@ -9,11 +9,13 @@
 ## Changes Implemented
 
 ### 1. BulkInsertManager Service
+
 **File:** `backend/services/bulkInsertManager.js`
 
 Advanced bulk insert optimization for metric writes:
 
 **Features:**
+
 - Queue-based metric batching
 - Configurable batch size (default: 500 metrics)
 - Automatic flush interval (default: 5 seconds)
@@ -23,6 +25,7 @@ Advanced bulk insert optimization for metric writes:
 - Error handling and recovery
 
 **Methods:**
+
 - `start()` - Start bulk insert manager
 - `stop()` - Stop manager and cleanup
 - `queueMetric()` - Queue single metric
@@ -35,6 +38,7 @@ Advanced bulk insert optimization for metric writes:
 ### 2. Bulk Insert Optimization
 
 **Before (Individual Inserts):**
+
 ```javascript
 // 500 separate INSERT queries
 for (const metric of metrics) {
@@ -44,6 +48,7 @@ for (const metric of metrics) {
 ```
 
 **After (Bulk Insert):**
+
 ```javascript
 // 1 bulk INSERT query with 500 values
 const values = metrics.map(m => [m.nodeId, m.metricName, m.value, ...]);
@@ -54,7 +59,8 @@ await pool.query('INSERT INTO telemetry_data VALUES ?', [values]);
 ### 3. Queue-Based Architecture
 
 **Metric Flow:**
-```
+
+```text
 Incoming Metrics
     ↓
 BulkInsertManager Queue (500 max)
@@ -67,6 +73,7 @@ Database
 ```
 
 **Benefits:**
+
 - ✅ Reduces database round-trips
 - ✅ Minimizes network overhead
 - ✅ Improves throughput 10x
@@ -85,6 +92,7 @@ Database
 ```
 
 ### 5. Backend Integration
+
 **File:** `backend/server.js`
 
 - Imported BulkInsertManager
@@ -99,34 +107,35 @@ Database
 
 ### Metric Write Throughput
 
-| Scenario | Before | After | Improvement |
-|----------|--------|-------|-------------|
-| 500 metrics | 5000ms | 500ms | **10x faster** |
+| Scenario     | Before  | After  | Improvement    |
+|--------------|---------|--------|----------------|
+| 500 metrics  | 5000ms  | 500ms  | **10x faster** |
 | 1000 metrics | 10000ms | 1000ms | **10x faster** |
 | 5000 metrics | 50000ms | 5000ms | **10x faster** |
 
 ### Database Load
 
-| Metric | Before | After | Reduction |
-|--------|--------|-------|-----------|
-| Queries per second | 500 | 50 | **90%** |
-| Network round-trips | 500 | 1 | **99%** |
-| Connection usage | High | Low | **80%** |
-| CPU usage | 85% | 20% | **76%** |
+| Metric              | Before | After | Reduction |
+|---------------------|--------|-------|-----------|
+| Queries per second  | 500    | 50    | **90%**   |
+| Network round-trips | 500    | 1     | **99%**   |
+| Connection usage    | High   | Low   | **80%**   |
+| CPU usage           | 85%    | 20%   | **76%**   |
 
 ### Concurrent User Capacity
 
-| Users | Before | After | Improvement |
-|-------|--------|-------|-------------|
+| Users            | Before   | After      | Improvement     |
+|------------------|----------|------------|-----------------|
 | Write throughput | 50 users | 200+ users | **4x capacity** |
-| Response time | 500ms | 50ms | **10x faster** |
-| Success rate | 95% | 100% | **Improved** |
+| Response time    | 500ms    | 50ms       | **10x faster**  |
+| Success rate     | 95%      | 100%       | **Improved**    |
 
 ---
 
 ## Usage Examples
 
 ### Queue Single Metric
+
 ```javascript
 const bulkInsertManager = req.app.get('bulkInsertManager');
 
@@ -140,6 +149,7 @@ bulkInsertManager.queueMetric({
 ```
 
 ### Queue Multiple Metrics
+
 ```javascript
 const metrics = [
   { nodeId: 'NODE_001', metricName: 'voltage', value: 230.5, ... },
@@ -151,6 +161,7 @@ bulkInsertManager.queueMetrics(metrics);
 ```
 
 ### Get Statistics
+
 ```javascript
 const stats = bulkInsertManager.getStats();
 console.log(stats);
@@ -168,6 +179,7 @@ console.log(stats);
 ```
 
 ### Force Flush
+
 ```javascript
 // Flush all queued metrics immediately
 await bulkInsertManager.flushAll();
@@ -178,6 +190,7 @@ await bulkInsertManager.flushAll();
 ## Integration with Metric Routes
 
 ### Update Metric Ingestion Endpoint
+
 ```javascript
 app.post('/api/metrics/ingest', authenticateToken, async (req, res) => {
   try {
@@ -203,12 +216,14 @@ app.post('/api/metrics/ingest', authenticateToken, async (req, res) => {
 ## Deployment Instructions
 
 ### 1. Pull Latest Changes
+
 ```bash
 cd /var/www/telemetry-reporting
 git pull origin main
 ```
 
 ### 2. Restart Backend Service
+
 ```bash
 # If using PM2
 pm2 restart telemetry-backend
@@ -218,6 +233,7 @@ sudo systemctl restart telemetry-backend
 ```
 
 ### 3. Verify Deployment
+
 ```bash
 # Check logs for bulk insert manager startup
 tail -f /var/log/telemetry/backend.log | grep "Bulk insert"
@@ -232,17 +248,20 @@ tail -f /var/log/telemetry/backend.log | grep "Bulk insert"
 ## Monitoring
 
 ### Watch Bulk Insert Progress
+
 ```bash
 tail -f /var/log/telemetry/backend.log | grep "Bulk insert"
 ```
 
 ### Get Current Statistics via API
+
 ```bash
 curl -X GET http://localhost:5000/api/admin/bulk-insert-stats \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ### Monitor Queue Size
+
 ```bash
 # Watch for queue buildup
 tail -f /var/log/telemetry/backend.log | grep "queuedItems"
@@ -253,6 +272,7 @@ tail -f /var/log/telemetry/backend.log | grep "queuedItems"
 ## Configuration Options
 
 ### Adjust Batch Size
+
 ```javascript
 const bulkInsertManager = new BulkInsertManager(pool.promise(), {
   batchSize: 1000,      // Larger batches = fewer queries
@@ -262,6 +282,7 @@ const bulkInsertManager = new BulkInsertManager(pool.promise(), {
 ```
 
 ### Increase Flush Frequency
+
 ```javascript
 const bulkInsertManager = new BulkInsertManager(pool.promise(), {
   batchSize: 500,
@@ -271,6 +292,7 @@ const bulkInsertManager = new BulkInsertManager(pool.promise(), {
 ```
 
 ### Adjust Retry Attempts
+
 ```javascript
 const bulkInsertManager = new BulkInsertManager(pool.promise(), {
   batchSize: 500,
@@ -284,18 +306,21 @@ const bulkInsertManager = new BulkInsertManager(pool.promise(), {
 ## Expected Results
 
 ### Immediate (First Hour)
+
 - ✅ Bulk insert manager active
 - ✅ Metrics queued and batched
 - ✅ 10x faster metric writes
 - ✅ Reduced database load
 
 ### Short-term (First Week)
+
 - ✅ Metric ingestion 10x faster
 - ✅ System handles 200+ concurrent users
 - ✅ Database CPU drops to 20%
 - ✅ Zero write errors
 
 ### Long-term (Ongoing)
+
 - ✅ Consistent high-throughput ingestion
 - ✅ Scalable to 500+ concurrent users
 - ✅ Reduced infrastructure costs
@@ -306,21 +331,25 @@ const bulkInsertManager = new BulkInsertManager(pool.promise(), {
 ## Complete Optimization Stack
 
 ### Phase 1: Database Optimization
+
 - Migration 020: Performance indexes
 - CleanupManager: Batch cleanup
 - Result: 10x faster writes, zero cleanup errors
 
 ### Phase 2: Query Optimization
+
 - MetricQueryOptimizer: Query caching
 - Aggregation caching: 10 min TTL
 - Result: 5-10x faster queries, 70% cache hit rate
 
 ### Phase 3: Connection Pool Optimization
+
 - PoolMonitor: Real-time health tracking
 - Alert system: Proactive warnings
 - Result: Early detection, proactive scaling
 
 ### Phase 4: Advanced Optimizations
+
 - BulkInsertManager: Batch metric writes
 - Queue-based architecture
 - Result: 10x faster metric ingestion, 200+ concurrent users
@@ -329,16 +358,16 @@ const bulkInsertManager = new BulkInsertManager(pool.promise(), {
 
 ## Final Performance Summary
 
-| Metric | Before | After | Total Improvement |
-|--------|--------|-------|-------------------|
-| Metric Write Latency | 500ms | 50ms | **10x** |
-| Query Response | 2-5s | 200-500ms | **5-10x** |
-| Cleanup Duration | 30s | 5s | **6x** |
-| Database CPU | 85% | 15-20% | **75% reduction** |
-| Concurrent Users | 50 | 200+ | **4x capacity** |
-| Cache Hit Rate | 0% | 70-80% | **New feature** |
-| Pool Monitoring | None | Real-time | **New feature** |
-| Metric Throughput | 50/s | 500/s | **10x** |
+| Metric               | Before | After     | Total Improvement |
+|----------------------|--------|-----------|-------------------|
+| Metric Write Latency | 500ms  | 50ms      | **10x**           |
+| Query Response       | 2-5s   | 200-500ms | **5-10x**         |
+| Cleanup Duration     | 30s    | 5s        | **6x**            |
+| Database CPU         | 85%    | 15-20%    | **75% reduction** |
+| Concurrent Users     | 50     | 200+      | **4x capacity**   |
+| Cache Hit Rate       | 0%     | 70-80%    | **New feature**   |
+| Pool Monitoring      | None   | Real-time | **New feature**   |
+| Metric Throughput    | 50/s   | 500/s     | **10x**           |
 
 ---
 
