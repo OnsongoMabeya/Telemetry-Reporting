@@ -922,7 +922,7 @@ app.get('/api/basestations-map', authenticateToken, async (req, res) => {
     // Filter out null entries (stations we couldn't locate)
     const validStations = baseStations.filter(station => station !== null);
     
-    // Set cache headers for response optimization
+    // Set cache headers (compression is handled by middleware)
     res.set('Cache-Control', 'public, max-age=600'); // 10 minutes
     
     res.json(validStations);
