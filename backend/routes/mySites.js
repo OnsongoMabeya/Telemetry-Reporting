@@ -394,7 +394,20 @@ router.get('/clients/:clientId/map-stations', async (req, res) => {
     const { clientId } = req.params;
     const { serviceId } = req.query;
 
-    // Check cache first (skip user access check for cached data)
+    // Check if user has access to this client (always verify first)
+    const [access] = await db.query(
+      'SELECT id FROM user_client_assignments WHERE user_id = ? AND client_id = ? AND is_active = TRUE',
+      [userId, clientId]
+    );
+
+    if (access.length === 0) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied. You do not have access to this client.'
+      });
+    }
+
+    // Check cache after user access verification
     if (mapCacheManager) {
       const cacheKey = mapCacheManager.getMapSitesCacheKey(clientId, serviceId);
       const cachedData = mapCacheManager.get(cacheKey);
@@ -406,19 +419,6 @@ router.get('/clients/:clientId/map-stations', async (req, res) => {
           cached: true
         });
       }
-    }
-
-    // Check if user has access to this client
-    const [access] = await db.query(
-      'SELECT id FROM user_client_assignments WHERE user_id = ? AND client_id = ? AND is_active = TRUE',
-      [userId, clientId]
-    );
-
-    if (access.length === 0) {
-      return res.status(403).json({
-        success: false,
-        error: 'Access denied. You do not have access to this client.'
-      });
     }
 
     // Build query to get unique base stations
@@ -601,11 +601,20 @@ router.get('/clients/:clientId/map-stations', async (req, res) => {
       cached: false
     });
   } catch (error) {
-    logger.error('CRUD', 'Error fetching map stations', { userId: req.user?.id, ip: req.ip, metadata: { error: error.message } });
+    logger.error('API', 'Error fetching map stations', { 
+      userId: req.user?.id, 
+      ip: req.ip, 
+      clientId,
+      serviceId,
+      metadata: { 
+        error: error.message,
+        stack: error.stack
+      } 
+    });
     res.status(500).json({
       success: false,
       error: 'Failed to fetch map stations',
-      message: error.message
+      message: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 });
